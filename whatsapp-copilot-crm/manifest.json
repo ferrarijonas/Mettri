@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Copiloto CRM",
+  "description": "Copiloto IA, auto-responder e CRM integrado no WhatsApp Web.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "WhatsApp Copiloto CRM",
+    "default_popup": "popup/popup.html"
+  },
+  "permissions": ["storage", "activeTab", "tabs", "scripting", "notifications"],
+  "host_permissions": ["https://web.whatsapp.com/*", "https://api.openai.com/*"],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": [
+        "src/storage/local-storage.js",
+        "src/mock/mock-data.js",
+        "src/crm/contacts.js",
+        "src/crm/tags.js",
+        "src/crm/history.js",
+        "src/crm/analytics.js",
+        "src/autoresponder/rules-manager.js",
+        "src/autoresponder/bot-engine.js",
+        "src/copilot/ai-service.js",
+        "src/core/whatsapp-api.js",
+        "src/core/chat-context.js",
+        "src/core/dom-observer.js",
+        "src/core/message-handler.js",
+        "content/inject.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

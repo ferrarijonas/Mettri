@@ -1,0 +1,140 @@
+:root {
+  --bg: #0b1220;
+  --card: rgba(255, 255, 255, 0.06);
+  --stroke: rgba(255, 255, 255, 0.10);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.65);
+  --primary: #4f46e5;
+  --danger: #ef4444;
+  --good: #10b981;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  width: 380px;
+  background: radial-gradient(1000px 600px at 20% 0%, rgba(79, 70, 229, 0.25), transparent 60%),
+    radial-gradient(900px 500px at 100% 40%, rgba(16, 185, 129, 0.18), transparent 50%),
+    var(--bg);
+  color: var(--text);
+  font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+
+.topbar {
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid var(--stroke);
+  backdrop-filter: blur(10px);
+}
+
+.brand { display: flex; gap: 10px; align-items: center; }
+.logo {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(16, 185, 129, 0.9));
+  font-weight: 800;
+}
+.title { font-weight: 700; letter-spacing: 0.2px; }
+.subtitle { color: var(--muted); font-size: 12px; }
+
+.wrap { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.card-title { font-weight: 700; margin-bottom: 10px; }
+
+.grid { display: grid; gap: 10px; }
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.toggle input { transform: scale(1.15); }
+
+.row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.row + .row { margin-top: 10px; }
+@media (min-width: 360px) {
+  .row { grid-template-columns: 1fr 1fr; }
+  .row .field:first-child { grid-column: 1 / -1; }
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field span { color: var(--muted); font-size: 12px; }
+.field input {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(0,0,0,0.18);
+  color: var(--text);
+  outline: none;
+}
+.field input:focus { border-color: rgba(79, 70, 229, 0.9); }
+
+.actions { display: flex; gap: 8px; margin-top: 10px; }
+.btn {
+  cursor: pointer;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  padding: 9px 10px;
+  border-radius: 12px;
+  font-weight: 650;
+}
+.btn:hover { background: rgba(255,255,255,0.12); }
+.btn.primary { background: rgba(79, 70, 229, 0.4); border-color: rgba(79, 70, 229, 0.7); }
+.btn.primary:hover { background: rgba(79, 70, 229, 0.55); }
+.btn.danger { background: rgba(239, 68, 68, 0.22); border-color: rgba(239, 68, 68, 0.6); }
+.btn.danger:hover { background: rgba(239, 68, 68, 0.3); }
+
+.status { margin-top: 10px; color: var(--muted); min-height: 18px; }
+.status.ok { color: rgba(16, 185, 129, 0.95); }
+.status.err { color: rgba(239, 68, 68, 0.95); }
+
+.hint { color: var(--muted); margin-bottom: 8px; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.pill {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(0,0,0,0.14);
+}
+.pill .small { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.metric {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(0,0,0,0.14);
+}
+.metric .k { color: var(--muted); font-size: 12px; }
+.metric .v { font-size: 20px; font-weight: 800; }
+
+.rules { display: flex; flex-direction: column; gap: 8px; }
+.rule {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(0,0,0,0.14);
+}
+.rule .name { font-weight: 700; }
+.rule .desc { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.rule input { margin-top: 2px; transform: scale(1.1); }
+
