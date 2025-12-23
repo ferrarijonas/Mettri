@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WhatsApp Copiloto CRM</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">W</div>
+        <div>
+          <div class="title">WhatsApp Copiloto CRM</div>
+          <div class="subtitle">Copiloto IA • Auto-responder • CRM</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="card">
+        <div class="card-title">Controles</div>
+        <div class="grid">
+          <label class="toggle">
+            <input id="copilotEnabled" type="checkbox" />
+            <span>Copiloto IA</span>
+          </label>
+          <label class="toggle">
+            <input id="autoResponderEnabled" type="checkbox" />
+            <span>Auto-responder</span>
+          </label>
+          <label class="toggle">
+            <input id="debug" type="checkbox" />
+            <span>Debug (logs)</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">OpenAI</div>
+        <div class="row">
+          <label class="field">
+            <span>API Key</span>
+            <input id="openaiKey" type="password" placeholder="sk-..." />
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">
+            <span>Modelo</span>
+            <input id="openaiModel" type="text" placeholder="gpt-4o-mini" />
+          </label>
+          <label class="field">
+            <span>Temperatura</span>
+            <input id="openaiTemp" type="number" min="0" max="2" step="0.1" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="saveConfig" class="btn primary">Salvar</button>
+          <button id="reload" class="btn">Recarregar dados</button>
+        </div>
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Sugestões (chat atual)</div>
+        <div class="hint" id="ctxHint">Abra um chat no WhatsApp Web para ver sugestões.</div>
+        <div id="suggestions" class="list"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Analytics (últimos 7 dias)</div>
+        <div id="analytics" class="metrics"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Regras (auto-responder)</div>
+        <div id="rules" class="rules"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Export</div>
+        <div class="actions">
+          <button id="exportHistory" class="btn">Exportar histórico (JSON)</button>
+          <button id="resetAnalytics" class="btn danger">Reset analytics</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="../src/storage/local-storage.js"></script>
+    <script src="../src/autoresponder/rules-manager.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
+
