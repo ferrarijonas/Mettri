@@ -26,6 +26,7 @@ export default defineConfig({
           args: [
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
+            '--disable-blink-features=AutomationControlled',
             '--no-sandbox',
           ],
           headless: false,

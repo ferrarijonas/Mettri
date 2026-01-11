@@ -20,6 +20,11 @@
 - **Linting:** Siga rigorosamente o ESLint/Prettier do projeto. Código que não passa no lint é considerado erro de build.
 - **Functional Architecture:** Prefira funções puras e imutabilidade.
 
+## TESTES E DESENVOLVIMENTO
+- **Para testar extensão no WhatsApp:** Use Chrome normal (aberto manualmente)
+- **MCP/Playwright:** NÃO funcionam bem com WhatsApp Web (detecção de automação bloqueia carregamento)
+- **Playwright/MCP:** Podem ser usados apenas para validar estrutura básica (manifest, arquivos), não para testar WhatsApp
+
 ## MEMÓRIA DO PROJETO
 - Consultar SEMPRE: @project_context.md (O que é), @tech_stack.md (Como), @progress.md (Onde estamos).
 
