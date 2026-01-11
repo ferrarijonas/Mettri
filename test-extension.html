@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - WhatsApp Copiloto CRM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        button {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #128C7E;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste da Extensão WhatsApp Copiloto CRM</h1>
+    
+    <div class="test-section">
+        <h2>1. Verificação de Arquivos</h2>
+        <button onclick="testFiles()">Verificar Arquivos</button>
+        <div id="files-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Validação do Manifest</h2>
+        <button onclick="testManifest()">Validar Manifest</button>
+        <div id="manifest-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Teste de Carregamento</h2>
+        <button onclick="testLoad()">Testar Carregamento</button>
+        <div id="load-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Instruções</h2>
+        <ol>
+            <li>Abra o Chrome e vá para <code>chrome://extensions/</code></li>
+            <li>Ative o "Modo do desenvolvedor"</li>
+            <li>Clique em "Carregar sem compactação"</li>
+            <li>Selecione a pasta <code>C:\Mettri4</code></li>
+            <li>Abra o WhatsApp Web: <a href="https://web.whatsapp.com" target="_blank">https://web.whatsapp.com</a></li>
+            <li>Abra o Console (F12) e verifique os logs</li>
+        </ol>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testFiles() {
+            const files = [
+                'manifest.json',
+                'popup/popup.html',
+                'popup/popup.js',
+                'popup/popup.css',
+                'background/service-worker.js',
+                'content/inject.js',
+                'assets/icons/icon16.png',
+                'assets/icons/icon48.png',
+                'assets/icons/icon128.png'
+            ];
+            
+            const results = [];
+            for (const file of files) {
+                try {
+                    const response = await fetch(file);
+                    results.push({
+                        file,
+                        exists: response.ok,
+                        status: response.status
+                    });
+                } catch (e) {
+                    results.push({
+                        file,
+                        exists: false,
+                        error: e.message
+                    });
+                }
+            }
+            
+            const div = document.getElementById('files-result');
+            let html = '<h3>Resultados:</h3><ul>';
+            results.forEach(r => {
+                const status = r.exists ? 
+                    `<span class="success">✓ Existe (${r.status})</span>` : 
+                    `<span class="error">✗ Erro: ${r.error || 'Não encontrado'}</span>`;
+                html += `<li>${r.file}: ${status}</li>`;
+            });
+            html += '</ul>';
+            div.innerHTML = html;
+        }
+        
+        async function testManifest() {
+            try {
+                const response = await fetch('manifest.json');
+                const manifest = await response.json();
+                
+                const errors = [];
+                const warnings = [];
+                
+                if (!manifest.manifest_version) errors.push('Falta manifest_version');
+                if (!manifest.name) errors.push('Falta name');
+                if (!manifest.version) errors.push('Falta version');
+                if (!manifest.background || !manifest.background.service_worker) {
+                    errors.push('Falta background.service_worker');
+                }
+                if (!manifest.content_scripts || manifest.content_scripts.length === 0) {
+                    errors.push('Falta content_scripts');
+                }
+                if (!manifest.action || !manifest.action.default_popup) {
+                    errors.push('Falta action.default_popup');
+                }
+                
+                if (manifest.permissions && !manifest.permissions.includes('storage')) {
+                    warnings.push('Permissão storage recomendada');
+                }
+                
+                const div = document.getElementById('manifest-result');
+                let html = '<h3>Validação:</h3>';
+                
+                if (errors.length === 0) {
+                    html += '<p class="success">✓ Manifest válido!</p>';
+                } else {
+                    html += '<p class="error">✗ Erros encontrados:</p><ul>';
+                    errors.forEach(e => html += `<li class="error">${e}</li>`);
+                    html += '</ul>';
+                }
+                
+                if (warnings.length > 0) {
+                    html += '<p class="warning">⚠ Avisos:</p><ul>';
+                    warnings.forEach(w => html += `<li class="warning">${w}</li>`);
+                    html += '</ul>';
+                }
+                
+                html += '<pre>' + JSON.stringify(manifest, null, 2) + '</pre>';
+                div.innerHTML = html;
+            } catch (e) {
+                document.getElementById('manifest-result').innerHTML = 
+                    `<p class="error">Erro ao validar: ${e.message}</p>`;
+            }
+        }
+        
+        async function testLoad() {
+            const div = document.getElementById('load-result');
+            div.innerHTML = '<p>Testando carregamento...</p>';
+            
+            // Simular carregamento dos scripts
+            const scripts = [
+                'src/storage/local-storage.js',
+                'src/core/whatsapp-api.js',
+                'src/core/mcp-client.js',
+                'src/core/whatsapp-adapter.js'
+            ];
+            
+            const results = [];
+            for (const script of scripts) {
+                try {
+                    const response = await fetch(script);
+                    results.push({
+                        script,
+                        loaded: response.ok,
+                        status: response.status
+                    });
+                } catch (e) {
+                    results.push({
+                        script,
+                        loaded: false,
+                        error: e.message
+                    });
+                }
+            }
+            
+            let html = '<h3>Resultados do Carregamento:</h3><ul>';
+            results.forEach(r => {
+                const status = r.loaded ? 
+                    `<span class="success">✓ Carregado</span>` : 
+                    `<span class="error">✗ Erro: ${r.error || 'Não encontrado'}</span>`;
+                html += `<li>${r.script}: ${status}</li>`;
+            });
+            html += '</ul>';
+            
+            if (results.every(r => r.loaded)) {
+                html += '<p class="success">✓ Todos os scripts podem ser carregados!</p>';
+            } else {
+                html += '<p class="error">✗ Alguns scripts não podem ser carregados. Verifique os caminhos.</p>';
+            }
+            
+            div.innerHTML = html;
+        }
+        
+        // Executar testes automaticamente ao carregar
+        window.addEventListener('load', () => {
+            console.log('Página de teste carregada. Clique nos botões para executar os testes.');
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

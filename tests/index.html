@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Central de Testes - WhatsApp Copiloto CRM</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #f0f2f5 0%, #e8f5e9 100%);
+            min-height: 100vh;
+        }
+        h1 {
+            color: #008069;
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #667781;
+            margin-bottom: 40px;
+        }
+        .test-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .test-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .test-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .test-card .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .test-card h2 {
+            color: #008069;
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+        }
+        .test-card p {
+            color: #667781;
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .test-card .badge {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+        .info-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-top: 30px;
+        }
+        .info-section h3 {
+            color: #008069;
+            margin-top: 0;
+        }
+        .info-section ul {
+            padding-left: 20px;
+            color: #667781;
+        }
+        .info-section li {
+            margin: 8px 0;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+        .quick-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .quick-link {
+            background: #008069;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .quick-link:hover {
+            background: #00a884;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Central de Testes</h1>
+    <p class="subtitle">WhatsApp Copiloto CRM - Suite de Testes Automatizados</p>
+    
+    <div class="test-cards">
+        <a href="unit-tests.html" class="test-card">
+            <div class="icon">🔬</div>
+            <h2>Testes Unitários</h2>
+            <p>Testa cada módulo isoladamente: AIService, WhatsAppAdapter, SuggestionEngine, LocalStorage.</p>
+            <span class="badge">~25 testes</span>
+        </a>
+        
+        <a href="integration-tests.html" class="test-card">
+            <div class="icon">🔗</div>
+            <h2>Testes de Integração</h2>
+            <p>Testes end-to-end simulando o fluxo real do usuário com simulação de chat.</p>
+            <span class="badge">~8 testes</span>
+        </a>
+        
+        <a href="../test-extension.html" class="test-card">
+            <div class="icon">📦</div>
+            <h2>Verificação da Extensão</h2>
+            <p>Verifica arquivos, valida manifest.json e testa carregamento de scripts.</p>
+            <span class="badge">Verificação</span>
+        </a>
+    </div>
+    
+    <div class="info-section">
+        <h3>📋 Como Executar os Testes</h3>
+        <ol>
+            <li>Abra esta pasta no navegador usando um servidor local:
+                <div class="quick-links">
+                    <code>npx serve .</code> ou <code>python -m http.server 8080</code>
+                </div>
+            </li>
+            <li>Navegue para <code>http://localhost:8080/tests/</code></li>
+            <li>Escolha o tipo de teste que deseja executar</li>
+            <li>Clique em "Executar Testes" na página selecionada</li>
+        </ol>
+    </div>
+    
+    <div class="info-section">
+        <h3>✅ Módulos Testados</h3>
+        <ul>
+            <li><strong>AIService</strong> - Integração com APIs de IA (OpenAI/Anthropic)</li>
+            <li><strong>WhatsAppAdapter</strong> - Camada de abstração DOM/MCP</li>
+            <li><strong>SuggestionEngine</strong> - Motor de sugestões de resposta</li>
+            <li><strong>LocalStorage</strong> - Persistência de configurações</li>
+        </ul>
+    </div>
+    
+    <div class="info-section">
+        <h3>🚀 Links Rápidos</h3>
+        <div class="quick-links">
+            <a href="../TESTE.md" class="quick-link">📄 Guia de Testes</a>
+            <a href="../README.md" class="quick-link">📖 README</a>
+            <a href="../docs/" class="quick-link">📚 Documentação</a>
+        </div>
+    </div>
+</body>
+</html>

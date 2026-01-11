@@ -1,0 +1,24 @@
+# 🤖 METTRI4 - Project Manifesto (2026)
+
+##  FLUXO DE TRABALHO (AGENTS)
+1. Arquiteto: Define o plano em @current_task_spec.md.
+2. Produção: Codifica baseado na spec. **Proibido desviar do plano.**
+3. Testes: Valida com testes unitários/E2E.
+4. Refatoração: Aplica Clean Code e DRY.
+5. Documentação: Só atua após 3/4. Atualiza @progress.md e remove a spec.
+
+## TECH STACK & PADRÕES (OBRIGATÓRIO)
+- **Strict Typing:** TypeScript 5.x+ em TUDO. Proibido usar `any`.
+- **Linting:** Siga rigorosamente o ESLint/Prettier do projeto. Código que não passa no lint é considerado erro de build.
+- **Functional Architecture:** Prefira funções puras e imutabilidade.
+
+## MEMÓRIA DO PROJETO
+- Consultar SEMPRE: @project_context.md (O que é), @tech_stack.md (Como), @progress.md (Onde estamos).
+
+## GESTÃO DE ENGENHARIA (GITHUB)
+Para manter o padrão Sênior de visibilidade e organização:
+
+1. **Commits:** Seguir estritamente o padrão Conventional Commits.
+2. **Pull Requests:** Toda funcionalidade nova deve passar por um PR, contendo a descrição do que foi alterado e o link para a Issue correspondente.
+3. **Branches:** Nunca commitar direto na `main`. Usar branches descritivas (ex: `feature/message-capturer`).
+4. **Transparência:** Toda atualização no `@progress.md` deve estar sempre alinhada 1:1 com as Milestones e issues do GitHub. Nenhuma entrega pode ser considerada concluída sem que ambos os rastros (arquivo e GitHub) estejam sincronizados.

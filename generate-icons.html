@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerador de Ícones - WhatsApp Copiloto</title>
+</head>
+<body>
+    <h1>Gerador de Ícones</h1>
+    <p>Abra o console do navegador (F12) e execute o código abaixo para gerar os ícones:</p>
+    <pre id="code"></pre>
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <script>
+        const sizes = [16, 48, 128];
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function generateIcon(size) {
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Fundo verde WhatsApp
+            ctx.fillStyle = '#25D366';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Ícone de mensagem/chat
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            // Desenhar balão de mensagem simples
+            const margin = size * 0.2;
+            const width = size - (margin * 2);
+            const height = size - (margin * 2);
+            
+            // Corpo do balão
+            ctx.roundRect(margin, margin, width, height * 0.7, size * 0.1);
+            ctx.fill();
+            
+            // Cauda do balão
+            ctx.beginPath();
+            ctx.moveTo(margin + width * 0.3, margin + height * 0.7);
+            ctx.lineTo(margin + width * 0.2, margin + height);
+            ctx.lineTo(margin + width * 0.4, margin + height * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            
+            return canvas.toDataURL('image/png');
+        }
+        
+        // Polyfill para roundRect se não disponível
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.lineTo(x + width - radius, y);
+                this.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.lineTo(x + width, y + height - radius);
+                this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.lineTo(x + radius, y + height);
+                this.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.lineTo(x, y + radius);
+                this.quadraticCurveTo(x, y, x + radius, y);
+                this.closePath();
+            };
+        }
+        
+        // Função para download
+        function downloadIcon(size, dataUrl) {
+            const link = document.createElement('a');
+            link.download = `icon${size}.png`;
+            link.href = dataUrl;
+            link.click();
+        }
+        
+        // Gerar todos os ícones
+        sizes.forEach(size => {
+            const dataUrl = generateIcon(size);
+            setTimeout(() => downloadIcon(size, dataUrl), size * 10);
+        });
+        
+        document.getElementById('code').textContent = `
+// Ou execute no console:
+const sizes = [16, 48, 128];
+sizes.forEach(size => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#25D366';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.roundRect(size*0.2, size*0.2, size*0.6, size*0.5, size*0.1);
+    ctx.fill();
+    const link = document.createElement('a');
+    link.download = 'icon' + size + '.png';
+    link.href = canvas.toDataURL();
+    link.click();
+});
+        `;
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
