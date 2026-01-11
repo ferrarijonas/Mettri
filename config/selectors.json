@@ -1,0 +1,86 @@
+{
+  "version": "2026.01.11",
+  "updatedAt": "2026-01-11T00:00:00Z",
+  "selectors": {
+    "conversationPanel": {
+      "id": "conversationPanel",
+      "description": "Container principal das mensagens",
+      "selectors": [
+        "[data-testid='conversation-panel-messages']",
+        "[role='application']",
+        "#main [role='region']"
+      ],
+      "status": "working"
+    },
+    "messageIn": {
+      "id": "messageIn",
+      "description": "Mensagem recebida",
+      "selectors": [
+        ".message-in",
+        "[data-testid='msg-container'][class*='message-in']",
+        "[class*='message-in']"
+      ],
+      "status": "working"
+    },
+    "messageOut": {
+      "id": "messageOut",
+      "description": "Mensagem enviada",
+      "selectors": [
+        ".message-out",
+        "[data-testid='msg-container'][class*='message-out']",
+        "[class*='message-out']"
+      ],
+      "status": "working"
+    },
+    "messageText": {
+      "id": "messageText",
+      "description": "Texto da mensagem",
+      "selectors": [
+        "[data-testid='msg-text']",
+        ".selectable-text span[dir]",
+        ".copyable-text span"
+      ],
+      "status": "working"
+    },
+    "messageMeta": {
+      "id": "messageMeta",
+      "description": "Metadados da mensagem (hora)",
+      "selectors": [
+        "[data-testid='msg-meta']",
+        ".copyable-text [data-pre-plain-text]",
+        "[class*='message-time']"
+      ],
+      "status": "working"
+    },
+    "chatHeader": {
+      "id": "chatHeader",
+      "description": "Header do chat atual",
+      "selectors": [
+        "[data-testid='conversation-info-header']",
+        "header [data-testid='conversation-header']",
+        "#main header"
+      ],
+      "status": "working"
+    },
+    "chatName": {
+      "id": "chatName",
+      "description": "Nome do chat atual",
+      "selectors": [
+        "[data-testid='conversation-info-header-chat-title']",
+        "header span[title]",
+        "#main header span[dir='auto']"
+      ],
+      "status": "working"
+    },
+    "senderName": {
+      "id": "senderName",
+      "description": "Nome do remetente em grupos",
+      "selectors": [
+        "[data-testid='msg-container'] span[dir='auto'][aria-label]",
+        ".copyable-text[data-pre-plain-text]",
+        "[class*='message'] span[aria-label]"
+      ],
+      "status": "working"
+    }
+  }
+}

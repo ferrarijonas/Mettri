@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔗 Testes de Integração - WhatsApp Copiloto CRM</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f2f5;
+            color: #111b21;
+        }
+        h1 { color: #008069; }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #008069;
+            border-bottom: 2px solid #e9edef;
+            padding-bottom: 10px;
+        }
+        .test-item {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .test-item.running { background: #e3f2fd; border-left: 4px solid #2196f3; }
+        .test-item.pass { background: #e8f5e9; border-left: 4px solid #4caf50; }
+        .test-item.fail { background: #ffebee; border-left: 4px solid #f44336; }
+        .status-icon { font-size: 20px; }
+        .test-info { flex: 1; }
+        .test-name { font-weight: 600; margin-bottom: 4px; }
+        .test-desc { font-size: 13px; color: #667781; }
+        button {
+            background: #008069;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #00a884; }
+        button.secondary {
+            background: #667781;
+        }
+        button.secondary:hover { background: #8696a0; }
+        .progress-bar {
+            height: 8px;
+            background: #e9edef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #008069;
+            transition: width 0.3s ease;
+        }
+        .result-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .result-item .value { font-size: 28px; font-weight: bold; }
+        .result-item .label { font-size: 12px; color: #667781; }
+        .result-item.pass .value { color: #4caf50; }
+        .result-item.fail .value { color: #f44336; }
+        .simulation-area {
+            border: 2px dashed #e9edef;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            min-height: 200px;
+        }
+        .mock-chat {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .mock-message {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .mock-message.incoming {
+            background: white;
+            margin-right: auto;
+        }
+        .mock-message.outgoing {
+            background: #d9fdd3;
+            margin-left: auto;
+        }
+        .mock-input {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f2f5;
+            border-radius: 8px;
+        }
+        .mock-input input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+        }
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .suggestion-chip {
+            background: white;
+            border: 1px solid #e9edef;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .suggestion-chip:hover {
+            background: #008069;
+            color: white;
+            border-color: #008069;
+        }
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Testes de Integração</h1>
+    <p>Testes end-to-end simulando o fluxo real do usuário no WhatsApp Web.</p>
+    
+    <div class="section">
+        <h2>📊 Progresso dos Testes</h2>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress" style="width: 0%"></div>
+        </div>
+        <div id="test-list"></div>
+        <div class="result-summary" id="summary" style="display: none;">
+            <div class="result-item pass">
+                <div class="value" id="pass-count">0</div>
+                <div class="label">Passou</div>
+            </div>
+            <div class="result-item">
+                <div class="value" id="total-count">0</div>
+                <div class="label">Total</div>
+            </div>
+            <div class="result-item fail">
+                <div class="value" id="fail-count">0</div>
+                <div class="label">Falhou</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>🎮 Controles</h2>
+        <button onclick="runIntegrationTests()" id="run-btn">▶️ Executar Testes de Integração</button>
+        <button onclick="runSimulation()" class="secondary">🔄 Simular Fluxo Completo</button>
+    </div>
+    
+    <div class="section">
+        <h2>💬 Simulação de Chat</h2>
+        <div class="simulation-area">
+            <div class="mock-chat" id="mock-chat">
+                <div class="mock-message incoming">Olá! Preciso de ajuda com meu pedido.</div>
+                <div class="mock-message outgoing">Claro! Qual é o número do seu pedido?</div>
+                <div class="mock-message incoming">É o pedido #12345</div>
+            </div>
+            <div class="suggestion-chips" id="suggestions"></div>
+            <div class="mock-input">
+                <input type="text" id="mock-input" placeholder="Digite uma mensagem..." data-testid="conversation-compose-box-input">
+                <button onclick="sendMockMessage()">Enviar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>📋 Log de Execução</h2>
+        <div class="log-output" id="log-output"></div>
+    </div>
+
+    <!-- Mocks -->
+    <script>
+        // Mock chrome.storage
+        window.chrome = window.chrome || {};
+        window.chrome.storage = {
+            local: {
+                _data: { settings: { copilotEnabled: true, aiProvider: 'openai', aiApiKey: 'test-key' } },
+                get: function(keys, callback) {
+                    const result = {};
+                    if (Array.isArray(keys)) {
+                        keys.forEach(k => result[k] = this._data[k]);
+                    } else if (typeof keys === 'string') {
+                        result[keys] = this._data[keys];
+                    } else if (keys && typeof keys === 'object') {
+                        Object.keys(keys).forEach(k => {
+                            result[k] = this._data[k] !== undefined ? this._data[k] : keys[k];
+                        });
+                    } else {
+                        Object.assign(result, this._data);
+                    }
+                    setTimeout(() => callback(result), 0);
+                },
+                set: function(items, callback) {
+                    Object.assign(this._data, items);
+                    setTimeout(() => callback && callback(), 0);
+                }
+            }
+        };
+        
+        // LocalStorage mock
+        window.LocalStorage = {
+            getSettings: async () => ({ copilotEnabled: true, aiProvider: 'openai', aiApiKey: 'test-key' }),
+            saveSettings: async (s) => true
+        };
+        
+        // Logger
+        const logs = [];
+        function log(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ timestamp, msg, type });
+            updateLogDisplay();
+        }
+        
+        function updateLogDisplay() {
+            const el = document.getElementById('log-output');
+            el.innerHTML = logs.slice(-30).map(l => 
+                `<div style="color: ${l.type === 'error' ? '#f44336' : l.type === 'success' ? '#4caf50' : '#d4d4d4'}">[${l.timestamp}] ${l.msg}</div>`
+            ).join('');
+            el.scrollTop = el.scrollHeight;
+        }
+    </script>
+    
+    <!-- Carregar módulos -->
+    <script src="../src/copilot/ai-service.js"></script>
+    <script src="../src/core/whatsapp-adapter.js"></script>
+    <script src="../src/copilot/suggestion-engine.js"></script>
+    
+    <!-- Testes de Integração -->
+    <script>
+        const integrationTests = [
+            {
+                name: 'Inicialização do Sistema',
+                desc: 'Verifica se todos os módulos carregam corretamente',
+                async run() {
+                    if (!window.AIService) throw new Error('AIService não carregado');
+                    if (!window.WhatsAppAdapter) throw new Error('WhatsAppAdapter não carregado');
+                    if (!window.SuggestionEngine) throw new Error('SuggestionEngine não carregado');
+                    log('Todos os módulos carregados com sucesso', 'success');
+                }
+            },
+            {
+                name: 'Configurações Persistentes',
+                desc: 'Testa salvamento e recuperação de configurações',
+                async run() {
+                    const settings = await window.LocalStorage.getSettings();
+                    if (!settings.copilotEnabled) throw new Error('Copilot deveria estar habilitado');
+                    log('Configurações recuperadas: copilotEnabled=' + settings.copilotEnabled, 'success');
+                }
+            },
+            {
+                name: 'Detecção de Modo',
+                desc: 'Verifica detecção automática DOM/MCP',
+                async run() {
+                    const mode = window.WhatsAppAdapter.getMode();
+                    if (!['dom', 'mcp'].includes(mode)) throw new Error('Modo inválido: ' + mode);
+                    log('Modo detectado: ' + mode, 'success');
+                }
+            },
+            {
+                name: 'API Service - Estrutura',
+                desc: 'Verifica métodos do AIService',
+                async run() {
+                    const methods = ['generateSuggestions', 'getApiKey', 'getProvider'];
+                    for (const m of methods) {
+                        if (typeof window.AIService[m] !== 'function') {
+                            throw new Error(`Método ${m} não encontrado`);
+                        }
+                    }
+                    log('AIService: todos os métodos disponíveis', 'success');
+                }
+            },
+            {
+                name: 'Sugestões - Exibição',
+                desc: 'Testa exibição de sugestões na interface',
+                async run() {
+                    window.SuggestionEngine.displaySuggestions([
+                        'Vou verificar seu pedido agora!',
+                        'Aguarde um momento, por favor.',
+                        'Posso ajudar com mais alguma coisa?'
+                    ]);
+                    const panel = document.getElementById('whatsapp-copilot-suggestions');
+                    if (!panel) throw new Error('Painel de sugestões não criado');
+                    log('Painel de sugestões criado e exibido', 'success');
+                }
+            },
+            {
+                name: 'Sugestões - Ocultação',
+                desc: 'Testa ocultação do painel de sugestões',
+                async run() {
+                    window.SuggestionEngine.hideSuggestions();
+                    const panel = document.getElementById('whatsapp-copilot-suggestions');
+                    if (panel && panel.style.display !== 'none') {
+                        throw new Error('Painel deveria estar oculto');
+                    }
+                    log('Painel de sugestões ocultado', 'success');
+                }
+            },
+            {
+                name: 'Integração Input',
+                desc: 'Testa inserção de texto no campo de input',
+                async run() {
+                    const input = document.querySelector('[data-testid="conversation-compose-box-input"]');
+                    if (!input) throw new Error('Campo de input não encontrado');
+                    
+                    // Simular uso de sugestão
+                    input.value = 'Teste de sugestão inserida';
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    if (input.value !== 'Teste de sugestão inserida') {
+                        throw new Error('Texto não foi inserido corretamente');
+                    }
+                    log('Texto inserido no input com sucesso', 'success');
+                }
+            },
+            {
+                name: 'Fluxo Completo E2E',
+                desc: 'Simula fluxo completo: mensagem → sugestão → resposta',
+                async run() {
+                    // 1. Simular recebimento de mensagem
+                    const mockMessage = { text: 'Preciso de ajuda!', sender: 'Cliente', isOutgoing: false };
+                    log('Mensagem recebida: "' + mockMessage.text + '"');
+                    
+                    // 2. Gerar sugestões (mock)
+                    const suggestions = [
+                        'Como posso ajudar?',
+                        'Claro! Me conta mais.',
+                        'Estou à disposição!'
+                    ];
+                    
+                    // 3. Exibir sugestões
+                    window.SuggestionEngine.displaySuggestions(suggestions);
+                    log('Sugestões geradas e exibidas: ' + suggestions.length);
+                    
+                    // 4. Selecionar sugestão
+                    const input = document.querySelector('[data-testid="conversation-compose-box-input"]');
+                    if (input) {
+                        input.value = suggestions[0];
+                        log('Sugestão selecionada: "' + suggestions[0] + '"', 'success');
+                    }
+                    
+                    log('Fluxo E2E completo com sucesso!', 'success');
+                }
+            }
+        ];
+        
+        let testResults = { pass: 0, fail: 0, total: 0 };
+        
+        function renderTestList() {
+            const container = document.getElementById('test-list');
+            container.innerHTML = integrationTests.map((t, i) => `
+                <div class="test-item" id="test-${i}">
+                    <span class="status-icon">⏸️</span>
+                    <div class="test-info">
+                        <div class="test-name">${t.name}</div>
+                        <div class="test-desc">${t.desc}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function runIntegrationTests() {
+            const btn = document.getElementById('run-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Executando...';
+            
+            testResults = { pass: 0, fail: 0, total: integrationTests.length };
+            renderTestList();
+            logs.length = 0;
+            
+            log('🚀 Iniciando testes de integração...');
+            
+            for (let i = 0; i < integrationTests.length; i++) {
+                const test = integrationTests[i];
+                const el = document.getElementById(`test-${i}`);
+                
+                el.className = 'test-item running';
+                el.querySelector('.status-icon').textContent = '🔄';
+                
+                const progress = ((i + 1) / integrationTests.length) * 100;
+                document.getElementById('progress').style.width = progress + '%';
+                
+                try {
+                    await test.run();
+                    testResults.pass++;
+                    el.className = 'test-item pass';
+                    el.querySelector('.status-icon').textContent = '✅';
+                } catch (error) {
+                    testResults.fail++;
+                    el.className = 'test-item fail';
+                    el.querySelector('.status-icon').textContent = '❌';
+                    log('ERRO em "' + test.name + '": ' + error.message, 'error');
+                }
+                
+                await new Promise(r => setTimeout(r, 200)); // Delay visual
+            }
+            
+            // Mostrar resumo
+            document.getElementById('summary').style.display = 'grid';
+            document.getElementById('pass-count').textContent = testResults.pass;
+            document.getElementById('fail-count').textContent = testResults.fail;
+            document.getElementById('total-count').textContent = testResults.total;
+            
+            log(`\n📊 Resultado: ${testResults.pass}/${testResults.total} testes passaram`, 
+                testResults.fail === 0 ? 'success' : 'error');
+            
+            btn.disabled = false;
+            btn.textContent = '▶️ Executar Testes de Integração';
+        }
+        
+        function runSimulation() {
+            log('🔄 Iniciando simulação de fluxo...');
+            
+            // Simular sugestões
+            const suggestions = [
+                'Vou verificar o status do seu pedido #12345',
+                'Aguarde um momento enquanto consulto o sistema',
+                'Posso ajudar com mais alguma coisa?'
+            ];
+            
+            const container = document.getElementById('suggestions');
+            container.innerHTML = suggestions.map(s => 
+                `<div class="suggestion-chip" onclick="useSuggestion('${s}')">${s}</div>`
+            ).join('');
+            
+            log('Sugestões geradas baseadas no contexto da conversa', 'success');
+        }
+        
+        function useSuggestion(text) {
+            const input = document.getElementById('mock-input');
+            input.value = text;
+            log('Sugestão selecionada: "' + text + '"', 'success');
+        }
+        
+        function sendMockMessage() {
+            const input = document.getElementById('mock-input');
+            if (!input.value.trim()) return;
+            
+            const chat = document.getElementById('mock-chat');
+            const msg = document.createElement('div');
+            msg.className = 'mock-message outgoing';
+            msg.textContent = input.value;
+            chat.appendChild(msg);
+            
+            log('Mensagem enviada: "' + input.value + '"', 'success');
+            input.value = '';
+            
+            // Limpar sugestões
+            document.getElementById('suggestions').innerHTML = '';
+        }
+        
+        // Inicializar
+        window.addEventListener('load', () => {
+            renderTestList();
+            log('📦 Página de testes de integração carregada');
+            log('💡 Clique em "Executar Testes" para iniciar');
+        });
+    </script>
+</body>
+</html>

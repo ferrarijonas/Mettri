@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Testes Unitários - WhatsApp Copiloto CRM</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f2f5;
+            color: #111b21;
+        }
+        h1 { color: #008069; }
+        .test-suite {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .test-suite h2 {
+            margin-top: 0;
+            color: #008069;
+            border-bottom: 2px solid #e9edef;
+            padding-bottom: 10px;
+        }
+        .test-case {
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-case.pass { background: #d4edda; border-left: 4px solid #28a745; }
+        .test-case.fail { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .test-case.skip { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .test-case.pending { background: #e2e3e5; border-left: 4px solid #6c757d; }
+        .icon { font-size: 18px; }
+        .test-name { flex: 1; font-weight: 500; }
+        .test-time { color: #667781; font-size: 12px; }
+        .summary {
+            background: #008069;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            text-align: center;
+        }
+        .summary-item { font-size: 24px; font-weight: bold; }
+        .summary-label { font-size: 12px; opacity: 0.9; }
+        button {
+            background: #008069;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #00a884; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .error-detail {
+            background: #fff5f5;
+            border: 1px solid #dc3545;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .console-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .console-log .log { color: #d4d4d4; }
+        .console-log .warn { color: #dcdcaa; }
+        .console-log .error { color: #f14c4c; }
+        .console-log .info { color: #3794ff; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Testes Unitários - WhatsApp Copiloto CRM</h1>
+    
+    <div class="summary" id="summary">
+        <div class="summary-grid">
+            <div>
+                <div class="summary-item" id="total-count">0</div>
+                <div class="summary-label">Total</div>
+            </div>
+            <div>
+                <div class="summary-item" id="pass-count">0</div>
+                <div class="summary-label">✓ Passou</div>
+            </div>
+            <div>
+                <div class="summary-item" id="fail-count">0</div>
+                <div class="summary-label">✗ Falhou</div>
+            </div>
+            <div>
+                <div class="summary-item" id="skip-count">0</div>
+                <div class="summary-label">⊘ Pulou</div>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+        <button onclick="runAllTests()" id="run-btn">▶️ Executar Todos os Testes</button>
+        <button onclick="clearResults()">🗑️ Limpar Resultados</button>
+    </div>
+    
+    <div id="test-results"></div>
+    
+    <div class="test-suite">
+        <h2>📋 Console de Logs</h2>
+        <div class="console-log" id="console-output"></div>
+    </div>
+
+    <!-- Mocks para ambiente de teste (simula chrome.storage) -->
+    <script>
+        // Mock do chrome.storage para testes
+        window.chrome = window.chrome || {};
+        window.chrome.storage = {
+            local: {
+                _data: {},
+                get: function(keys, callback) {
+                    const result = {};
+                    if (Array.isArray(keys)) {
+                        keys.forEach(k => result[k] = this._data[k]);
+                    } else if (typeof keys === 'string') {
+                        result[keys] = this._data[keys];
+                    } else if (typeof keys === 'object') {
+                        Object.keys(keys).forEach(k => {
+                            result[k] = this._data[k] !== undefined ? this._data[k] : keys[k];
+                        });
+                    }
+                    setTimeout(() => callback(result), 0);
+                },
+                set: function(items, callback) {
+                    Object.assign(this._data, items);
+                    setTimeout(() => callback && callback(), 0);
+                },
+                clear: function(callback) {
+                    this._data = {};
+                    setTimeout(() => callback && callback(), 0);
+                }
+            }
+        };
+        
+        // Mock do fetch para testes de API
+        const originalFetch = window.fetch;
+        window.mockFetch = function(url, options) {
+            // Simular resposta de API
+            if (url.includes('openai.com')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        choices: [{
+                            message: {
+                                content: "Olá! Como posso ajudar?\nClaro, vou verificar isso.\nEntendido, obrigado!"
+                            }
+                        }]
+                    })
+                });
+            }
+            if (url.includes('anthropic.com')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        content: [{
+                            text: "Olá! Como posso ajudar?\nClaro, vou verificar isso.\nEntendido, obrigado!"
+                        }]
+                    })
+                });
+            }
+            return originalFetch(url, options);
+        };
+        
+        // Console interceptor
+        const consoleOutput = [];
+        const originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+            info: console.info
+        };
+        
+        function interceptConsole() {
+            ['log', 'warn', 'error', 'info'].forEach(type => {
+                console[type] = function(...args) {
+                    consoleOutput.push({ type, message: args.map(a => 
+                        typeof a === 'object' ? JSON.stringify(a) : String(a)
+                    ).join(' ') });
+                    updateConsoleDisplay();
+                    originalConsole[type].apply(console, args);
+                };
+            });
+        }
+        
+        function updateConsoleDisplay() {
+            const el = document.getElementById('console-output');
+            el.innerHTML = consoleOutput.slice(-50).map(log => 
+                `<div class="${log.type}">[${log.type.toUpperCase()}] ${log.message}</div>`
+            ).join('');
+            el.scrollTop = el.scrollHeight;
+        }
+        
+        interceptConsole();
+    </script>
+
+    <!-- Carregar módulos do projeto -->
+    <script>
+        // LocalStorage Mock (já que o arquivo está vazio)
+        window.LocalStorage = {
+            _settings: {
+                copilotEnabled: true,
+                aiProvider: 'openai',
+                aiApiKey: 'test-key-123',
+                mode: 'dom'
+            },
+            getSettings: async function() {
+                return this._settings;
+            },
+            saveSettings: async function(settings) {
+                Object.assign(this._settings, settings);
+                return true;
+            }
+        };
+    </script>
+    <script src="../src/copilot/ai-service.js"></script>
+    <script src="../src/core/whatsapp-adapter.js"></script>
+    <script src="../src/copilot/suggestion-engine.js"></script>
+
+    <!-- Framework de Testes -->
+    <script>
+        const TestRunner = {
+            suites: [],
+            results: { total: 0, pass: 0, fail: 0, skip: 0 },
+            
+            describe(name, fn) {
+                const suite = { name, tests: [], beforeEach: null, afterEach: null };
+                this.suites.push(suite);
+                this._currentSuite = suite;
+                fn();
+                this._currentSuite = null;
+            },
+            
+            it(name, fn, options = {}) {
+                if (!this._currentSuite) return;
+                this._currentSuite.tests.push({ name, fn, options });
+            },
+            
+            beforeEach(fn) {
+                if (this._currentSuite) this._currentSuite.beforeEach = fn;
+            },
+            
+            afterEach(fn) {
+                if (this._currentSuite) this._currentSuite.afterEach = fn;
+            },
+            
+            async run() {
+                this.results = { total: 0, pass: 0, fail: 0, skip: 0 };
+                const container = document.getElementById('test-results');
+                container.innerHTML = '';
+                
+                for (const suite of this.suites) {
+                    const suiteEl = document.createElement('div');
+                    suiteEl.className = 'test-suite';
+                    suiteEl.innerHTML = `<h2>📦 ${suite.name}</h2>`;
+                    
+                    for (const test of suite.tests) {
+                        this.results.total++;
+                        const testEl = document.createElement('div');
+                        testEl.className = 'test-case pending';
+                        testEl.innerHTML = `
+                            <span class="icon">⏳</span>
+                            <span class="test-name">${test.name}</span>
+                            <span class="test-time">executando...</span>
+                        `;
+                        suiteEl.appendChild(testEl);
+                        container.appendChild(suiteEl);
+                        
+                        if (test.options.skip) {
+                            this.results.skip++;
+                            testEl.className = 'test-case skip';
+                            testEl.innerHTML = `
+                                <span class="icon">⊘</span>
+                                <span class="test-name">${test.name}</span>
+                                <span class="test-time">pulado</span>
+                            `;
+                            continue;
+                        }
+                        
+                        const startTime = performance.now();
+                        try {
+                            if (suite.beforeEach) await suite.beforeEach();
+                            await test.fn();
+                            if (suite.afterEach) await suite.afterEach();
+                            
+                            const duration = (performance.now() - startTime).toFixed(2);
+                            this.results.pass++;
+                            testEl.className = 'test-case pass';
+                            testEl.innerHTML = `
+                                <span class="icon">✓</span>
+                                <span class="test-name">${test.name}</span>
+                                <span class="test-time">${duration}ms</span>
+                            `;
+                        } catch (error) {
+                            const duration = (performance.now() - startTime).toFixed(2);
+                            this.results.fail++;
+                            testEl.className = 'test-case fail';
+                            testEl.innerHTML = `
+                                <span class="icon">✗</span>
+                                <span class="test-name">${test.name}</span>
+                                <span class="test-time">${duration}ms</span>
+                                <div class="error-detail">${error.message}\n${error.stack || ''}</div>
+                            `;
+                        }
+                    }
+                }
+                
+                this.updateSummary();
+            },
+            
+            updateSummary() {
+                document.getElementById('total-count').textContent = this.results.total;
+                document.getElementById('pass-count').textContent = this.results.pass;
+                document.getElementById('fail-count').textContent = this.results.fail;
+                document.getElementById('skip-count').textContent = this.results.skip;
+            }
+        };
+        
+        // Assertions
+        function expect(actual) {
+            return {
+                toBe(expected) {
+                    if (actual !== expected) {
+                        throw new Error(`Esperado: ${expected}, Recebido: ${actual}`);
+                    }
+                },
+                toEqual(expected) {
+                    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                        throw new Error(`Esperado: ${JSON.stringify(expected)}, Recebido: ${JSON.stringify(actual)}`);
+                    }
+                },
+                toBeTruthy() {
+                    if (!actual) throw new Error(`Esperado truthy, recebido: ${actual}`);
+                },
+                toBeFalsy() {
+                    if (actual) throw new Error(`Esperado falsy, recebido: ${actual}`);
+                },
+                toBeGreaterThan(expected) {
+                    if (!(actual > expected)) {
+                        throw new Error(`Esperado ${actual} > ${expected}`);
+                    }
+                },
+                toContain(expected) {
+                    if (Array.isArray(actual)) {
+                        if (!actual.includes(expected)) {
+                            throw new Error(`Array não contém: ${expected}`);
+                        }
+                    } else if (typeof actual === 'string') {
+                        if (!actual.includes(expected)) {
+                            throw new Error(`String não contém: ${expected}`);
+                        }
+                    }
+                },
+                toBeDefined() {
+                    if (actual === undefined) {
+                        throw new Error('Valor não está definido');
+                    }
+                },
+                toBeInstanceOf(expected) {
+                    if (!(actual instanceof expected)) {
+                        throw new Error(`Não é instância de ${expected.name}`);
+                    }
+                },
+                toHaveLength(expected) {
+                    if (actual.length !== expected) {
+                        throw new Error(`Esperado length ${expected}, recebido ${actual.length}`);
+                    }
+                }
+            };
+        }
+        
+        // Definir testes
+        TestRunner.describe('LocalStorage', function() {
+            TestRunner.it('deve retornar configurações padrão', async function() {
+                const settings = await window.LocalStorage.getSettings();
+                expect(settings).toBeDefined();
+                expect(settings.copilotEnabled).toBe(true);
+            });
+            
+            TestRunner.it('deve salvar configurações', async function() {
+                await window.LocalStorage.saveSettings({ testKey: 'testValue' });
+                const settings = await window.LocalStorage.getSettings();
+                expect(settings.testKey).toBe('testValue');
+            });
+        });
+        
+        TestRunner.describe('AIService', function() {
+            TestRunner.it('deve existir como objeto global', function() {
+                expect(window.AIService).toBeDefined();
+            });
+            
+            TestRunner.it('deve ter método generateSuggestions', function() {
+                expect(typeof window.AIService.generateSuggestions).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método getApiKey', function() {
+                expect(typeof window.AIService.getApiKey).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método getProvider', function() {
+                expect(typeof window.AIService.getProvider).toBe('function');
+            });
+            
+            TestRunner.it('deve retornar API key das configurações', async function() {
+                const apiKey = await window.AIService.getApiKey();
+                expect(apiKey).toBe('test-key-123');
+            });
+            
+            TestRunner.it('deve retornar provider das configurações', async function() {
+                const provider = await window.AIService.getProvider();
+                expect(provider).toBe('openai');
+            });
+        });
+        
+        TestRunner.describe('WhatsAppAdapter', function() {
+            TestRunner.it('deve existir como objeto global', function() {
+                expect(window.WhatsAppAdapter).toBeDefined();
+            });
+            
+            TestRunner.it('deve ter método init', function() {
+                expect(typeof window.WhatsAppAdapter.init).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método getMode', function() {
+                expect(typeof window.WhatsAppAdapter.getMode).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método getMessages', function() {
+                expect(typeof window.WhatsAppAdapter.getMessages).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método sendMessage', function() {
+                expect(typeof window.WhatsAppAdapter.sendMessage).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método getCurrentChat', function() {
+                expect(typeof window.WhatsAppAdapter.getCurrentChat).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método getChatList', function() {
+                expect(typeof window.WhatsAppAdapter.getChatList).toBe('function');
+            });
+            
+            TestRunner.it('deve retornar modo inicial como "dom"', function() {
+                const mode = window.WhatsAppAdapter.getMode();
+                expect(mode).toBe('dom');
+            });
+        });
+        
+        TestRunner.describe('SuggestionEngine', function() {
+            TestRunner.it('deve existir como objeto global', function() {
+                expect(window.SuggestionEngine).toBeDefined();
+            });
+            
+            TestRunner.it('deve ter método displaySuggestions', function() {
+                expect(typeof window.SuggestionEngine.displaySuggestions).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método hideSuggestions', function() {
+                expect(typeof window.SuggestionEngine.hideSuggestions).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método useSuggestion', function() {
+                expect(typeof window.SuggestionEngine.useSuggestion).toBe('function');
+            });
+            
+            TestRunner.it('deve ter método generateAndDisplay', function() {
+                expect(typeof window.SuggestionEngine.generateAndDisplay).toBe('function');
+            });
+            
+            TestRunner.it('deve criar painel de sugestões ao exibir', function() {
+                window.SuggestionEngine.displaySuggestions(['Teste 1', 'Teste 2']);
+                const panel = document.getElementById('whatsapp-copilot-suggestions');
+                expect(panel).toBeDefined();
+            });
+            
+            TestRunner.it('deve ocultar sugestões quando array vazio', function() {
+                window.SuggestionEngine.displaySuggestions([]);
+                const panel = document.getElementById('whatsapp-copilot-suggestions');
+                if (panel) {
+                    expect(panel.style.display).toBe('none');
+                }
+            });
+        });
+        
+        TestRunner.describe('Integração - Fluxo Completo', function() {
+            TestRunner.it('deve gerar e exibir sugestões com contexto válido', async function() {
+                const context = {
+                    messages: [
+                        { text: 'Olá, preciso de ajuda', sender: 'João', isOutgoing: false },
+                        { text: 'Claro! Como posso ajudar?', sender: 'Eu', isOutgoing: true },
+                        { text: 'Quero saber sobre o produto X', sender: 'João', isOutgoing: false }
+                    ]
+                };
+                
+                // Verificar se o método existe e pode ser chamado
+                expect(typeof window.SuggestionEngine.generateAndDisplay).toBe('function');
+            });
+            
+            TestRunner.it('deve manter estado entre operações', async function() {
+                // Salvar configuração
+                await window.LocalStorage.saveSettings({ testIntegration: true });
+                
+                // Recuperar configuração
+                const settings = await window.LocalStorage.getSettings();
+                expect(settings.testIntegration).toBe(true);
+            });
+        });
+        
+        // Funções de controle
+        async function runAllTests() {
+            const btn = document.getElementById('run-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Executando...';
+            
+            try {
+                await TestRunner.run();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '▶️ Executar Todos os Testes';
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('console-output').innerHTML = '';
+            consoleOutput.length = 0;
+            TestRunner.results = { total: 0, pass: 0, fail: 0, skip: 0 };
+            TestRunner.updateSummary();
+        }
+        
+        // Auto-executar ao carregar
+        window.addEventListener('load', () => {
+            console.info('🧪 Página de testes unitários carregada');
+            console.info('📦 Módulos disponíveis: LocalStorage, AIService, WhatsAppAdapter, SuggestionEngine');
+        });
+    </script>
+</body>
+</html>

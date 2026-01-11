@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Manifest</title>
+</head>
+<body>
+    <h1>Validação do Manifest</h1>
+    <div id="results"></div>
+    <script>
+        async function validateManifest() {
+            const results = [];
+            
+            // Verificar arquivos necessários
+            const files = [
+                'manifest.json',
+                'popup/popup.html',
+                'popup/popup.js',
+                'popup/popup.css',
+                'background/service-worker.js',
+                'content/inject.js',
+                'assets/icons/icon16.png',
+                'assets/icons/icon48.png',
+                'assets/icons/icon128.png'
+            ];
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch(file);
+                    results.push({
+                        file,
+                        exists: response.ok,
+                        status: response.status
+                    });
+                } catch (e) {
+                    results.push({
+                        file,
+                        exists: false,
+                        error: e.message
+                    });
+                }
+            }
+            
+            // Validar manifest.json
+            try {
+                const manifestResponse = await fetch('manifest.json');
+                const manifest = await manifestResponse.json();
+                
+                const manifestErrors = [];
+                if (!manifest.manifest_version) manifestErrors.push('Falta manifest_version');
+                if (!manifest.name) manifestErrors.push('Falta name');
+                if (!manifest.version) manifestErrors.push('Falta version');
+                if (!manifest.background || !manifest.background.service_worker) {
+                    manifestErrors.push('Falta background.service_worker');
+                }
+                if (!manifest.content_scripts || manifest.content_scripts.length === 0) {
+                    manifestErrors.push('Falta content_scripts');
+                }
+                if (!manifest.action || !manifest.action.default_popup) {
+                    manifestErrors.push('Falta action.default_popup');
+                }
+                
+                results.push({
+                    file: 'manifest.json (validação)',
+                    valid: manifestErrors.length === 0,
+                    errors: manifestErrors
+                });
+            } catch (e) {
+                results.push({
+                    file: 'manifest.json',
+                    error: 'Erro ao ler: ' + e.message
+                });
+            }
+            
+            // Exibir resultados
+            const div = document.getElementById('results');
+            div.innerHTML = '<pre>' + JSON.stringify(results, null, 2) + '</pre>';
+        }
+        
+        validateManifest();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

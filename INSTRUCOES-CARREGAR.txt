@@ -1,0 +1,71 @@
+===========================================
+COMO CARREGAR A EXTENSÃO NO CHROME
+===========================================
+
+IMPORTANTE: Use o CHROME REAL, não o browser do Cursor!
+
+PASSO 1: Abra o Chrome
+- Abra o Google Chrome normalmente
+- NÃO use o browser do Cursor
+
+PASSO 2: Vá para Extensões
+- Digite na barra de endereços: chrome://extensions/
+- OU vá em Menu > Mais ferramentas > Extensões
+
+PASSO 3: Ative o Modo do Desenvolvedor
+- No canto superior direito, ative o toggle "Modo do desenvolvedor"
+
+PASSO 4: Carregue a Extensão
+- Clique no botão "Carregar sem compactação" (Load unpacked)
+- No diálogo que abrir, navegue até: C:\Mettri4
+- Selecione a PASTA Mettri4 (não entre nela, selecione a pasta)
+- Clique em "Selecionar pasta" ou "OK"
+
+PASSO 5: Verifique
+- A extensão "WhatsApp Copiloto CRM" deve aparecer na lista
+- Você deve ver um ícone verde na barra de ferramentas do Chrome
+- Se houver erros, clique na extensão para ver detalhes
+
+===========================================
+SE DER ERRO:
+===========================================
+
+1. Verifique se todos os arquivos existem:
+   - manifest.json
+   - popup/popup.html
+   - popup/popup.js
+   - popup/popup.css
+   - background/service-worker.js
+   - content/inject.js
+   - assets/icons/icon16.png
+   - assets/icons/icon48.png
+   - assets/icons/icon128.png
+
+2. Abra o Console (F12) na página chrome://extensions/
+   e veja se há mensagens de erro
+
+3. Clique na extensão para ver detalhes dos erros
+
+4. Verifique se o manifest.json está válido:
+   Execute: python -m json.tool manifest.json
+
+===========================================
+CAMINHO COMPLETO DA PASTA:
+===========================================
+
+C:\Mettri4
+
+Certifique-se de selecionar esta pasta exata!
+
+
+
+
+
+
+
+
+
+
+
+
+
