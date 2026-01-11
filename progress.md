@@ -11,9 +11,9 @@
 
 | ID | Tarefa | Status | Issue |
 |----|--------|--------|-------|
-| T0-001 | Criar repositorio Mettri no GitHub | Pendente | - |
-| T0-002 | Configurar Milestone "Tier 0 - Fundacao" | Pendente | - |
-| T0-003 | Criar labels padrao | Pendente | - |
+| T0-001 | Criar repositorio Mettri no GitHub | Concluido | - |
+| T0-002 | Configurar Milestone "Tier 0 - Fundacao" | Concluido | - |
+| T0-003 | Criar labels padrao | Concluido | - |
 | T0-004 | Criar issues para cada tarefa | Pendente | - |
 
 ### Bloco 0.2: Setup Projeto
@@ -65,9 +65,9 @@
 | Metrica | Valor |
 |---------|-------|
 | Total de tarefas | 21 |
-| Concluidas | 17 |
+| Concluidas | 20 |
 | Em progresso | 0 |
-| Pendentes | 4 (GitHub setup) |
+| Pendentes | 1 (criar issues) |
 | Sprint iniciada | 2026-01-11 |
 | Estimativa | 3-4 dias |
 
