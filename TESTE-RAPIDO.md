@@ -17,7 +17,17 @@
 - [ ] Não há erros visíveis na página de extensões
 
 ### 3. Testar no WhatsApp Web
-- [ ] Abra `https://web.whatsapp.com`
+
+**IMPORTANTE: Use Chrome normal (sem automação)**
+
+O WhatsApp Web detecta quando o Chrome está sendo controlado por software de automação (barra amarela "Chrome está sendo controlado...") e **bloqueia o carregamento completo**, ficando apenas no spinner do QR code.
+
+**Para testar a extensão:**
+- ✅ Use Chrome normal (aberto manualmente)
+- ❌ NÃO use MCP browser extension ou Playwright para testar WhatsApp
+- ❌ NÃO use Chrome em modo dev (--remote-debugging-port) se for testar WhatsApp
+
+- [ ] Abra `https://web.whatsapp.com` **no Chrome normal** (não via automação)
 - [ ] Faça login normalmente
 - [ ] Abra o Console (F12 → Console)
 - [ ] Você deve ver:
@@ -69,6 +79,12 @@
 - Verifique se selecionou a pasta correta (`C:\Mettri4`)
 - Verifique se o modo do desenvolvedor está ativo
 - Recarregue a página de extensões
+
+### WhatsApp não carrega completamente (QR code não aparece)
+- Você está usando Chrome via automação (MCP/Playwright)?
+- O WhatsApp detecta automação e bloqueia o carregamento
+- **Solução:** Use Chrome normal (aberto manualmente) para testar WhatsApp
+- Playwright/MCP podem ser usados para validar estrutura básica (manifest, arquivos), mas não para testar WhatsApp
 
 ## 📝 Logs Esperados
 

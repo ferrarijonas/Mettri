@@ -56,6 +56,21 @@ npm run build
 3. Clique "Carregar sem compactacao"
 4. Selecione a pasta `dist/`
 
+### Testar no WhatsApp Web
+
+**IMPORTANTE:** O WhatsApp Web detecta quando o Chrome está sendo controlado por software de automação (MCP/Playwright) e bloqueia o carregamento completo.
+
+**Para testar a extensão:**
+- ✅ Use Chrome normal (aberto manualmente)
+- ❌ NÃO use MCP browser extension ou Playwright para testar WhatsApp
+- ❌ NÃO use Chrome em modo dev se for testar WhatsApp
+
+**Playwright/MCP:**
+- Podem ser usados para validar estrutura básica (manifest, arquivos)
+- NÃO funcionam para testar WhatsApp (detecção de automação)
+
+Veja [TESTE-RAPIDO.md](TESTE-RAPIDO.md) para mais detalhes.
+
 ---
 
 ## Desenvolvimento
