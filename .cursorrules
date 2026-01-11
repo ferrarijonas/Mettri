@@ -7,6 +7,14 @@
 4. Refatoração: Aplica Clean Code e DRY.
 5. Documentação: Só atua após 3/4. Atualiza @progress.md e remove a spec.
 
+## LEAN/TPS (OBRIGATÓRIO)
+- **Jidoka:** Se quebrar, parar TUDO e corrigir. Nenhuma feature nova enquanto houver bug.
+- **Just-in-Time:** Só implementar o necessário AGORA. Nada especulativo.
+- **Kaizen:** Cada commit melhora algo. Nunca pior, nunca igual.
+- **Genchi Genbutsu:** Testar no WhatsApp REAL, não em mocks.
+- **Muda:** Código morto = deletar. Abstração sem uso = simplificar.
+- **Poka-yoke:** TypeScript strict, Zod, fallback selectors.
+
 ## TECH STACK & PADRÕES (OBRIGATÓRIO)
 - **Strict Typing:** TypeScript 5.x+ em TUDO. Proibido usar `any`.
 - **Linting:** Siga rigorosamente o ESLint/Prettier do projeto. Código que não passa no lint é considerado erro de build.

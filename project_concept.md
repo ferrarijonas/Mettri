@@ -206,6 +206,47 @@ Garante que o banco local é a fonte final da verdade
 
 ---
 
+# Princípios Lean/TPS
+
+## Jidoka - Autonomação
+Se algo quebrar, parar imediatamente e corrigir.
+Seletor quebrado = nenhuma feature nova até corrigir.
+Problema detectado = parar a linha de produção.
+
+## Just-in-Time
+Só implementar o que for necessário agora.
+Nada de "vai ser útil no futuro".
+Código especulativo é desperdício.
+
+## Kaizen - Melhoria Contínua
+Cada commit deve deixar o código melhor.
+Nunca pior, nunca igual.
+Pequenas melhorias constantes > grandes refatorações.
+
+## Genchi Genbutsu - Ir ao Gemba
+Testar no ambiente real (WhatsApp Web).
+Não confiar em mocks ou simulações.
+Ver o problema com os próprios olhos.
+
+## Muda - Eliminar Desperdício
+Código comentado = deletar.
+Feature não usada = não implementar.
+Abstrações desnecessárias = simplificar.
+Reuniões sem decisão = cancelar.
+
+## Heijunka - Nivelamento
+Tasks pequenas e constantes.
+Nada de sprints gigantes.
+Fluxo contínuo de valor.
+
+## Poka-yoke - À Prova de Erros
+TypeScript strict (sem any).
+Validação Zod em toda entrada.
+Fallback selectors (nunca depender de um só).
+Testes E2E para fluxos críticos.
+
+---
+
 # Design Sistêmico
 
 ## Design Sistêmico Global
