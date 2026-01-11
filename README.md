@@ -2,7 +2,7 @@
 
 > Plataforma de vendas conversacionais para WhatsApp Web
 
-![CI](https://github.com/YOUR_USERNAME/mettri/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/ferrarijonas/Mettri/actions/workflows/ci.yml/badge.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -39,7 +39,7 @@ Mettri transforma conversas em vendas. Uma extensao Chrome que se integra ao Wha
 
 ```bash
 # Clone o repositorio
-git clone https://github.com/YOUR_USERNAME/mettri.git
+git clone https://github.com/ferrarijonas/Mettri.git
 cd mettri
 
 # Instale dependencias
