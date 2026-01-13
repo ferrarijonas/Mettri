@@ -1,16 +1,62 @@
-// Core message types
-export interface CapturedMessage {
-  id: string;
-  chatId: string;
-  chatName: string;
-  sender: string;
-  text: string;
-  timestamp: Date;
-  isOutgoing: boolean;
-  type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker';
-}
+/**
+ * Tipos principais re-exportados de schemas.ts (fonte da verdade).
+ * Os schemas Zod em schemas.ts são a única definição de tipos para mensagens e seletores.
+ */
+import type {
+  CapturedMessage,
+  SelectorDefinition,
+  SelectorsConfig,
+  MessageDBEntry,
+  AutoMappingSession,
+  AutoMappingResult,
+} from './schemas';
 
-// Chat types
+// Re-exportar tipos
+export type {
+  CapturedMessage,
+  SelectorDefinition,
+  SelectorsConfig,
+  MessageDBEntry,
+  AutoMappingSession,
+  AutoMappingResult,
+};
+
+// Re-exportar schemas Zod para validação
+export {
+  CapturedMessageSchema,
+  SelectorDefinitionSchema,
+  SelectorsConfigSchema,
+  MessageDBEntrySchema,
+  AutoMappingSessionSchema,
+  AutoMappingResultSchema,
+  messageToDBEntry,
+  dbEntryToMessage,
+} from './schemas';
+
+// Re-exportar tipos de selector scanner
+export type {
+  SelectorTarget,
+  ScanResult,
+  ScanSession,
+  ScanConfig,
+  SelectorPriority,
+  SelectorCategory,
+  ScanStatus,
+} from './selector-scanner';
+
+// Re-exportar tipos de visual scanner
+export type {
+  BoundingBox,
+  Coordinate,
+  RGB,
+  Region,
+  VisualFeatures,
+  VisualScanResult,
+  Pattern,
+  InteractionType,
+} from './visual-scanner';
+
+// Chat types (não relacionados a mensagens capturadas)
 export interface Chat {
   id: string;
   name: string;
@@ -18,21 +64,6 @@ export interface Chat {
   lastMessageTime?: Date;
   unreadCount: number;
   isGroup: boolean;
-}
-
-// Selector types
-export interface SelectorDefinition {
-  id: string;
-  description: string;
-  selectors: string[];
-  lastVerified?: Date;
-  status: 'working' | 'broken' | 'unknown';
-}
-
-export interface SelectorsConfig {
-  version: string;
-  updatedAt: string;
-  selectors: Record<string, SelectorDefinition>;
 }
 
 // Panel state

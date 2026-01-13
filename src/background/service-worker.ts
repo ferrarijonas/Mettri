@@ -9,7 +9,6 @@ chrome.runtime.onInstalled.addListener(details => {
         captureEnabled: true,
         theme: 'auto',
       },
-      messages: [],
       version: '2.0.0',
     });
   }
@@ -22,23 +21,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse(result.settings || {});
     });
     return true; // Keep channel open for async response
-  }
-
-  if (message.type === 'SAVE_MESSAGE') {
-    chrome.storage.local.get(['messages'], result => {
-      const messages = result.messages || [];
-      messages.push(message.payload);
-      chrome.storage.local.set({ messages });
-      sendResponse({ success: true });
-    });
-    return true;
-  }
-
-  if (message.type === 'GET_MESSAGES') {
-    chrome.storage.local.get(['messages'], result => {
-      sendResponse(result.messages || []);
-    });
-    return true;
   }
 
   return false;

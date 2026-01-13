@@ -81,6 +81,156 @@
         "[class*='message'] span[aria-label]"
       ],
       "status": "working"
+    },
+    "chatList": {
+      "id": "chatList",
+      "description": "Lista de conversas (sidebar esquerda)",
+      "selectors": [
+        "[data-testid='chat-list']",
+        "#pane-side",
+        "[role='listbox']"
+      ],
+      "status": "working"
+    },
+    "chatListItem": {
+      "id": "chatListItem",
+      "description": "Item individual na lista de conversas",
+      "selectors": [
+        "[data-testid='cell-frame-container']",
+        "[data-testid='list-item']",
+        "#pane-side [role='listitem']"
+      ],
+      "status": "working"
+    },
+    "chatUnreadBadge": {
+      "id": "chatUnreadBadge",
+      "description": "Badge de não lidas",
+      "selectors": [
+        "[data-testid='icon-unread-count']",
+        ".unread-count",
+        "[aria-label*='não lidas']"
+      ],
+      "status": "working"
+    },
+    "chatLastMessage": {
+      "id": "chatLastMessage",
+      "description": "Última mensagem na lista",
+      "selectors": [
+        "[data-testid='subtitle']",
+        ".chat-item-subtitle",
+        "[class*='subtitle']"
+      ],
+      "status": "working"
+    },
+    "searchBox": {
+      "id": "searchBox",
+      "description": "Caixa de pesquisa de contatos",
+      "selectors": [
+        "[data-testid='chat-list-search']",
+        "input[placeholder*='Pesquisar']",
+        "#pane-side input[type='text']"
+      ],
+      "status": "working"
+    },
+    "messageContainer": {
+      "id": "messageContainer",
+      "description": "Container de mensagem individual",
+      "selectors": [
+        "[data-testid='msg-container']",
+        "[data-testid='conversation-turn']",
+        "[role='row']"
+      ],
+      "status": "working"
+    },
+    "messageTimestamp": {
+      "id": "messageTimestamp",
+      "description": "Timestamp da mensagem",
+      "selectors": [
+        "[data-testid='msg-meta'] span",
+        "[data-testid='msg-time']",
+        ".message-time"
+      ],
+      "status": "working"
+    },
+    "messageStatus": {
+      "id": "messageStatus",
+      "description": "Status (enviado, entregue, lido)",
+      "selectors": [
+        "[data-testid='msg-status']",
+        "[data-icon='check']",
+        "[data-icon='double-check']"
+      ],
+      "status": "working"
+    },
+    "composeBox": {
+      "id": "composeBox",
+      "description": "Campo de digitação",
+      "selectors": [
+        "[data-testid='conversation-compose-box-input']",
+        "[contenteditable='true'][data-tab]",
+        "footer [contenteditable='true']"
+      ],
+      "status": "working"
+    },
+    "sendButton": {
+      "id": "sendButton",
+      "description": "Botão enviar",
+      "selectors": [
+        "[data-testid='send']",
+        "[aria-label*='Enviar']",
+        "button[aria-label*='Send']"
+      ],
+      "status": "working"
+    },
+    "chatHeaderName": {
+      "id": "chatHeaderName",
+      "description": "Nome no cabeçalho",
+      "selectors": [
+        "[data-testid='conversation-info-header-chat-title']",
+        "header span[title]",
+        "#main header span[dir='auto']"
+      ],
+      "status": "working"
+    },
+    "chatHeaderInfo": {
+      "id": "chatHeaderInfo",
+      "description": "Botão de informações",
+      "selectors": [
+        "[data-testid='conversation-info-header'] button",
+        "header button[aria-label*='info']",
+        "header button[aria-label*='Info']"
+      ],
+      "status": "working"
+    },
+    "scrollContainer": {
+      "id": "scrollContainer",
+      "description": "Container scrollável de mensagens",
+      "selectors": [
+        "[data-testid='conversation-panel-messages']",
+        "[role='log']",
+        "[role='application'] > div[style*='overflow']"
+      ],
+      "status": "working"
+    },
+    "scrollToTop": {
+      "id": "scrollToTop",
+      "description": "Indicador de scroll no topo",
+      "selectors": [
+        "[data-testid='scroll-to-top']",
+        ".scroll-to-top",
+        "[aria-label*='scroll']"
+      ],
+      "status": "working"
+    },
+    "typingIndicator": {
+      "id": "typingIndicator",
+      "description": "Indicador de digitação",
+      "selectors": [
+        "[data-testid='typing']",
+        "[aria-label*='digitando']",
+        ".typing-indicator"
+      ],
+      "status": "working"
     }
   }
 }

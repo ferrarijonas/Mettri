@@ -688,6 +688,68 @@ interface AutoMappingResult {
   - Zero dependências externas
   - Funciona em produção dentro do content script
 
+**Subdomínio: INTERCEPTAÇÃO WEBPACK**
+
+Sistema que acessa módulos internos do WhatsApp Web via webpack chunk.
+
+**Módulos Extraídos:**
+- `GroupMetadata`: Metadados de grupos
+- `ChatCollection`: Coleção de chats
+- `Msg`: Modelo de mensagem
+- `User`: Usuário atual
+- `sendTextMsgToChat`: Enviar mensagem
+- `addAndSendMsgToChat`: Adicionar e enviar
+- `MsgKey`: Chave de mensagem
+
+**Eventos Interceptados:**
+- `Msg.on("add")`: Nova mensagem recebida
+- `Msg.on("change")`: Mensagem modificada
+- `PresenceCollection.on("change:isOnline")`: Status online/offline
+- `Chat.on("change:id")`: Mudança de chat ativo
+
+**Arquitetura:**
+```
+WhatsApp Web (webpack)
+    ↓
+WhatsAppInterceptors (encontra webpackChunkwhatsapp_web_client)
+    ↓
+DataScraper (intercepta eventos)
+    ↓
+MessageCapturer (combina webpack + DOM)
+    ↓
+MessageDB (persistência)
+```
+
+**Regra de Negócio:**
+> Interceptação webpack é **prioritária**. DOM é apenas fallback quando webpack não disponível.
+
+**Entidades:**
+```typescript
+interface WhatsAppInterceptors {
+  webpackChunk: any;
+  modules: Map<string, () => any>;
+  
+  findExport(exportName: string): any;
+  find(predicate: (module: any) => boolean): any;
+  filter(predicate: (module: any) => boolean): any[];
+  
+  // Módulos extraídos
+  GroupMetadata: any;
+  ChatCollection: any;
+  Msg: any;
+  User: any;
+}
+
+interface DataScraper {
+  interceptors: WhatsAppInterceptors;
+  messageCallbacks: Array<(msg: any) => void>;
+  
+  start(): Promise<void>;
+  onMessage(callback: (msg: any) => void): void;
+  onPresenceChange(callback: (data: any) => void): void;
+}
+```
+
 #### 3.9.2 CONFIGURAÇÕES REMOTAS (HOT-UPDATE)
 
 | Capacidade | Descrição | Prioridade |

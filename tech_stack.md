@@ -91,6 +91,7 @@
 | **Vanilla CSS** | - | Estilos (sem framework) |
 | **Zod** | 3.x | Validação de dados em runtime |
 | **document.elementFromPoint()** | - | Hit test para auto-mapeamento |
+| **webpackChunkwhatsapp_web_client** | N/A | Interceptação de módulos WhatsApp |
 
 **Por que Zod:**
 - ✅ Zero dependências
