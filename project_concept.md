@@ -117,6 +117,15 @@ Correção em menos de 1 minuto
 Monitoramento detecta quebra antes do usuário reclamar
 Nunca depende de um único seletor
 
+### auto-mapeamento
+Sistema que reconstrói seletores em tempo real
+Usuário pode ativar manualmente (Ctrl+Shift+M) ou automaticamente quando quebra
+Identifica elementos focados via atalhos de teclado
+Usa coordenadas de tela (Hit Test) para achar containers perdidos
+Faz loop de tentativa e erro até validar 100% dos campos
+Atualiza o config remoto automaticamente após sucesso
+Correção distribuída para todos os usuários
+
 ### config-remota
 Configurações que atualizam sem passar pela Store
 Seletores DOM atualizados

@@ -4,6 +4,33 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 
 ---
 
+## [2.0.1] - 2026-01-11
+
+### Adicionado
+- **Auto-Mapeamento de Seletores (URGENTE)**: Sistema que reconstrói seletores em tempo real
+  - Ativação manual via atalho de teclado (Ctrl+Shift+M)
+  - Ativação automática quando seletor quebra
+  - Verificação agendada/periódica
+  - Hit test usando `document.elementFromPoint()` para encontrar containers perdidos
+  - Loop de tentativa e erro até validar 100% dos campos
+  - Atualização automática do config remoto após sucesso
+- **Documentação Completa**: Auto-mapeamento documentado em:
+  - `project_concept.md` - Visão conceitual
+  - `project_context.md` - Especificação técnica detalhada com entidades TypeScript
+  - `tech_stack.md` - Detalhes de implementação e justificativa da API escolhida
+- **Progress Tracking**: Adicionado Bloco 0.4.5 ao `progress.md` com prioridade crítica
+
+### Prioridade
+Esta funcionalidade foi priorizada porque a captura de mensagens depende diretamente de seletores funcionais. Sem auto-mapeamento, qualquer mudança no DOM do WhatsApp quebra a captura.
+
+### Documentação
+- Capacidades do auto-mapeamento especificadas (P0 críticas)
+- Entidades TypeScript definidas (`AutoMappingSession`, `AutoMappingResult`)
+- Fluxo de auto-mapeamento documentado
+- API `document.elementFromPoint()` explicada e justificada
+
+---
+
 ## [1.2.0] - 2024-12-23
 
 ### Adicionado

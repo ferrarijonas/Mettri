@@ -549,6 +549,12 @@ interface Persona {
 | `selectors.auto_update` | Atualizar seletores sem reinstalar | P0 |
 | `selectors.monitor` | Detectar quebra antes do usuário | P1 |
 | `selectors.report` | Reportar seletor quebrado automaticamente | P1 |
+| `selectors.auto_mapping.manual` | Ativar via atalho de teclado (Ctrl+Shift+M) | P0 |
+| `selectors.auto_mapping.auto` | Ativar automaticamente quando seletor quebra | P0 |
+| `selectors.auto_mapping.scheduled` | Verificação agendada/periódica | P1 |
+| `selectors.auto_mapping.hit_test` | Usar coordenadas de tela (elementFromPoint) | P0 |
+| `selectors.auto_mapping.validate` | Validar 100% dos campos via loop tentativa/erro | P0 |
+| `selectors.auto_mapping.update_remote` | Atualizar config remoto automaticamente | P0 |
 
 **Regra de Negócio:**
 > Correção de seletor quebrado em **menos de 1 minuto**. Nunca depender de um único seletor.
@@ -591,6 +597,96 @@ const SELECTORS: SelectorConfig = {
   }
 };
 ```
+
+**Subdomínio: AUTO-MAPEAMENTO**
+
+Sistema que reconstrói seletores em tempo real através de:
+1. **Atalhos de teclado** para identificar elementos focados
+2. **Hit Test (document.elementFromPoint)** para achar containers perdidos usando coordenadas de tela
+3. **Loop de tentativa e erro** até validar 100% dos campos da API
+4. **Atualização automática** do config remoto após sucesso
+
+**Fluxo de Auto-Mapeamento:**
+
+```
+1. Trigger (manual/auto/scheduled)
+   - Manual: Usuário pressiona Ctrl+Shift+M
+   - Auto: Sistema detecta que seletor quebrou
+   - Scheduled: Verificação periódica agendada
+
+2. Identificar elementos a mapear
+   - Via hit test: document.elementFromPoint(x, y)
+   - Via foco: Elemento atual focado (Tab/Shift+Tab)
+   - Via click: Elemento clicado pelo usuário
+
+3. Para cada elemento:
+   a. Gerar candidatos de seletor CSS
+   b. Testar cada candidato no DOM
+   c. Validar seletor funciona (encontra elemento correto)
+
+4. Loop até 100% validado
+   - Repetir passos 3a-3c até todos os campos validados
+   - Registrar tentativas e resultados
+
+5. Quando 100% validado:
+   - Atualizar config remoto centralizado
+   - Notificar todos os usuários da nova versão
+   - Salvar log de mapeamento para auditoria
+```
+
+**Entidades:**
+
+```typescript
+interface AutoMappingSession {
+  id: string;
+  startedAt: Date;
+  trigger: 'manual' | 'auto' | 'scheduled';
+  
+  // Elementos sendo mapeados
+  targets: {
+    selectorId: string;
+    element: HTMLElement | null;
+    coordinates?: { x: number; y: number };
+    attempts: number;
+    status: 'pending' | 'validating' | 'success' | 'failed';
+  }[];
+  
+  // Resultados
+  results: {
+    selectorId: string;
+    newSelector: string;
+    validated: boolean;
+    validatedAt?: Date;
+  }[];
+  
+  // Status
+  status: 'active' | 'validating' | 'completed' | 'failed';
+  progress: number; // 0-100
+}
+
+interface AutoMappingResult {
+  sessionId: string;
+  selectorId: string;
+  oldSelector: string;
+  newSelector: string;
+  validated: boolean;
+  validatedAt: Date;
+  updatedRemote: boolean;
+  updatedAt?: Date;
+}
+```
+
+**Regra de Negócio:**
+> Auto-mapeamento deve validar **100% dos campos** antes de atualizar config remoto. Atualização é **centralizada** - resultado é enviado para servidor que distribui para todos os usuários.
+
+**API Utilizada:**
+
+- **`document.elementFromPoint(x, y)`**: API nativa do navegador para hit test
+  - Retorna elemento DOM em coordenadas específicas
+  - Usado para encontrar containers perdidos
+  - Performance excelente (microsegundos)
+  - Zero dependências externas
+  - Funciona em produção dentro do content script
 
 #### 3.9.2 CONFIGURAÇÕES REMOTAS (HOT-UPDATE)
 
