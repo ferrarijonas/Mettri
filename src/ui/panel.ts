@@ -1,8 +1,11 @@
 import type { CapturedMessage, PanelState } from '../types';
+import { messageDB } from '../storage/message-db';
+import { SelectorScannerPanel } from './selector-scanner-panel';
 
 export class MettriPanel {
   private container: HTMLElement | null = null;
   private messagesContainer: HTMLElement | null = null;
+  private selectorScannerPanel: SelectorScannerPanel;
   private state: PanelState = {
     isVisible: true,
     isCapturing: false,
@@ -11,6 +14,7 @@ export class MettriPanel {
   };
 
   constructor() {
+    this.selectorScannerPanel = new SelectorScannerPanel();
     this.init();
   }
 
@@ -33,15 +37,26 @@ export class MettriPanel {
           <button class="mettri-btn" id="mettri-close" title="Fechar">×</button>
         </div>
       </div>
+      <div class="mettri-tabs">
+        <button class="mettri-tab active" data-tab="messages">Mensagens</button>
+        <button class="mettri-tab" data-tab="selectors">Seletores</button>
+        <button class="mettri-tab" data-tab="webpack">Webpack</button>
+      </div>
       <div class="mettri-status">
         <span class="mettri-status-dot" id="mettri-status-dot"></span>
         <span id="mettri-status-text">Aguardando...</span>
       </div>
-      <div class="mettri-messages" id="mettri-messages">
-        <div class="mettri-empty">
-          <div class="mettri-empty-icon">💬</div>
-          <p>Nenhuma mensagem capturada ainda.</p>
-          <p>As mensagens aparecerao aqui em tempo real.</p>
+      <div class="mettri-content">
+        <div class="mettri-tab-content" id="mettri-tab-messages">
+          <div class="mettri-messages" id="mettri-messages">
+            <div class="mettri-empty">
+              <div class="mettri-empty-icon">💬</div>
+              <p>Nenhuma mensagem capturada ainda.</p>
+              <p>As mensagens aparecerao aqui em tempo real.</p>
+            </div>
+          </div>
+        </div>
+        <div class="mettri-tab-content" id="mettri-tab-selectors" style="display: none;">
         </div>
       </div>
       <div class="mettri-footer">
@@ -53,11 +68,19 @@ export class MettriPanel {
     this.container = panel;
     this.messagesContainer = panel.querySelector('#mettri-messages');
 
+    // Renderizar painel de seletores
+    const selectorsTab = panel.querySelector('#mettri-tab-selectors');
+    if (selectorsTab) {
+      const scannerPanel = this.selectorScannerPanel.render();
+      selectorsTab.appendChild(scannerPanel);
+    }
+
     // Adjust WhatsApp layout
     this.adjustWhatsAppLayout();
 
     // Setup event listeners
     this.setupEventListeners();
+    this.setupTabs();
   }
 
   private createToggleButton(): void {
@@ -100,6 +123,55 @@ export class MettriPanel {
     minimizeBtn?.addEventListener('click', () => {
       this.hide();
     });
+  }
+
+  /**
+   * Configura sistema de abas.
+   */
+  private setupTabs(): void {
+    const tabs = this.container?.querySelectorAll('.mettri-tab');
+    tabs?.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.getAttribute('data-tab') as 'messages' | 'selectors';
+        this.switchTab(tabName);
+      });
+    });
+  }
+
+  /**
+   * Troca de aba.
+   */
+  private switchTab(tabName: 'messages' | 'selectors' | 'webpack'): void {
+    // Atualizar botões de aba
+    const tabs = this.container?.querySelectorAll('.mettri-tab');
+    tabs?.forEach(tab => {
+      if (tab.getAttribute('data-tab') === tabName) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
+      }
+    });
+
+    // Mostrar/ocultar conteúdo
+    const messagesContent = this.container?.querySelector('#mettri-tab-messages');
+    const selectorsContent = this.container?.querySelector('#mettri-tab-selectors');
+
+    // Ocultar todos primeiro
+    messagesContent?.setAttribute('style', 'display: none;');
+    selectorsContent?.setAttribute('style', 'display: none;');
+    const webpackContent = this.container?.querySelector('#mettri-tab-webpack');
+    webpackContent?.setAttribute('style', 'display: none;');
+
+    // Mostrar apenas a aba selecionada
+    if (tabName === 'messages') {
+      messagesContent?.setAttribute('style', 'display: block;');
+    } else if (tabName === 'selectors') {
+      selectorsContent?.setAttribute('style', 'display: block;');
+    } else if (tabName === 'webpack') {
+      webpackContent?.setAttribute('style', 'display: block;');
+      // Atualizar estatísticas quando abrir a aba
+      this.updateWebpackStats();
+    }
   }
 
   public show(): void {
@@ -192,13 +264,124 @@ export class MettriPanel {
 
   private async loadMessages(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({ type: 'GET_MESSAGES' });
-      if (Array.isArray(response)) {
-        this.state.messages = response;
-        this.renderMessages();
-      }
+      const messages = await messageDB.getMessages();
+      this.state.messages = messages;
+      this.renderMessages();
     } catch (error) {
-      console.warn('Mettri: Could not load messages', error);
+      console.error('Mettri: Erro ao carregar mensagens do banco:', error);
     }
+  }
+
+  /**
+   * Atualiza estatísticas do webpack na aba Webpack.
+   */
+  public updateWebpackStats(): void {
+    // Importar WhatsAppInterceptors dinamicamente
+    import('../infrastructure/whatsapp-interceptors').then(({ WhatsAppInterceptors }) => {
+      const interceptors = new WhatsAppInterceptors();
+      
+      // Verificar disponibilidade
+      const isAvailable = interceptors.isWebpackAvailable();
+      const availableEl = this.container?.querySelector('#mettri-webpack-available');
+      if (availableEl) {
+        availableEl.textContent = isAvailable ? '✅ Sim' : '❌ Não';
+        availableEl.className = `status-value ${isAvailable ? 'success' : 'error'}`;
+      }
+
+      // Tentar inicializar e verificar módulos
+      if (isAvailable) {
+        interceptors.initialize().then(() => {
+          // Verificar cada módulo
+          const modules = {
+            msg: interceptors.Msg,
+            chatcollection: interceptors.ChatCollection,
+            user: interceptors.User,
+            groupmetadata: interceptors.GroupMetadata,
+            presencecollection: interceptors.PresenceCollection,
+          };
+
+          Object.entries(modules).forEach(([key, module]) => {
+            const el = this.container?.querySelector(`#mettri-module-${key}`);
+            if (el) {
+              el.textContent = module ? '✅ Encontrado' : '❌ Não encontrado';
+              el.className = `module-status ${module ? 'success' : 'error'}`;
+            }
+          });
+
+          // Atualizar método ativo
+          const methodEl = this.container?.querySelector('#mettri-webpack-method');
+          if (methodEl) {
+            methodEl.textContent = '⚡ Webpack (Prioritário)';
+            methodEl.className = 'status-value success';
+          }
+        }).catch(() => {
+          // Se falhar, usar DOM
+          const methodEl = this.container?.querySelector('#mettri-webpack-method');
+          if (methodEl) {
+            methodEl.textContent = '🐌 DOM (Fallback)';
+            methodEl.className = 'status-value warning';
+          }
+        });
+      } else {
+        // Webpack não disponível, usar DOM
+        const methodEl = this.container?.querySelector('#mettri-webpack-method');
+        if (methodEl) {
+          methodEl.textContent = '🐌 DOM (Fallback)';
+          methodEl.className = 'status-value warning';
+        }
+
+        // Marcar todos os módulos como não encontrados
+        ['msg', 'chatcollection', 'user', 'groupmetadata', 'presencecollection'].forEach(key => {
+          const el = this.container?.querySelector(`#mettri-module-${key}`);
+          if (el) {
+            el.textContent = '❌ Não disponível';
+            el.className = 'module-status error';
+          }
+        });
+      }
+    }).catch(() => {
+      console.warn('Mettri: Erro ao carregar WhatsAppInterceptors');
+    });
+
+    // Atualizar estatísticas de mensagens do MessageCapturer
+    const capturer = (this as any).capturer;
+    if (capturer && typeof capturer.getStats === 'function') {
+      const stats = capturer.getStats();
+      const webpackMessagesEl = this.container?.querySelector('#mettri-webpack-messages');
+      const domMessagesEl = this.container?.querySelector('#mettri-dom-messages');
+      const eventsEl = this.container?.querySelector('#mettri-webpack-events');
+      const successRateEl = this.container?.querySelector('#mettri-webpack-success-rate');
+
+      if (webpackMessagesEl) webpackMessagesEl.textContent = stats.webpackMessages.toString();
+      if (domMessagesEl) domMessagesEl.textContent = stats.domMessages.toString();
+      if (eventsEl) eventsEl.textContent = stats.webpackEvents.toString();
+      if (successRateEl) successRateEl.textContent = stats.successRate;
+    } else {
+      // Valores padrão se capturer não estiver disponível
+      const webpackMessagesEl = this.container?.querySelector('#mettri-webpack-messages');
+      const domMessagesEl = this.container?.querySelector('#mettri-dom-messages');
+      const eventsEl = this.container?.querySelector('#mettri-webpack-events');
+      const successRateEl = this.container?.querySelector('#mettri-webpack-success-rate');
+
+      if (webpackMessagesEl) webpackMessagesEl.textContent = '0';
+      if (domMessagesEl) domMessagesEl.textContent = '0';
+      if (eventsEl) eventsEl.textContent = '0';
+      if (successRateEl) successRateEl.textContent = '-';
+    }
+  }
+
+  /**
+   * Define o MessageCapturer para atualizar estatísticas.
+   */
+  public setMessageCapturer(capturer: any): void {
+    (this as any).capturer = capturer;
+    
+    // Atualizar estatísticas periodicamente se a aba webpack estiver visível
+    setInterval(() => {
+      const webpackTab = this.container?.querySelector('#mettri-tab-webpack');
+      if (webpackTab && webpackTab.getAttribute('style')?.includes('display: block')) {
+        this.updateWebpackStats();
+      }
+    }, 2000); // Atualizar a cada 2 segundos
   }
 }

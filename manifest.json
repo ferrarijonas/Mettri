@@ -19,7 +19,8 @@
       "matches": ["https://web.whatsapp.com/*"],
       "js": ["content.js"],
       "css": ["panel.css"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ],
   "icons": {

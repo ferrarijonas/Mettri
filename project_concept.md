@@ -126,6 +126,15 @@ Faz loop de tentativa e erro até validar 100% dos campos
 Atualiza o config remoto automaticamente após sucesso
 Correção distribuída para todos os usuários
 
+### interceptação webpack
+Sistema que acessa módulos internos do WhatsApp via webpack
+Intercepta eventos diretamente da memória (não apenas DOM)
+Mais rápido e confiável que manipulação de DOM
+Funciona via window.webpackChunkwhatsapp_web_client
+Extrai GroupMetadata, ChatCollection, Msg, User
+Intercepta eventos: Msg.on("add"), Msg.on("change"), PresenceCollection
+Fallback para DOM quando webpack não disponível
+
 ### config-remota
 Configurações que atualizam sem passar pela Store
 Seletores DOM atualizados

@@ -1,291 +1,180 @@
 import type { CapturedMessage } from '../types';
-import selectorsConfig from '../../config/selectors.json';
+import { CapturedMessageSchema } from '../types/schemas';
+import { messageDB } from '../storage/message-db';
+import { DataScraper } from '../infrastructure/data-scraper';
+import { z } from 'zod';
 
 type MessageCallback = (message: CapturedMessage) => void;
 
+/**
+ * MessageCapturer
+ * 
+ * Captura mensagens do WhatsApp Web via interceptação webpack.
+ * Segue padrão do reverse.txt para acessar módulos internos.
+ */
 export class MessageCapturer {
-  private observer: MutationObserver | null = null;
+  private dataScraper: DataScraper | null = null;
   private callbacks: MessageCallback[] = [];
   private processedIds = new Set<string>();
   private isRunning = false;
+  private isUsingWebpack = false;
+  
+  // Contadores de estatísticas
+  private webpackMessageCount = 0;
+  private webpackEventCount = 0;
 
   constructor() {
-    // Load selectors from config
-    this.loadSelectors();
+    // Focado apenas em webpack, sem dependências de seletores ou DOM
   }
 
-  private loadSelectors(): void {
-    // Selectors are loaded from config/selectors.json
-    console.log('Mettri: Loaded selectors version', selectorsConfig.version);
-  }
-
-  public start(): void {
+  /**
+   * Inicia a captura de mensagens via webpack.
+   * 
+   * @throws Error se webpack não estiver disponível
+   */
+  public async start(): Promise<void> {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    const targetNode = this.findMessageContainer();
-    if (!targetNode) {
-      console.warn('Mettri: Message container not found, retrying...');
-      setTimeout(() => this.start(), 1000);
-      return;
+    // Verificar disponibilidade webpack ANTES de tentar inicializar
+    const { WhatsAppInterceptors } = await import('../infrastructure/whatsapp-interceptors');
+    const interceptors = new WhatsAppInterceptors();
+    
+    if (!interceptors.isWebpackAvailable()) {
+      console.error('Mettri: Webpack não disponível. WhatsApp Web pode não estar totalmente carregado.');
+      this.isRunning = false;
+      throw new Error('Webpack não disponível');
     }
 
-    // Process existing messages first
-    this.processExistingMessages(targetNode);
-
-    // Start observing for new messages
-    this.observer = new MutationObserver(mutations => {
-      this.handleMutations(mutations);
-    });
-
-    this.observer.observe(targetNode, {
-      childList: true,
-      subtree: true,
-    });
-
-    console.log('Mettri: Message capturer started');
+    try {
+      // Timeout de 5s para inicialização do webpack
+      const initPromise = this.initializeWebpack();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Webpack initialization timeout')), 5000)
+      );
+      
+      await Promise.race([initPromise, timeoutPromise]);
+      
+      this.isUsingWebpack = true;
+      console.log('Mettri: Usando interceptação webpack para captura');
+    } catch (error) {
+      this.isRunning = false;
+      console.error('Mettri: Erro ao inicializar webpack:', error);
+      throw error;
+    }
   }
 
-  public stop(): void {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
+  /**
+   * Inicializa interceptação webpack.
+   */
+  private async initializeWebpack(): Promise<void> {
+    this.dataScraper = new DataScraper();
+    await this.dataScraper.start();
+
+    // Registrar callback para mensagens interceptadas
+    this.dataScraper.onMessage((msg: any) => {
+      this.processInterceptedMessage(msg);
+    });
+  }
+
+  /**
+   * Processa mensagem interceptada via webpack.
+   * Converte formato webpack para CapturedMessage e valida com Zod.
+   */
+  private processInterceptedMessage(msg: any): void {
+    try {
+      // Converter mensagem interceptada para formato CapturedMessage
+      const chatId = msg.__x_from?._serialized || msg.id?.remote || 'unknown';
+      const chatName = msg.__x_senderObj?.name || msg.__x_senderObj?.pushname || 'Unknown';
+      const sender = msg.__x_senderObj?.name || msg.__x_senderObj?.pushname || chatName;
+      const text = msg.__x_body || msg.__x_text || '';
+      const timestamp = msg.__x_t ? new Date(msg.__x_t * 1000) : new Date();
+      const isOutgoing = msg.id?.fromMe || msg.self === 'out';
+
+      // Gerar ID único baseado no ID serializado do WhatsApp
+      const messageId = msg.id?._serialized || `webpack-${Date.now()}-${Math.random()}`;
+
+      // Skip se já processado
+      if (this.processedIds.has(messageId)) return;
+      this.processedIds.add(messageId);
+
+      const captured: CapturedMessage = {
+        id: messageId,
+        chatId,
+        chatName,
+        sender,
+        text,
+        timestamp,
+        isOutgoing,
+        type: 'text', // Por enquanto apenas texto, expandir depois
+      };
+
+      // Validar com Zod
+      const validated = CapturedMessageSchema.parse(captured);
+
+      // Salvar no banco
+      messageDB.saveMessage(validated).catch(error => {
+        console.error('Mettri: Erro ao salvar mensagem interceptada:', error);
+      });
+
+      // Incrementar contador webpack
+      this.webpackMessageCount++;
+      this.webpackEventCount++;
+
+      // Notificar callbacks
+      this.callbacks.forEach(cb => cb(validated));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.warn('Mettri: Erro ao validar mensagem interceptada:', error.errors);
+      } else {
+        console.error('Mettri: Erro ao processar mensagem interceptada:', error);
+      }
     }
+  }
+
+  /**
+   * Para a captura de mensagens.
+   */
+  public stop(): void {
+    // Parar webpack se estiver usando
+    if (this.dataScraper) {
+      this.dataScraper.stop();
+      this.dataScraper = null;
+    }
+
     this.isRunning = false;
+    this.isUsingWebpack = false;
     console.log('Mettri: Message capturer stopped');
   }
 
+  /**
+   * Registra callback para novas mensagens.
+   */
   public onMessage(callback: MessageCallback): void {
     this.callbacks.push(callback);
   }
 
-  private findMessageContainer(): Element | null {
-    const selectors = selectorsConfig.selectors.conversationPanel.selectors;
-
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element) return element;
-    }
-
-    return null;
-  }
-
-  private handleMutations(mutations: MutationRecord[]): void {
-    for (const mutation of mutations) {
-      if (mutation.type === 'childList') {
-        mutation.addedNodes.forEach(node => {
-          if (node instanceof HTMLElement) {
-            this.processMessageNode(node);
-          }
-        });
-      }
-    }
-  }
-
-  private processExistingMessages(container: Element): void {
-    // Find all existing messages
-    const inSelectors = selectorsConfig.selectors.messageIn.selectors;
-    const outSelectors = selectorsConfig.selectors.messageOut.selectors;
-
-    const allSelectors = [...inSelectors, ...outSelectors];
-
-    for (const selector of allSelectors) {
-      const messages = container.querySelectorAll(selector);
-      messages.forEach(node => {
-        if (node instanceof HTMLElement) {
-          this.processMessageNode(node);
-        }
-      });
-    }
-  }
-
-  private processMessageNode(node: HTMLElement): void {
-    // Check if this is a message container
-    const isMessageIn = this.matchesAnySelector(node, selectorsConfig.selectors.messageIn.selectors);
-    const isMessageOut = this.matchesAnySelector(
-      node,
-      selectorsConfig.selectors.messageOut.selectors
-    );
-
-    if (!isMessageIn && !isMessageOut) {
-      // Check children
-      const inChild = this.findMatchingChild(node, selectorsConfig.selectors.messageIn.selectors);
-      const outChild = this.findMatchingChild(node, selectorsConfig.selectors.messageOut.selectors);
-
-      if (inChild) {
-        this.extractMessage(inChild, false);
-      }
-      if (outChild) {
-        this.extractMessage(outChild, true);
-      }
-      return;
-    }
-
-    this.extractMessage(node, isMessageOut);
-  }
-
-  private matchesAnySelector(element: HTMLElement, selectors: string[]): boolean {
-    return selectors.some(selector => {
-      try {
-        return element.matches(selector);
-      } catch {
-        return false;
-      }
-    });
-  }
-
-  private findMatchingChild(parent: HTMLElement, selectors: string[]): HTMLElement | null {
-    for (const selector of selectors) {
-      try {
-        const child = parent.querySelector(selector);
-        if (child instanceof HTMLElement) return child;
-      } catch {
-        // Invalid selector, skip
-      }
-    }
-    return null;
-  }
-
-  private extractMessage(element: HTMLElement, isOutgoing: boolean): void {
-    // Generate unique ID based on element content
-    const messageId = this.generateMessageId(element);
-
-    // Skip if already processed
-    if (this.processedIds.has(messageId)) return;
-    this.processedIds.add(messageId);
-
-    // Extract text
-    const text = this.extractText(element);
-    if (!text) return;
-
-    // Extract sender (for groups)
-    const sender = this.extractSender(element);
-
-    // Extract timestamp
-    const timestamp = this.extractTimestamp(element);
-
-    // Get current chat info
-    const chatInfo = this.getCurrentChatInfo();
-
-    const message: CapturedMessage = {
-      id: messageId,
-      chatId: chatInfo.id,
-      chatName: chatInfo.name,
-      sender: sender || chatInfo.name,
-      text,
-      timestamp: timestamp || new Date(),
-      isOutgoing,
-      type: 'text',
+  /**
+   * Retorna estatísticas de captura.
+   */
+  public getStats(): {
+    isUsingWebpack: boolean;
+    webpackMessages: number;
+    webpackEvents: number;
+  } {
+    return {
+      isUsingWebpack: this.isUsingWebpack,
+      webpackMessages: this.webpackMessageCount,
+      webpackEvents: this.webpackEventCount,
     };
-
-    // Notify all callbacks
-    this.callbacks.forEach(callback => callback(message));
-
-    // Save to storage
-    this.saveMessage(message);
   }
 
-  private extractText(element: HTMLElement): string | null {
-    const selectors = selectorsConfig.selectors.messageText.selectors;
-
-    for (const selector of selectors) {
-      try {
-        const textEl = element.querySelector(selector);
-        if (textEl?.textContent) {
-          return textEl.textContent.trim();
-        }
-      } catch {
-        // Invalid selector, skip
-      }
-    }
-
-    return null;
-  }
-
-  private extractSender(element: HTMLElement): string | null {
-    const selectors = selectorsConfig.selectors.senderName.selectors;
-
-    for (const selector of selectors) {
-      try {
-        const senderEl = element.querySelector(selector);
-        if (senderEl) {
-          const ariaLabel = senderEl.getAttribute('aria-label');
-          if (ariaLabel) return ariaLabel;
-          if (senderEl.textContent) return senderEl.textContent.trim();
-        }
-      } catch {
-        // Invalid selector, skip
-      }
-    }
-
-    return null;
-  }
-
-  private extractTimestamp(element: HTMLElement): Date | null {
-    const selectors = selectorsConfig.selectors.messageMeta.selectors;
-
-    for (const selector of selectors) {
-      try {
-        const metaEl = element.querySelector(selector);
-        if (metaEl) {
-          // Try to parse time from content
-          const timeText = metaEl.textContent?.trim();
-          if (timeText) {
-            const now = new Date();
-            const [hours, minutes] = timeText.split(':').map(Number);
-            if (!isNaN(hours) && !isNaN(minutes)) {
-              now.setHours(hours, minutes, 0, 0);
-              return now;
-            }
-          }
-        }
-      } catch {
-        // Invalid selector, skip
-      }
-    }
-
-    return null;
-  }
-
-  private getCurrentChatInfo(): { id: string; name: string } {
-    const nameSelectors = selectorsConfig.selectors.chatName.selectors;
-
-    for (const selector of nameSelectors) {
-      try {
-        const nameEl = document.querySelector(selector);
-        if (nameEl?.textContent) {
-          const name = nameEl.textContent.trim();
-          const id = name.toLowerCase().replace(/\s+/g, '-');
-          return { id, name };
-        }
-      } catch {
-        // Invalid selector, skip
-      }
-    }
-
-    return { id: 'unknown', name: 'Unknown Chat' };
-  }
-
-  private generateMessageId(element: HTMLElement): string {
-    const text = element.textContent || '';
-    const hash = this.simpleHash(text + Date.now().toString());
-    return `msg-${hash}`;
-  }
-
-  private simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
-  }
-
-  private saveMessage(message: CapturedMessage): void {
-    chrome.runtime.sendMessage({
-      type: 'SAVE_MESSAGE',
-      payload: message,
-    });
+  /**
+   * Reseta estado e tenta novamente.
+   */
+  public async resetAndRetry(): Promise<void> {
+    console.log('Mettri: Resetando e tentando novamente...');
+    this.stop();
+    await this.start();
   }
 }

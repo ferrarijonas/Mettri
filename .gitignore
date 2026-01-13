@@ -27,6 +27,8 @@ npm-debug.log*
 coverage/
 test-results/
 playwright-report/
+tests/results/
+!tests/results/.gitkeep
 
 # Legacy code (kept for reference)
 legacy/
