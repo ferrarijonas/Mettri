@@ -90,6 +90,7 @@
 | **chrome.storage** | - | Storage sync (config) |
 | **Vanilla CSS** | - | Estilos (sem framework) |
 | **Zod** | 3.x | Validação de dados em runtime |
+| **document.elementFromPoint()** | - | Hit test para auto-mapeamento |
 
 **Por que Zod:**
 - ✅ Zero dependências
@@ -97,6 +98,37 @@
 - ✅ Bundle pequeno (~12kb)
 - ✅ Validação em runtime + compile time
 - ✅ MIT License, muito estável
+
+**Por que document.elementFromPoint() para Auto-Mapeamento:**
+
+A API `document.elementFromPoint(x, y)` foi escolhida para hit test no sistema de auto-mapeamento:
+
+- ✅ **Nativo do navegador**: Zero dependências, funciona imediatamente
+- ✅ **Performance excelente**: Resposta em microsegundos
+- ✅ **Funciona em produção**: Disponível em content scripts sem configuração extra
+- ✅ **Precisão**: Retorna elemento exato em coordenadas específicas
+- ✅ **Simplicidade**: API simples e direta
+- ✅ **Client-first**: Alinhado com arquitetura client-first do projeto
+
+**Limitações e Considerações:**
+
+- ⚠️ Funciona apenas dentro do contexto da página (mesma origem)
+- ⚠️ Não funciona com elementos em iframes de origem diferente
+- ⚠️ Limitado ao que está visível na viewport (elementos ocultos não são detectados)
+- ✅ Para o caso de uso (auto-mapeamento no WhatsApp Web), essas limitações são aceitáveis
+
+**Uso no Auto-Mapeamento:**
+
+```typescript
+// Exemplo de uso em auto-mapeamento
+const element = document.elementFromPoint(mouseX, mouseY);
+if (element) {
+  // Analisa elemento e gera seletor CSS
+  const selector = generateSelector(element);
+  // Valida seletor funciona
+  const validated = validateSelector(selector);
+}
+```
 
 **Estrutura de Build:**
 ```
