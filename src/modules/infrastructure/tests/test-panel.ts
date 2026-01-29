@@ -279,12 +279,21 @@ export class TestPanel {
    * Cria toast fixo para feedback de testes
    */
   private createToast(): void {
-    // Verificar se o toast já existe
-    let toastEl = document.getElementById('mettri-test-feedback-toast');
+    const rootNode = this.container?.getRootNode();
+    const root = rootNode && rootNode instanceof ShadowRoot ? rootNode : document;
+
+    // Verificar se o toast já existe (dentro do root correto)
+    let toastEl =
+      root instanceof ShadowRoot
+        ? (root.querySelector('#mettri-test-feedback-toast') as HTMLElement | null)
+        : (document.getElementById('mettri-test-feedback-toast') as HTMLElement | null);
     
     if (!toastEl) {
       // Criar toast e anexar ao painel principal (mettri-panel)
-      const mettriPanel = document.getElementById('mettri-panel');
+      const mettriPanel =
+        root instanceof ShadowRoot
+          ? (root.querySelector('#mettri-panel') as HTMLElement | null)
+          : (document.getElementById('mettri-panel') as HTMLElement | null);
       if (mettriPanel) {
         toastEl = document.createElement('div');
         toastEl.id = 'mettri-test-feedback-toast';

@@ -68,7 +68,7 @@ class MettriApp {
     console.log('[MettriApp] 🚀 Iniciando Interface do Usuário (Painel)...');
 
     // Expor ThemeLoader globalmente para acesso via console (caso necessário para testes)
-    (window as any).ThemeLoader = ThemeLoader;
+    window.ThemeLoader = ThemeLoader;
 
     // Create UI panel
     this.panel = new MettriPanel();

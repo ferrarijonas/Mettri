@@ -55,6 +55,7 @@
 
 - ✅ Não interfere com o layout do WhatsApp
 - ✅ Z-index ajustado para não sobrepor elementos importantes
+- ✅ Visual isolado com **Shadow DOM** (CSS não vaza para o WhatsApp)
 - ✅ Responsivo e adaptável
 - ✅ Transições suaves
 

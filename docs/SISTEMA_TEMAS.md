@@ -333,7 +333,7 @@ O `esbuild.config.js` já copia automaticamente todos os `.css` de `src/ui/theme
    ```json
    "web_accessible_resources": [
      {
-       "resources": ["themes/*.css"],
+       "resources": ["panel.css", "themes/*.css"],
        "matches": ["https://web.whatsapp.com/*"]
      }
    ]
@@ -356,6 +356,6 @@ O tema será aplicado automaticamente e todos os componentes que usam `var(--met
 
 ## Documentação Relacionada
 
-- `src/ui/panel.css` - CSS estrutural (usa variáveis)
+- `src/ui/tailwind-input.css` - CSS fonte (build gera `dist/panel.css`)
 - `src/ui/theme/theme-loader.ts` - Implementação do carregador
 - `src/ui/theme/themes/wa-web-2026.css` - Tema de referência (WhatsApp Web 2026)
