@@ -16,9 +16,15 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://web.whatsapp.com/*"],
-      "js": ["content.js"],
-      "css": ["panel.css"],
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "panel.css"
+      ],
       "run_at": "document_idle",
       "world": "MAIN"
     }
@@ -35,5 +41,15 @@
       "128": "icons/icon128.png"
     },
     "default_title": "Mettri"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "themes/*.css"
+      ],
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ]
+    }
+  ]
 }
