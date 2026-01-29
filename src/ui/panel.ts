@@ -1,20 +1,22 @@
 import type { CapturedMessage, PanelState, UserSession } from '../types';
 import { messageDB } from '../storage/message-db';
 import { ModuleRegistry, PanelShell, EventBus } from './core';
-import { getIcon, LucideIcons } from './icons/lucide-icons';
+import { getIcon } from './icons/lucide-icons';
 import { KebabMenu } from './components/kebab-menu';
 import { UserSessionModal } from './components/user-session-modal';
+import { getExtensionResourceUrl } from './core/extension-url';
 
 export class MettriPanel {
+  private hostEl: HTMLDivElement | null = null;
+  private shadow: ShadowRoot | null = null;
+  private shadowContainer: HTMLDivElement | null = null;
   private container: HTMLElement | null = null;
-  private sidebar: HTMLElement | null = null;
   private navbar: HTMLElement | null = null;
   private messagesContainer: HTMLElement | null = null;
   private registry: ModuleRegistry;
   private panelShell: PanelShell | null = null;
   private eventBus: EventBus;
   private currentModuleId: string = 'clientes.history'; // Módulo padrão
-  private kebabMenu: KebabMenu | null = null;
   private userSessionModal: UserSessionModal | null = null;
   private isDarkMode: boolean = false; // Estado do dark mode
   private userSession: UserSession | null = null; // Sessão do usuário atual
@@ -33,6 +35,8 @@ export class MettriPanel {
   }
 
   private async init(): Promise<void> {
+    this.ensureShadowRoot();
+    this.injectBaseStyles();
     this.createNavBar();
     this.createSidebar();
     this.createToggleButton();
@@ -105,7 +109,7 @@ export class MettriPanel {
       </button>
     `;
 
-    document.body.appendChild(navbar);
+    this.shadowContainer?.appendChild(navbar);
     this.navbar = navbar;
 
     // Setup NavBar listeners
@@ -162,7 +166,7 @@ export class MettriPanel {
       </div>
     `;
 
-    document.body.appendChild(sidebar);
+    this.shadowContainer?.appendChild(sidebar);
     this.container = sidebar;
     this.messagesContainer = sidebar.querySelector('#mettri-messages');
 
@@ -187,7 +191,7 @@ export class MettriPanel {
     }
 
     // Criar menu com opções (o botão já existe no HTML)
-    this.kebabMenu = new KebabMenu(headerActions as HTMLElement, [
+    new KebabMenu(headerActions as HTMLElement, [
       {
         label: 'Sincronizar',
         icon: 'RefreshCw',
@@ -303,15 +307,13 @@ export class MettriPanel {
       // Atualizar ícone
       darkModeBtn.innerHTML = this.isDarkMode ? getIcon('Sun') : getIcon('Moon');
 
-      // Aplicar/remover classe dark no documento
-      if (this.isDarkMode) {
-        document.documentElement.classList.add('dark');
-        // Aplicar tema dark manualmente
-        this.applyDarkModeTheme();
-      } else {
-        document.documentElement.classList.remove('dark');
-        this.applyLightModeTheme();
-      }
+      // Aplicar/remover classe dark APENAS no Mettri (não mexer no <html>)
+      this.shadowContainer?.classList.toggle('dark', this.isDarkMode);
+      this.container?.classList.toggle('dark', this.isDarkMode);
+
+      // Aplicar tema manual (variáveis CSS) no painel
+      if (this.isDarkMode) this.applyDarkModeTheme();
+      else this.applyLightModeTheme();
     }
   }
 
@@ -319,7 +321,7 @@ export class MettriPanel {
    * Aplica tema dark manualmente
    */
   private applyDarkModeTheme(): void {
-    const panel = document.querySelector('#mettri-panel') as HTMLElement;
+    const panel = this.container;
     if (!panel) return;
 
     // Variáveis CSS para dark mode
@@ -334,7 +336,7 @@ export class MettriPanel {
    * Aplica tema light manualmente
    */
   private applyLightModeTheme(): void {
-    const panel = document.querySelector('#mettri-panel') as HTMLElement;
+    const panel = this.container;
     if (!panel) return;
 
     // Variáveis CSS para light mode
@@ -473,7 +475,7 @@ export class MettriPanel {
       this.show();
     });
 
-    document.body.appendChild(toggle);
+    this.shadowContainer?.appendChild(toggle);
   }
 
   private adjustWhatsAppLayout(): void {
@@ -731,5 +733,79 @@ export class MettriPanel {
     if (this.userSessionModal) {
       this.userSessionModal.show(this.userSession);
     }
+  }
+
+  /**
+   * Cria um único ShadowRoot para isolar 100% o visual do Mettri.
+   * (Sem "vazar" CSS pro WhatsApp, como se fosse um aquário de vidro.)
+   */
+  private ensureShadowRoot(): void {
+    if (this.shadow && this.shadowContainer && this.hostEl) return;
+
+    const existingHost = document.getElementById('mettri-shadow-host');
+    if (existingHost instanceof HTMLDivElement && existingHost.shadowRoot) {
+      this.hostEl = existingHost;
+      this.applyHostSafetyStyles(existingHost);
+      this.shadow = existingHost.shadowRoot;
+      const existingContainer = this.shadow.querySelector('#mettri-shadow-container');
+      if (existingContainer instanceof HTMLDivElement) {
+        this.shadowContainer = existingContainer;
+      } else {
+        const container = document.createElement('div');
+        container.id = 'mettri-shadow-container';
+        this.shadow.appendChild(container);
+        this.shadowContainer = container;
+      }
+      window.__mettriShadowRoot = this.shadow;
+      return;
+    }
+
+    const host = document.createElement('div');
+    host.id = 'mettri-shadow-host';
+    this.applyHostSafetyStyles(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    const container = document.createElement('div');
+    container.id = 'mettri-shadow-container';
+
+    shadow.appendChild(container);
+    document.body.appendChild(host);
+
+    this.hostEl = host;
+    this.shadow = shadow;
+    this.shadowContainer = container;
+
+    // Ponte para outros módulos (ex: ThemeLoader) encontrarem o ShadowRoot
+    window.__mettriShadowRoot = shadow;
+  }
+
+  /**
+   * Carrega o CSS base do Mettri dentro do ShadowRoot.
+   * IMPORTANTE: não usamos mais "content_scripts.css" para evitar vazamento global.
+   */
+  private injectBaseStyles(): void {
+    if (!this.shadow) return;
+    if (this.shadow.querySelector('#mettri-base-styles')) return;
+
+    const link = document.createElement('link');
+    link.id = 'mettri-base-styles';
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+
+    const href = getExtensionResourceUrl('panel.css');
+    link.href = href ?? 'panel.css';
+    this.shadow.appendChild(link);
+  }
+
+  /**
+   * Mantém o host do Shadow DOM "sempre por cima" e sem interferir no layout.
+   */
+  private applyHostSafetyStyles(host: HTMLDivElement): void {
+    host.style.position = 'fixed';
+    host.style.top = '0';
+    host.style.left = '0';
+    host.style.width = '0';
+    host.style.height = '0';
+    host.style.zIndex = '2147483647';
   }
 }

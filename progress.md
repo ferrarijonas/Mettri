@@ -360,6 +360,7 @@
 | 2026-01-11 | **SENTINELA:** Adicionado Bloco 1.7 (Histórico Melhorado) - 14 tarefas |
 | 2026-01-11 | Criado HISTORICO_SIMPLES.md para documentação rápida |
 | 2026-01-11 | Criado PLANO_ABA_TESTES_HISTORICO.md com plano detalhado |
+| 2026-01-29 | **UI:** Visual 100% isolado em Shadow DOM; `panel.css`/temas carregados via `<link>` no ShadowRoot (sem CSS global no `manifest.json`) |
 
 ---
 

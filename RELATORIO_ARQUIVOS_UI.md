@@ -19,9 +19,9 @@
 ### 2. `src/ui/panel.css` ✅
 **Status:** USADO  
 **Importado por:**
-- Injetado via content script (provavelmente via `manifest.json` ou import direto)
+- **Carregado dentro do Shadow DOM** via `<link>` (em `src/ui/panel.ts`) para **isolamento total** do visual
 
-**Função:** Estilos CSS do painel principal
+**Função:** Estilos CSS do painel principal (build gera `dist/panel.css` a partir de `src/ui/tailwind-input.css`)
 
 **Verificação:** Classes CSS (`mettri-panel`, `mettri-header`, `mettri-tab`, etc.) são usadas em `panel.ts`
 
@@ -119,7 +119,7 @@ Após a limpeza:
 src/ui/
 ├── core/              ✅ Plugin System (ModuleRegistry, PanelShell, EventBus)
 ├── panel.ts           ✅ Painel principal
-├── panel.css          ✅ Estilos
+├── tailwind-input.css ✅ CSS fonte (build gera `dist/panel.css`)
 └── theme/             ✅ Sistema de temas
 ```
 

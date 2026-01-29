@@ -41,7 +41,6 @@ A extensão precisava capturar mensagens do WhatsApp Web, mas enfrentava um desa
   {
     "matches": ["https://web.whatsapp.com/*"],
     "js": ["content.js"],
-    "css": ["panel.css"],
     "run_at": "document_idle",
     "world": "MAIN"  // ← Chave da solução
   }

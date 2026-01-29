@@ -7,12 +7,32 @@
  *   import { ThemeLoader } from './theme';
  *   ThemeLoader.load('wa-web-2026');
  */
-
+import { getExtensionResourceUrl } from '../core/extension-url';
+ 
 export type ThemeName = 'wa-web-2026' | 'mettri-default' | 'vscode-industrial';
 
 export class ThemeLoader {
   private static readonly THEME_ID = 'mettri-theme';
   private static currentTheme: ThemeName | null = null;
+
+  private static getTargetRoot(): Document | ShadowRoot {
+    const maybeShadow = window.__mettriShadowRoot;
+    if (maybeShadow && maybeShadow instanceof ShadowRoot) return maybeShadow;
+    return document;
+  }
+
+  private static findInRoot<T extends Element>(root: Document | ShadowRoot, selector: string): T | null {
+    // ShadowRoot não tem getElementById; usamos querySelector em ambos
+    return root.querySelector(selector) as T | null;
+  }
+
+  private static appendToRoot(root: Document | ShadowRoot, el: HTMLElement | HTMLLinkElement): void {
+    if (root instanceof Document) {
+      document.head.appendChild(el);
+      return;
+    }
+    root.appendChild(el);
+  }
 
   /**
    * Carrega um tema específico
@@ -40,18 +60,20 @@ export class ThemeLoader {
 
     // No ambiente de extensão, os temas estão em dist/themes/
     // No build, esbuild copia os temas para dist/themes/
-    const themeUrl = chrome.runtime.getURL(`themes/${themeName}.css`);
+    const themeUrl =
+      getExtensionResourceUrl(`themes/${themeName}.css`) ?? `themes/${themeName}.css`;
     link.href = themeUrl;
     
     console.log(`[ThemeLoader] 📂 URL do tema: ${themeUrl}`);
     console.log(`[ThemeLoader] 🔗 Link element criado:`, link);
 
-    // Adiciona ao <head>
-    document.head.appendChild(link);
-    console.log(`[ThemeLoader] ✅ Link adicionado ao <head>`);
+    // Adiciona ao root do Mettri (ShadowRoot quando disponível)
+    const root = this.getTargetRoot();
+    this.appendToRoot(root, link);
+    console.log(`[ThemeLoader] ✅ Link adicionado ao root do Mettri`);
     
     // Verificar se link foi realmente adicionado
-    const linkInDOM = document.getElementById(this.THEME_ID);
+    const linkInDOM = this.findInRoot<HTMLLinkElement>(root, `#${this.THEME_ID}`);
     if (linkInDOM) {
       console.log(`[ThemeLoader] ✅ Link confirmado no DOM:`, linkInDOM);
       console.log(`[ThemeLoader] 🔗 href do link no DOM:`, (linkInDOM as HTMLLinkElement).href);
@@ -65,7 +87,7 @@ export class ThemeLoader {
         this.currentTheme = themeName;
         
         // Adicionar atributo no painel para controle de ícones/estilos específicos
-        const panel = document.getElementById('mettri-panel');
+        const panel = this.findInRoot<HTMLElement>(root, '#mettri-panel');
         if (panel) {
           panel.setAttribute('data-theme', themeName);
         }
@@ -94,13 +116,14 @@ export class ThemeLoader {
    * Remove o tema atual
    */
   static remove(): boolean {
-    const existing = document.getElementById(this.THEME_ID);
+    const root = this.getTargetRoot();
+    const existing = this.findInRoot<HTMLElement>(root, `#${this.THEME_ID}`);
     if (existing) {
       existing.remove();
       this.currentTheme = null;
       
       // Remover atributo do painel
-      const panel = document.getElementById('mettri-panel');
+      const panel = this.findInRoot<HTMLElement>(root, '#mettri-panel');
       if (panel) {
         panel.removeAttribute('data-theme');
       }

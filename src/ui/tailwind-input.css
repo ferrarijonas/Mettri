@@ -55,7 +55,7 @@
 }
 
 #mettri-panel.dark,
-#mettri-panel .dark {
+.dark #mettri-panel {
   /* Dark mode - WhatsApp dark palette */
   --background: oklch(0.14 0.015 155) !important;
   --foreground: oklch(0.92 0.01 155) !important;
@@ -187,19 +187,23 @@
 }
 
 /* Smooth scrollbar */
-::-webkit-scrollbar {
+#mettri-panel *::-webkit-scrollbar,
+#mettri-navbar *::-webkit-scrollbar {
   width: 6px;
 }
 
-::-webkit-scrollbar-track {
+#mettri-panel *::-webkit-scrollbar-track,
+#mettri-navbar *::-webkit-scrollbar-track {
   background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
+#mettri-panel *::-webkit-scrollbar-thumb,
+#mettri-navbar *::-webkit-scrollbar-thumb {
   background: oklch(0.72 0.17 155 / 0.3);
   border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
+#mettri-panel *::-webkit-scrollbar-thumb:hover,
+#mettri-navbar *::-webkit-scrollbar-thumb:hover {
   background: oklch(0.72 0.17 155 / 0.5);
 }
