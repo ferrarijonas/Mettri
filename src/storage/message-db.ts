@@ -10,11 +10,16 @@ import { z } from 'zod';
 const DB_NAME_BASE = 'mettri-db';
 const DB_VERSION = 1;
 const STORE_MESSAGES = 'messages';
+const RETENTION_DAYS_DEFAULT = 90;
+const MAX_MESSAGES_DEFAULT = 10000;
+const PRUNE_DEBOUNCE_MS = 2000;
 
 export class MessageDB {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
   private currentUserWid: string | null = null;
+  private pruneTimer: number | null = null;
+  private pruneInFlight: Promise<void> | null = null;
 
   constructor() {
     // Inicializa com banco padrão para compatibilidade
@@ -62,6 +67,9 @@ export class MessageDB {
     // Inicializar novo banco
     await this.init();
     console.log(`[MessageDB] Banco aberto para usuário: ${wid} (${this.getDBName()})`);
+
+    // Agendar poda (retenção) após trocar de banco
+    this.schedulePrune();
   }
 
   /**
@@ -167,7 +175,119 @@ export class MessageDB {
       const request = store.put(validatedEntry);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        // Poda em background (90 dias ou 10k) - não bloquear captura
+        this.schedulePrune();
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Agenda rotina de retenção (90 dias OU 10k mensagens).
+   * Metáfora: “jogar fora papel velho do caderno” sem travar a UI.
+   */
+  private schedulePrune(): void {
+    if (this.pruneTimer != null) {
+      clearTimeout(this.pruneTimer);
+    }
+    this.pruneTimer = setTimeout(() => {
+      this.pruneTimer = null;
+      this.pruneIfNeeded().catch(error => {
+        console.warn('[MessageDB] Falha na rotina de retenção:', error);
+      });
+    }, PRUNE_DEBOUNCE_MS);
+  }
+
+  private async pruneIfNeeded(): Promise<void> {
+    if (this.pruneInFlight) return this.pruneInFlight;
+
+    this.pruneInFlight = (async () => {
+      // Garantir DB aberto
+      await this.ensureReady();
+
+      // 1) Remover por janela de tempo (90 dias)
+      const cutoff = new Date(Date.now() - RETENTION_DAYS_DEFAULT * 24 * 60 * 60 * 1000);
+      await this.deleteOlderThan(cutoff.toISOString());
+
+      // 2) Remover por limite de quantidade (10k)
+      await this.enforceMaxMessages(MAX_MESSAGES_DEFAULT);
+    })();
+
+    try {
+      await this.pruneInFlight;
+    } finally {
+      this.pruneInFlight = null;
+    }
+  }
+
+  private async deleteOlderThan(cutoffIso: string): Promise<number> {
+    const db = await this.ensureReady();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readwrite');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      const index = store.index('timestamp');
+
+      // Todas as entradas com timestamp < cutoffIso
+      const range = IDBKeyRange.upperBound(cutoffIso, true);
+      const request = index.openCursor(range, 'next');
+
+      let deleted = 0;
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(deleted);
+          return;
+        }
+
+        const deleteReq = cursor.delete();
+        deleteReq.onerror = () => {
+          // Mesmo se falhar um delete, continuar tentando o resto
+          cursor.continue();
+        };
+        deleteReq.onsuccess = () => {
+          deleted++;
+          cursor.continue();
+        };
+      };
+    });
+  }
+
+  private async enforceMaxMessages(maxMessages: number): Promise<number> {
+    const total = await this.getMessageCount();
+    if (total <= maxMessages) return 0;
+
+    const db = await this.ensureReady();
+    const toDelete = total - maxMessages;
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readwrite');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      const index = store.index('timestamp');
+      const request = index.openCursor(null, 'next'); // mais antigo primeiro
+
+      let deleted = 0;
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor || deleted >= toDelete) {
+          resolve(deleted);
+          return;
+        }
+
+        const deleteReq = cursor.delete();
+        deleteReq.onerror = () => {
+          cursor.continue();
+        };
+        deleteReq.onsuccess = () => {
+          deleted++;
+          cursor.continue();
+        };
+      };
     });
   }
 

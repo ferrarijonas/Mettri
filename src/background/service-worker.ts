@@ -8,6 +8,7 @@ chrome.runtime.onInstalled.addListener(details => {
         panelEnabled: true,
         captureEnabled: true,
         theme: 'auto',
+        historyEnabled: false,
       },
       version: '2.0.0',
     });

@@ -9,16 +9,32 @@ import type { ModuleDefinition, PanelFactory } from '../../../ui/core/module-reg
 import type { EventBus } from '../../../ui/core/event-bus';
 import type { PanelInstance } from '../../../ui/core/module-registry';
 import { HistoryPanel } from './history-panel';
+import { MettriBridgeClient } from '../../../content/bridge-client';
 
 /**
  * Factory que cria instância do HistoryPanel
  */
-const createHistoryPanel: PanelFactory = (container: HTMLElement, eventBus: EventBus): PanelInstance => {
-  const panel = new HistoryPanel();
-  
-  // Escutar eventos de nova mensagem para atualizar histórico automaticamente
-  // IMPORTANTE: Aguardar um pouco para garantir que WhatsApp atualizou ordem
-  eventBus.on('message:new', async () => {
+const createHistoryPanel: PanelFactory = async (container: HTMLElement, eventBus: EventBus): Promise<PanelInstance> => {
+  const bridge = new MettriBridgeClient(2500);
+
+  let historyEnabled = false;
+  try {
+    const result = await bridge.storageGet(['settings']);
+    const settings = result?.settings as unknown;
+    historyEnabled = typeof settings === 'object' && settings !== null && (settings as Record<string, unknown>).historyEnabled === true;
+  } catch {
+    historyEnabled = false;
+  }
+
+  const panel = new HistoryPanel({ enabled: historyEnabled });
+
+  const onSettingsChanged = (data: { enabled: boolean }) => {
+    historyEnabled = data.enabled === true;
+    panel.setEnabled(historyEnabled);
+  };
+
+  const onMessageNew = async () => {
+    if (!historyEnabled) return;
     setTimeout(async () => {
       try {
         await panel.refresh();
@@ -26,17 +42,22 @@ const createHistoryPanel: PanelFactory = (container: HTMLElement, eventBus: Even
         console.error('[HistoryModule] Erro ao atualizar histórico:', error);
       }
     }, 100); // 100ms é suficiente para WhatsApp atualizar ordem
-  });
-  
-  // Adapter para compatibilidade com PanelInstance
+  };
+
+  // Escutar mudanças de config e novas mensagens (apenas enquanto painel está ativo)
+  eventBus.on('settings:history-enabled', onSettingsChanged);
+  eventBus.on('message:new', onMessageNew);
+
   return {
     async render() {
       const element = await panel.render();
       container.appendChild(element);
     },
     destroy() {
+      eventBus.off('settings:history-enabled', onSettingsChanged);
+      eventBus.off('message:new', onMessageNew);
       panel.destroy();
-    }
+    },
   };
 };
 

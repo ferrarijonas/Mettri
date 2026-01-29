@@ -11,6 +11,10 @@ export interface ContactGroup {
   lastMessageTime: Date | null;
 }
 
+export interface HistoryPanelConfig {
+  enabled?: boolean;
+}
+
 export class HistoryPanel {
   private container: HTMLElement | null = null;
   private currentView: 'contacts' | 'contact-detail' = 'contacts';
@@ -22,9 +26,10 @@ export class HistoryPanel {
   private filterType: 'all' | 'received' | 'sent' = 'all';
   private sortBy: 'recent' | 'oldest' | 'most-messages' = 'recent';
   private orderListener: ChatOrderListener | null = null;
+  private enabled: boolean = false;
 
-  constructor() {
-    // Constructor vazio - render() será chamado externamente
+  constructor(config?: HistoryPanelConfig) {
+    this.enabled = config?.enabled === true;
   }
 
   /**
@@ -35,11 +40,40 @@ export class HistoryPanel {
     panel.className = 'flex flex-col gap-4';
     this.container = panel;
 
+    if (!this.enabled) {
+      this.renderDisabledView();
+      return panel;
+    }
+
     await this.loadContacts();
     this.renderContactsView();
     this.startOrderListener();
 
     return panel;
+  }
+
+  public setEnabled(enabled: boolean): void {
+    const next = enabled === true;
+    if (this.enabled === next) return;
+    this.enabled = next;
+
+    // Se desligou, parar listeners e mostrar placeholder leve
+    if (!this.enabled) {
+      this.destroy();
+      this.renderDisabledView();
+    }
+  }
+
+  private renderDisabledView(): void {
+    if (!this.container) return;
+    this.container.innerHTML = `
+      <div class="rounded-xl border border-border/30 bg-secondary/20 p-3">
+        <div class="text-xs font-medium text-foreground">Histórico desligado</div>
+        <div class="mt-1 text-[11px] text-muted-foreground">
+          Ligue o toggle no topo para carregar as conversas.
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -243,26 +277,11 @@ export class HistoryPanel {
       const contactsMap = await messageDB.groupMessagesByContact();
       this.contacts = Array.from(contactsMap.values());
 
-      // Log: chatIds do banco
-      const bankChatIds = this.contacts.map(c => c.chatId);
-      // console.log('[METTRI DEBUG] ChatIds do banco (primeiros 10):', bankChatIds.slice(0, 10));
-
       // Obter ordem real do WhatsApp
       const whatsappOrder = await this.getWhatsAppChatOrder();
 
       if (whatsappOrder.length > 0) {
-        // Log: comparar chatIds
-        const matchingChatIds = whatsappOrder.filter(id => bankChatIds.includes(id));
-        const missingInBank = whatsappOrder.filter(id => !bankChatIds.includes(id));
-        const missingInWhatsApp = bankChatIds.filter(id => !whatsappOrder.includes(id));
-
-        // console.log('[METTRI DEBUG] Comparação de chatIds:', {
-        //   totalWhatsApp: whatsappOrder.length,
-        //   totalBanco: bankChatIds.length,
-        //   matching: matchingChatIds.length,
-        //   missingInBank: missingInBank.slice(0, 5),
-        //   missingInWhatsApp: missingInWhatsApp.slice(0, 5),
-        // });
+        // (debug opcional) comparar chatIds: usar console.log comentado se necessário
 
         // Ordenar pela ordem do WhatsApp (1/1 igual ao feed real)
         // Criar mapa de índice para ordenação rápida
@@ -596,7 +615,7 @@ export class HistoryPanel {
     });
 
     // Ordenar mensagens dentro de cada grupo (mais recente primeiro)
-    grouped.forEach((msgs, key) => {
+    grouped.forEach((msgs) => {
       msgs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     });
 
@@ -803,6 +822,7 @@ export class HistoryPanel {
    * IMPORTANTE: Sempre recarrega do banco e reordena pela ordem atual do WhatsApp.
    */
   public async refresh(): Promise<void> {
+    if (!this.enabled) return;
     // Se estiver na view de contatos, recarregar e reordenar
     if (this.currentView === 'contacts') {
       await this.loadContacts();

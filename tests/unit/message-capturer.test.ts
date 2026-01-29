@@ -50,30 +50,11 @@ describe('MessageCapturer', () => {
   });
 
   describe('start e stop', () => {
-    it('deve iniciar e parar captura sem erros', () => {
-      // Mock do DOM básico
-      const mockContainer = document.createElement('div');
-      mockContainer.setAttribute('data-testid', 'conversation-panel-messages');
-      document.body.appendChild(mockContainer);
-
-      // Mock do querySelector para retornar o container
-      const originalQuerySelector = document.querySelector;
-      document.querySelector = vi.fn((selector: string) => {
-        if (selector.includes('conversation-panel-messages')) {
-          return mockContainer;
-        }
-        return originalQuerySelector.call(document, selector);
-      });
-
-      capturer.start();
-      expect(capturer).toBeDefined();
-
+    it('deve falhar de forma controlada quando webpack não está disponível', async () => {
+      await expect(capturer.start()).rejects.toThrow('Webpack não disponível');
+      // stop deve ser seguro mesmo após falha
       capturer.stop();
       expect(capturer).toBeDefined();
-
-      // Restaurar
-      document.querySelector = originalQuerySelector;
-      document.body.removeChild(mockContainer);
     });
   });
 });

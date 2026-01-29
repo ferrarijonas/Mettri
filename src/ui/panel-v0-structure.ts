@@ -5,7 +5,7 @@
  * Mantém compatibilidade com PanelShell e módulos existentes.
  */
 
-import { getIcon, LucideIcons } from './icons/lucide-icons';
+import { getIcon } from './icons/lucide-icons';
 
 export interface PanelV0Structure {
   panelHTML: string;

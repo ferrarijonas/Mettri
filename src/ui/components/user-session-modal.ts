@@ -7,11 +7,20 @@
 import type { UserSession } from '../../types';
 import { getIcon } from '../icons/lucide-icons';
 import { messageDB } from '../../storage/message-db';
+import { MettriBridgeClient } from '../../content/bridge-client';
+import { LocalBatchExporter } from '../../infrastructure/local-batch-exporter';
+
+type ExportStateV1 = {
+  version: 1;
+  lastSuccessIso?: string;
+  pending?: boolean;
+};
 
 export class UserSessionModal {
   private overlay: HTMLElement | null = null;
   private modal: HTMLElement | null = null;
   private isOpen: boolean = false;
+  private bridge = new MettriBridgeClient(2500);
 
   constructor() {
     // Modal será criado quando necessário
@@ -104,6 +113,11 @@ export class UserSessionModal {
             <span class="flex-1 text-left">Exportar dados desta conta</span>
           </button>
 
+          <button class="w-full rounded-lg border border-border bg-background hover:bg-accent px-4 py-3 flex items-center gap-3 transition-colors" id="mettri-user-modal-export-batch">
+            ${getIcon('Download')}
+            <span class="flex-1 text-left">Exportar lote (JSONL)</span>
+          </button>
+
           <button class="w-full rounded-lg border border-border bg-background hover:bg-accent px-4 py-3 flex items-center gap-3 transition-colors" id="mettri-user-modal-clear">
             ${getIcon('Trash2')}
             <span class="flex-1 text-left">Limpar cache desta conta</span>
@@ -119,6 +133,9 @@ export class UserSessionModal {
           <p class="text-xs text-muted-foreground">
             <strong>WID:</strong> <code class="text-xs">${this.escapeHtml(session.wid)}</code>
           </p>
+          <p class="text-xs text-muted-foreground mt-2" id="mettri-export-status">
+            Export automático: verificando...
+          </p>
         </div>
       `;
     }
@@ -130,6 +147,9 @@ export class UserSessionModal {
     if (session) {
       const exportBtn = modal.querySelector('#mettri-user-modal-export');
       exportBtn?.addEventListener('click', () => this.handleExport());
+
+      const exportBatchBtn = modal.querySelector('#mettri-user-modal-export-batch');
+      exportBatchBtn?.addEventListener('click', () => this.handleExportBatch());
 
       const clearBtn = modal.querySelector('#mettri-user-modal-clear');
       clearBtn?.addEventListener('click', () => this.handleClear());
@@ -143,6 +163,11 @@ export class UserSessionModal {
 
     this.overlay = overlay;
     this.modal = modal;
+
+    // Atualizar status do export (assíncrono)
+    if (session) {
+      this.updateExportStatus(modal).catch(() => {});
+    }
   }
 
   /**
@@ -191,6 +216,58 @@ export class UserSessionModal {
     } catch (error) {
       console.error('[UserSessionModal] Erro ao exportar:', error);
       this.showToast('Erro ao exportar dados', true);
+    }
+  }
+
+  /**
+   * Exporta um lote em formato JSONL (padrão para futura ingestão em warehouse/banco).
+   * Este clique funciona como “gesto do usuário” para permitir download via <a download>.
+   */
+  private async handleExportBatch(): Promise<void> {
+    try {
+      const exporter = new LocalBatchExporter();
+      const result = await exporter.exportManual();
+      if (result.ok) {
+        this.showToast('Lote exportado com sucesso!');
+      } else {
+        this.showToast('Não foi possível exportar o lote', true);
+      }
+      // Atualizar status após tentativa
+      if (this.modal) {
+        this.updateExportStatus(this.modal).catch(() => {});
+      }
+    } catch (error) {
+      console.error('[UserSessionModal] Erro ao exportar lote:', error);
+      this.showToast('Erro ao exportar lote', true);
+    }
+  }
+
+  private async updateExportStatus(modal: HTMLElement): Promise<void> {
+    const el = modal.querySelector('#mettri-export-status') as HTMLElement | null;
+    if (!el) return;
+
+    try {
+      const result = await this.bridge.storageGet(['mettri_export_state_v1']);
+      const state = (result?.mettri_export_state_v1 ?? null) as ExportStateV1 | null;
+
+      if (!state || state.version !== 1) {
+        el.textContent = 'Export automático: ainda não executou.';
+        return;
+      }
+
+      if (state.pending) {
+        el.textContent = 'Export automático: pendente (abra e clique “Exportar lote”).';
+        return;
+      }
+
+      if (state.lastSuccessIso) {
+        el.textContent = `Export automático: ok (último: ${state.lastSuccessIso})`;
+        return;
+      }
+
+      el.textContent = 'Export automático: ainda não executou.';
+    } catch {
+      el.textContent = 'Export automático: indisponível.';
     }
   }
 

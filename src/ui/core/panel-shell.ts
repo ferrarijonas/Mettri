@@ -96,9 +96,12 @@ export class PanelShell {
     console.log('[PanelShell] 🔍 Procurando por .mettri-content:', existingContent ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
     
     if (existingContent) {
-      this.contentContainer = existingContent;
-      console.log('[PanelShell] ♻️ Reutilizando container existente:', existingContent.id || 'sem id');
-      return;
+      if (existingContent instanceof HTMLElement) {
+        this.contentContainer = existingContent;
+        console.log('[PanelShell] ♻️ Reutilizando container existente:', existingContent.id || 'sem id');
+        return;
+      }
+      console.warn('[PanelShell] ⚠️ .mettri-content encontrado, mas não é HTMLElement. Recriando...');
     }
 
     // Design v0: Não criar tabs (NavBar faz isso)
@@ -136,7 +139,7 @@ export class PanelShell {
   /**
    * Cria uma tab simples (sem sub-módulos)
    */
-  private createSimpleTab(module: ModuleDefinition): void {
+  public createSimpleTab(module: ModuleDefinition): void {
     if (!this.tabsContainer) return;
 
     const tabButton = document.createElement('button');
@@ -156,7 +159,7 @@ export class PanelShell {
   /**
    * Cria uma tab com dropdown (módulo com sub-módulos)
    */
-  private createDropdownTab(parentModule: ModuleDefinition, subModules: ModuleDefinition[]): void {
+  public createDropdownTab(parentModule: ModuleDefinition, subModules: ModuleDefinition[]): void {
     if (!this.tabsContainer) return;
 
     // Container do dropdown

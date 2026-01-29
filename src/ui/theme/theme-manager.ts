@@ -73,11 +73,31 @@ export class ThemeManager {
    */
   private static getPreferences(): {
     lastTheme?: ThemeName;
-    themeLabels?: Record<ThemeName, string>;
+    themeLabels?: Partial<Record<ThemeName, string>>;
   } {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
+      const parsed = stored ? (JSON.parse(stored) as unknown) : null;
+      if (!parsed || typeof parsed !== 'object') return {};
+      const obj = parsed as Record<string, unknown>;
+
+      const allowedThemes: ThemeName[] = ['wa-web-2026', 'mettri-default', 'vscode-industrial'];
+      const lastTheme = allowedThemes.includes(obj.lastTheme as ThemeName) ? (obj.lastTheme as ThemeName) : undefined;
+
+      const labelsRaw = obj.themeLabels;
+      let themeLabels: Partial<Record<ThemeName, string>> | undefined;
+      if (labelsRaw && typeof labelsRaw === 'object') {
+        const rec = labelsRaw as Record<string, unknown>;
+        themeLabels = {};
+        for (const theme of allowedThemes) {
+          const value = rec[theme];
+          if (typeof value === 'string') {
+            themeLabels[theme] = value;
+          }
+        }
+      }
+
+      return { lastTheme, themeLabels };
     } catch {
       return {};
     }
@@ -88,7 +108,7 @@ export class ThemeManager {
    */
   private static setPreferences(preferences: {
     lastTheme?: ThemeName;
-    themeLabels?: Record<ThemeName, string>;
+    themeLabels?: Partial<Record<ThemeName, string>>;
   }): void {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(preferences));

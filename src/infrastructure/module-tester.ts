@@ -270,15 +270,6 @@ export class ModuleTester {
   }
 
   /**
-   * Valida se módulo é válido
-   * Validação permissiva: se existe e não é null/undefined, é válido
-   */
-  private validateModule(module: any, moduleName: string): boolean {
-    // Validação simples: se existe e não é null/undefined, é válido
-    return module !== null && module !== undefined;
-  }
-
-  /**
    * Adiciona log à coleção
    */
   private log(message: string): void {

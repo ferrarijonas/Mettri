@@ -5,6 +5,7 @@
   "description": "Plataforma de vendas conversacionais para WhatsApp Web",
   "permissions": [
     "storage",
+    "downloads",
     "activeTab"
   ],
   "host_permissions": [
@@ -15,6 +16,15 @@
     "type": "module"
   },
   "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "content-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
     {
       "matches": [
         "https://web.whatsapp.com/*"

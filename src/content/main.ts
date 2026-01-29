@@ -4,11 +4,13 @@ import { ThemeLoader } from '../ui/theme';
 import { whatsappInterceptors } from '../infrastructure/interceptors-core';
 import { whatsappInterceptors as interceptorsWrapper } from '../infrastructure/whatsapp-interceptors';
 import { UserSessionManager } from '../infrastructure/user-session-manager';
+import { MettriBridgeClient } from './bridge-client';
 
 class MettriApp {
   private panel: MettriPanel | null = null;
   private capturer: MessageCapturer | null = null;
   private isInitialized = false;
+  private bridge = new MettriBridgeClient(2500);
 
   constructor() {
     console.log('[MettriApp] Inicializando no contexto MAIN (acesso direto)');
@@ -20,6 +22,16 @@ class MettriApp {
    */
   private async initialize(): Promise<void> {
     try {
+      // Verificar se o bridge (isolated world) está ativo
+      try {
+        const ping = await this.bridge.ping();
+        console.log('[MettriApp] Bridge OK:', ping);
+        // Expor para debug no console (apenas referência; não é requisito para funcionamento)
+        window.MettriBridge = this.bridge;
+      } catch (e) {
+        console.warn('[MettriApp] ⚠️ Bridge indisponível (fallback limitado):', e);
+      }
+
       // Inicializar interceptors-core diretamente (agora roda no mesmo contexto)
       console.log('[MettriApp] Inicializando WhatsAppInterceptors...');
       
