@@ -156,7 +156,11 @@ interface ConversationContext {
 | `history.messages.store` | Armazenar todas mensagens | P0 |
 | `history.messages.never_delete` | Política de retenção infinita | P0 |
 | `history.query` | Buscar no histórico | P1 |
-| `history.export` | Exportar dados | P2 |
+| `history.export.realtime` | Exportar em tempo real via webhook (padrão WA-Sync) | P0 |
+| `history.export.batch` | Exportar histórico completo em batches | P1 |
+| `history.scrape.chat` | Raspar histórico completo de um chat | P1 |
+| `history.scrape.all` | Raspar histórico completo de todos os chats | P1 |
+| `history.ordering` | Ordenação via getModelsArray() (padrão WA-Sync) | P0 |
 
 **Regra de Negócio:**
 > Histórico **nunca apaga dados**. É base para estado, relatórios e reativação.
@@ -597,6 +601,130 @@ const SELECTORS: SelectorConfig = {
   }
 };
 ```
+
+**Subdomínio: PLUGIN SYSTEM**
+
+Sistema de módulos desacoplados e auto-descobríveis que permite escalar para centenas de módulos sem acoplamento.
+
+| Capacidade | Descrição | Prioridade |
+|------------|-----------|------------|
+| `plugin.registry` | Registry que descobre módulos automaticamente | P0 |
+| `plugin.discovery` | Escanear pasta modules/ e carregar módulos | P0 |
+| `plugin.hierarchy` | Suportar módulos dentro de módulos (parent/child) | P0 |
+| `plugin.lazy_load` | Carregar módulos apenas quando necessário | P0 |
+| `plugin.isolation` | Isolamento total entre módulos | P0 |
+| `plugin.dependencies` | Resolver dependências entre módulos | P1 |
+| `plugin.event_bus` | Comunicação entre módulos via eventos | P1 |
+
+**Regra de Negócio:**
+> Cada módulo é **independente**. Adicionar ou remover um módulo não deve afetar outros. Módulos se registram sozinhos.
+
+**Arquitetura:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              PanelShell (Core - Núcleo)                  │
+│  - Apenas navegação                                      │
+│  - Gerencia ciclo de vida                                │
+│  - NÃO conhece módulos específicos                       │
+└──────────────────┬──────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│         ModuleRegistry (Descobre Módulos)                │
+│  - Escaneia pasta modules/                               │
+│  - Carrega *-module.ts automaticamente                  │
+│  - Registra hierarquia (parent/child)                    │
+│  - Resolve dependências                                  │
+└──────────────────┬──────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│         Modules/ (Módulos Independentes)                 │
+│  ├── atendimento/                                        │
+│  │   ├── atendimento-module.ts                          │
+│  │   └── context/                                       │
+│  │       └── context-module.ts (sub-módulo)            │
+│  ├── clientes/                                           │
+│  │   ├── clientes-module.ts                             │
+│  │   ├── history/                                        │
+│  │   │   └── history-module.ts                          │
+│  │   └── recommendation/                                │
+│  │       └── recommendation-module.ts                     │
+│  └── marketing/                                          │
+│      ├── marketing-module.ts                             │
+│      ├── reactivation/                                   │
+│      │   └── reactivation-module.ts                     │
+│      └── ab-tests/                                       │
+│          └── ab-tests-module.ts                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Entidades:**
+
+```typescript
+interface ModuleDefinition {
+  id: string;                    // Ex: "marketing.reactivation"
+  name: string;                  // Ex: "Reativação"
+  parent?: string;               // Ex: "marketing" (opcional)
+  icon?: string;                 // Ex: "🔄"
+  dependencies?: string[];       // Ex: ["core.message-db"]
+  panel: PanelClass;             // Classe do painel
+  lazy?: boolean;                // Carregar apenas quando necessário
+}
+
+interface ModuleRegistry {
+  modules: Map<string, ModuleDefinition>;
+  hierarchy: Map<string, string[]>;  // parent -> children[]
+  
+  register(module: ModuleDefinition): void;
+  getModule(id: string): ModuleDefinition | null;
+  getTopLevelModules(): ModuleDefinition[];
+  getSubModules(parentId: string): ModuleDefinition[];
+  discoverModules(): Promise<void>;
+}
+
+// Exemplo de módulo:
+export const ReactivationModule: ModuleDefinition = {
+  id: 'marketing.reactivation',
+  name: 'Reativação',
+  parent: 'marketing',
+  icon: '🔄',
+  dependencies: ['core.message-db'],
+  panel: ReactivationPanel,
+  lazy: true
+};
+```
+
+**Fluxo de Descoberta:**
+
+```
+1. PanelShell inicializa
+   └── Cria ModuleRegistry
+
+2. ModuleRegistry.discoverModules()
+   ├── Escaneia src/modules/**/*-module.ts
+   ├── Importa cada arquivo
+   └── Chama module.register(registry)
+
+3. Cada módulo se registra
+   └── registry.register({ id, name, parent, panel, ... })
+
+4. PanelShell gera UI dinamicamente
+   ├── getTopLevelModules() → Tabs principais
+   ├── getSubModules(parentId) → Sub-menus
+   └── Renderiza HTML automaticamente
+
+5. Lazy loading quando necessário
+   └── Carrega módulo apenas quando usuário clica na tab
+```
+
+**Vantagens:**
+- ✅ **Isolamento total**: Módulos não conhecem outros módulos
+- ✅ **Descoberta automática**: Não precisa editar panel.ts para adicionar
+- ✅ **Hierarquia natural**: Módulos dentro de módulos via `parent`
+- ✅ **Performance**: Lazy loading automático
+- ✅ **Escalável**: Suporta centenas de módulos sem degradação
 
 **Subdomínio: AUTO-MAPEAMENTO**
 

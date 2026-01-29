@@ -7,7 +7,7 @@
  * Valida todos os dados interceptados com Zod antes de usar.
  */
 
-import { WhatsAppInterceptors } from './whatsapp-interceptors';
+import { whatsappInterceptors } from './whatsapp-interceptors';
 import { z } from 'zod';
 
 /**
@@ -54,7 +54,7 @@ function safeLog(obj: any, label: string): void {
       } catch {}
     });
     
-    console.log(`[DEBUG] ${label}:`, info);
+    // ${label} disponível
     
     // Forma 2: Tentar JSON.stringify (pode falhar com objetos circulares)
     try {
@@ -67,24 +67,30 @@ function safeLog(obj: any, label: string): void {
         return value;
       }, 2);
       if (json.length > 1000) {
-        console.log(`[DEBUG] ${label} (JSON - primeiros 1000 chars):`, json.substring(0, 1000));
+        // ${label} (JSON disponível)
       } else {
-        console.log(`[DEBUG] ${label} (JSON):`, json);
+        // ${label} (JSON completo)
       }
     } catch (e: any) {
-      console.log(`[DEBUG] ${label} (JSON failed):`, e.message);
+      // ${label} (JSON failed): ${e.message}
     }
   } catch (error: any) {
-    console.error(`[DEBUG] ${label} (log failed):`, error.message);
+    // ${label} (log failed): ${error.message}
   }
 }
 
 // Schema Zod para validar mensagens interceptadas
+// PERMISSIVO: Aceita qualquer estrutura, apenas valida campos presentes
 const MessageSchema = z.object({
-  id: z.object({
-    _serialized: z.string(),
-    fromMe: z.boolean().optional(),
-  }),
+  id: z.union([
+    z.object({
+      _serialized: z.string().optional(),
+      fromMe: z.boolean().optional(),
+      remote: z.string().optional(),
+    }).passthrough(),
+    z.string(), // Pode ser string direta
+    z.any(), // Fallback: aceita qualquer coisa
+  ]),
   __x_body: z.string().optional(),
   __x_text: z.string().optional(),
   __x_type: z.string().optional(),
@@ -97,27 +103,40 @@ const MessageSchema = z.object({
       user: z.string().optional(),
       server: z.string().optional(),
     })
+    .passthrough()
     .optional(),
+  __x_to: z
+    .object({
+      _serialized: z.string().optional(),
+      user: z.string().optional(),
+      server: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+  to: z.any().optional(),
+  from: z.any().optional(),
+  chatId: z.any().optional(),
+  chat: z.any().optional(),
   __x_senderObj: z
     .object({
       name: z.string().optional(),
       pushname: z.string().optional(),
     })
+    .passthrough()
     .optional(),
-});
+}).passthrough(); // Aceita campos extras que não estão no schema
 
 type MessageCallback = (msg: any) => void;
 type PresenceCallback = (data: any) => void;
 
 export class DataScraper {
-  private interceptors: WhatsAppInterceptors;
   private messageCallbacks: MessageCallback[] = [];
   private presenceCallbacks: PresenceCallback[] = [];
   private chatCallbacks: Array<(chatId: string) => void> = [];
   private isRunning = false;
 
   constructor() {
-    this.interceptors = new WhatsAppInterceptors();
+    // Usa singleton whatsappInterceptors - não cria nova instância
   }
 
   /**
@@ -132,12 +151,12 @@ export class DataScraper {
 
     try {
       // Verificar disponibilidade antes de inicializar
-      if (!this.interceptors.isWebpackAvailable()) {
+      if (!whatsappInterceptors.isWebpackAvailable()) {
         throw new Error('Webpack não disponível');
       }
 
       // Timeout de 5s para inicialização
-      const initPromise = this.interceptors.initialize();
+      const initPromise = whatsappInterceptors.initialize();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout na inicialização do webpack')), 5000)
       );
@@ -146,10 +165,10 @@ export class DataScraper {
 
       // Interceptar eventos de mensagem
       // O getter Msg já verifica se é uma coleção válida com .on() e .get()
-      const Msg = this.interceptors.Msg;
+      const Msg = whatsappInterceptors.Msg;
       if (!Msg) {
-        console.warn('Mettri: Módulo Msg não encontrado - executando análise completa');
-        this.interceptors.debugAllModules();
+        console.warn('Mettri: Módulo Msg não encontrado');
+        // Note: debugAllModules não está disponível no bridge client
       } else {
         safeLog(Msg, 'Msg module structure');
         
@@ -157,13 +176,44 @@ export class DataScraper {
         // Se chegou aqui, Msg deve ter .on() e .get()
         if (typeof Msg.on === 'function' && typeof Msg.get === 'function') {
           // Listener para novas mensagens
+          // IMPORTANTE: Filtrar apenas mensagens novas (padrão WA-Sync)
+          // WA-Sync usa: Msg.on("add", async e => { if (e.isNewMsg) { ... } })
           Msg.on('add', (msg: any) => {
+            // Filtrar apenas mensagens novas (padrão WA-Sync)
+            if (!msg?.isNewMsg) {
+              return; // Ignorar mensagens antigas
+            }
+
+            // Evento Msg.on("add") disparado (apenas mensagens novas)
+            
             try {
-              // Validar com Zod
+              // Validar com Zod (permissivo - aceita campos opcionais faltando)
               const validated = MessageSchema.parse(msg);
+              // Mensagem validada com sucesso
               this.messageCallbacks.forEach((cb) => cb(validated));
             } catch (error) {
-              console.warn('Mettri: Erro ao validar mensagem interceptada:', error);
+              // Log detalhado do erro de validação
+              if (error instanceof z.ZodError) {
+                console.warn('[METTRI] ⚠️ Erro ao validar mensagem interceptada (Zod):', error.errors);
+                console.warn('[METTRI] Mensagem que falhou na validação:', {
+                  hasId: !!msg.id,
+                  hasSerialized: !!msg.id?._serialized,
+                  hasXBody: !!msg.__x_body,
+                  hasXText: !!msg.__x_text,
+                  isNewMsg: msg.isNewMsg,
+                  keys: Object.keys(msg || {}).slice(0, 20),
+                });
+              } else {
+                console.warn('[METTRI] ⚠️ Erro ao validar mensagem interceptada:', error);
+              }
+              // IMPORTANTE: Mesmo com erro de validação, tentar processar a mensagem
+              // (pode ser que alguns campos opcionais estejam faltando mas a mensagem é válida)
+              // Tentando processar mensagem mesmo com erro de validação
+              try {
+                this.messageCallbacks.forEach((cb) => cb(msg));
+              } catch (fallbackError) {
+                console.error('[METTRI] ❌ Erro no fallback de processamento:', fallbackError);
+              }
             }
           });
 
@@ -181,14 +231,12 @@ export class DataScraper {
         } else {
           console.warn('Mettri: Msg encontrado mas não tem métodos .on() e .get()');
           safeLog(Msg, 'Msg (estrutura inesperada)');
-          // Executar análise completa para entender estrutura
-          console.warn('Mettri: Executando análise completa de módulos...');
-          this.interceptors.debugAllModules();
+          // Note: debugAllModules não está disponível no bridge client
         }
       }
 
       // Interceptar eventos de presença
-      const PresenceCollection = this.interceptors.PresenceCollection;
+      const PresenceCollection = whatsappInterceptors.PresenceCollection;
       if (PresenceCollection) {
         safeLog(PresenceCollection, 'PresenceCollection module structure');
         
@@ -211,7 +259,7 @@ export class DataScraper {
       }
 
       // Interceptar mudanças de chat ativo
-      const ChatCollection = this.interceptors.ChatCollection;
+      const ChatCollection = whatsappInterceptors.ChatCollection;
       if (ChatCollection) {
         // Tentar encontrar método para escutar mudanças de chat
         // Nota: Pode variar conforme versão do WhatsApp
@@ -283,7 +331,7 @@ export class DataScraper {
   /**
    * Retorna os interceptors (para acesso direto aos módulos se necessário).
    */
-  getInterceptors(): WhatsAppInterceptors {
-    return this.interceptors;
+  getInterceptors(): typeof whatsappInterceptors {
+    return whatsappInterceptors;
   }
 }

@@ -80,3 +80,11 @@ export interface StoredSettings {
   captureEnabled: boolean;
   theme: 'light' | 'dark' | 'auto';
 }
+
+// User session types
+export interface UserSession {
+  wid: string; // Ex: "5511987654321@c.us"
+  name: string | null; // Nome do usuário
+  phoneNumber: string | null; // Telefone formatado
+  profilePicUrl: string | null; // URL da foto de perfil
+}

@@ -2,6 +2,10 @@
 
 > Plataforma de vendas conversacionais para WhatsApp Web
 
+⚠️ Este projeto segue regras obrigatórias definidas em `ENGINEERING_CONTRACT.md`.
+Qualquer mudança estrutural deve respeitá-las.
+
+
 ![CI](https://github.com/ferrarijonas/Mettri/actions/workflows/ci.yml/badge.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green)

@@ -30,6 +30,10 @@ Memória completa do sistema
 Armazena todas as mensagens (entrada e saída)
 Nunca apaga dados
 Base para estado, relatórios e reativação
+Exportação em tempo real via webhook (padrão WA-Sync)
+Raspagem histórica completa com loadEarlierMsgs()
+Ordenação via getModelsArray() (1/1 com WhatsApp)
+Batch processing para grandes volumes
 
 ### recomendação
 Sugere próximos passos
@@ -76,11 +80,27 @@ Base para decisões, não para contabilidade pesada
 Organiza tudo que promove o produto
 Mensagem, imagem, momento e público
 
-### reativação
+### enviar
+Módulo que trabalha com os contextos Reativar, Responder e Divulgar
+
+#### reativar
 Identifica clientes inativos
 Escreve mensagens automáticas ou manuais
 Puxa conversas de forma ativa
 Sempre respeita histórico
+
+#### responder
+Usado para responder em massa, msgs não lidas por afastamento, férias.
+
+#### divulgar
+Usado para envio de mensagens em lote.
+
+Enviar ▾
+Reativar
+Responder
+Divulgar
+
+
 
 ### testes A/B
 Centraliza tudo que pode ser testado
@@ -106,6 +126,14 @@ Sistema invisível que mantém tudo funcionando
 Garante que a extensão nunca pare de funcionar
 Atualiza sem depender da Chrome Web Store
 Monitora e corrige problemas automaticamente
+
+### plugin-system
+Sistema de módulos desacoplados e auto-descobríveis
+Permite adicionar/remover módulos sem quebrar outros
+Suporta hierarquia (módulos dentro de módulos)
+Registry descobre módulos automaticamente
+Lazy loading para performance
+Isolamento total entre módulos
 
 ### seletores
 Sistema de seletores auto-corrigíveis
@@ -203,6 +231,14 @@ Código sem any, TypeScript Strict, Documentação atualizada com a nova funçã
 
 
 #engenharia
+
+## arquitetura-modular
+Sistema de plugins para escalabilidade
+Módulos independentes e auto-descobríveis
+Hierarquia natural (módulos dentro de módulos)
+Zero acoplamento entre módulos
+Performance otimizada com lazy loading
+Estrutura preparada para 100k módulos
 
 ## monitoramento
 Estado centralizado e único (Truth Source)

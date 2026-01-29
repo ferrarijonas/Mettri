@@ -61,6 +61,42 @@
 
 **Dependência:** Bloco 0.5 (Captura de Mensagens) requer seletores funcionais. Auto-mapeamento garante que seletores sejam reconstruídos automaticamente quando quebrarem.
 
+### Bloco 0.4.7: Plugin System - Arquitetura Modular (PRIORIDADE ALTA)
+
+> **Objetivo:** Implementar sistema de módulos desacoplados e auto-descobríveis para permitir escalabilidade sem acoplamento. Suporta hierarquia (módulos dentro de módulos) e lazy loading.
+
+| ID | Tarefa | Status | Issue |
+|----|--------|--------|-------|
+| T0-040 | Criar ModuleRegistry (descobre módulos) | Concluido | - |
+| T0-041 | Implementar escaneamento de pasta modules/ | Pendente | - |
+| T0-042 | Implementar registro automático de módulos | Concluido | - |
+| T0-043 | Criar PanelShell (core, apenas navegação) | Concluido | - |
+| T0-044 | Implementar suporte a hierarquia (parent/child) | Concluido | - |
+| T0-045 | Implementar lazy loading de módulos | Concluido | - |
+| T0-052 | Criar módulos pais (clientes, infrastructure, marketing) | Concluido | - |
+| T0-053 | Implementar renderização de dropdown para hierarquia | Concluido | - |
+| T0-054 | Atualizar CSS para suportar dropdown tabs | Concluido | - |
+| T0-046 | Criar EventBus para comunicação entre módulos | Concluido | - |
+| T0-047 | Mover painéis existentes para modules/ | Concluido | - |
+| T0-048 | Refatorar panel.ts para usar PanelShell | Concluido | - |
+| T0-049 | Testes unitários do ModuleRegistry | Pendente | - |
+| T0-050 | Testes E2E do Plugin System | Pendente | - |
+| T0-051 | Documentar arquitetura do Plugin System | Pendente | - |
+| T0-052 | Criar módulos pais (clientes, infrastructure, marketing) | Concluido | - |
+| T0-053 | Implementar renderização de dropdown para hierarquia | Concluido | - |
+| T0-054 | Atualizar CSS para suportar dropdown tabs | Concluido | - |
+
+**Dependência:** Este bloco é pré-requisito para escalar para muitos módulos. Permite adicionar/remover módulos sem quebrar outros.
+
+**Critérios de Conclusão:**
+- ✅ ModuleRegistry descobre módulos automaticamente
+- ✅ PanelShell não conhece módulos específicos
+- ✅ Módulos se registram sozinhos
+- ✅ Suporta hierarquia (módulos dentro de módulos)
+- ✅ Lazy loading funcionando
+- ✅ Isolamento total entre módulos
+- ✅ Testes passando
+
 ### Bloco 0.4.6: Interceptação Webpack - Base (CONCLUÍDO)
 
 > **Status:** ✅ Base funcionando. Acesso aos módulos principais (Msg, Contact, Label, Chat) implementado com busca robusta.
@@ -197,6 +233,61 @@
 
 **Dependência:** Todos os blocos anteriores devem estar completos.
 
+### Bloco 1.6: Aba de Testes e Verificação (PRIORIDADE ALTA)
+
+> **Objetivo:** Criar aba visual no painel para testar e verificar todos os módulos da Sentinela.
+
+| ID | Tarefa | Status | Issue |
+|----|--------|--------|-------|
+| T1-061 | Criar estrutura básica da aba "Testes" | Pendente | - |
+| T1-062 | Implementar campo de número de teste | Pendente | - |
+| T1-063 | Implementar salvar número de teste (chrome.storage) | Pendente | - |
+| T1-064 | Criar module-tester.ts (sistema de testes) | Pendente | - |
+| T1-065 | Implementar função testModule() básica | Pendente | - |
+| T1-066 | Listar todos os módulos na aba | Pendente | - |
+| T1-067 | Mostrar status de cada módulo (✅/❌) | Pendente | - |
+| T1-068 | Implementar botão [Testar] individual | Pendente | - |
+| T1-069 | Implementar botão [Testar Todos] | Pendente | - |
+| T1-070 | Implementar botão [Ver] (detalhes do módulo) | Pendente | - |
+| T1-071 | Implementar botão [Logs] (logs detalhados) | Pendente | - |
+| T1-072 | Criar relatório de testes | Pendente | - |
+| T1-073 | Implementar exportar JSON do relatório | Pendente | - |
+| T1-074 | Testes E2E da aba de testes | Pendente | - |
+
+**Critérios:**
+- Número de teste salvo e usado automaticamente
+- Todos os módulos listados com status
+- Testes individuais e em lote funcionando
+- Detalhes e logs acessíveis
+
+### Bloco 1.7: Histórico Melhorado (PRIORIDADE ALTA)
+
+> **Objetivo:** Melhorar visualização do histórico para agrupar por contato e facilitar análise.
+
+| ID | Tarefa | Status | Issue |
+|----|--------|--------|-------|
+| T1-075 | Criar função groupMessagesByContact() | Pendente | - |
+| T1-076 | Criar estrutura básica da aba "Histórico" | Pendente | - |
+| T1-077 | Implementar lista de contatos (com contagem) | Pendente | - |
+| T1-078 | Mostrar preview da última mensagem | Pendente | - |
+| T1-079 | Implementar busca de contatos | Pendente | - |
+| T1-080 | Implementar clicar em contato (abre histórico) | Pendente | - |
+| T1-081 | Mostrar histórico completo do contato | Pendente | - |
+| T1-082 | Organizar mensagens por data/hora | Pendente | - |
+| T1-083 | Mostrar quem enviou (contato/usuário) | Pendente | - |
+| T1-084 | Implementar botão [Exportar para IA] | Pendente | - |
+| T1-085 | Implementar paginação (carregar mais) | Pendente | - |
+| T1-086 | Implementar filtros (data, tipo, ordenação) | Pendente | - |
+| T1-087 | Melhorar layout visual do histórico | Pendente | - |
+| T1-088 | Testes E2E do histórico melhorado | Pendente | - |
+
+**Critérios:**
+- Mensagens agrupadas por contato
+- Lista de contatos funcional
+- Histórico completo por contato
+- Exportação para IA funcionando
+- Filtros e busca funcionando
+
 ---
 
 ## Métricas Atualizadas
@@ -207,12 +298,12 @@
 | **Tier 0 - Concluídas** | 30 |
 | **Tier 0 - Em progresso** | 0 |
 | **Tier 0 - Pendentes** | 8 |
-| **Tier 1 (Sentinela) - Total de tarefas** | 60 |
+| **Tier 1 (Sentinela) - Total de tarefas** | 88 |
 | **Tier 1 (Sentinela) - Concluídas** | 0 |
-| **Tier 1 (Sentinela) - Pendentes** | 60 |
-| **Total geral de tarefas** | 98 |
+| **Tier 1 (Sentinela) - Pendentes** | 88 |
+| **Total geral de tarefas** | 126 |
 | **Total concluídas** | 30 |
-| **Total pendentes** | 68 |
+| **Total pendentes** | 96 |
 | **Sprint iniciada** | 2026-01-11 |
 | **Estimativa Sentinela** | 15-20 dias (implementação robusta com testes) |
 
@@ -265,6 +356,10 @@
 | 2026-01-11 | **SENTINELA:** Objeto N (padrão referência) implementado |
 | 2026-01-11 | **SENTINELA:** Documentação completa criada (SENTINELA_ESTADO_ATUAL.md, SENTINELA_PLANO_IMPLEMENTACAO.md) |
 | 2026-01-11 | **SENTINELA:** Tier 1 criado com 60 tarefas para equiparar referência |
+| 2026-01-11 | **SENTINELA:** Adicionado Bloco 1.6 (Aba de Testes) - 14 tarefas |
+| 2026-01-11 | **SENTINELA:** Adicionado Bloco 1.7 (Histórico Melhorado) - 14 tarefas |
+| 2026-01-11 | Criado HISTORICO_SIMPLES.md para documentação rápida |
+| 2026-01-11 | Criado PLANO_ABA_TESTES_HISTORICO.md com plano detalhado |
 
 ---
 
@@ -278,6 +373,8 @@
 | `.cursorrules` | Regras para o Cursor AI |
 | `docs/SENTINELA_ESTADO_ATUAL.md` | Estado atual da Sentinela e decisões arquiteturais |
 | `docs/SENTINELA_PLANO_IMPLEMENTACAO.md` | Plano detalhado para implementar todos os módulos extras |
+| `docs/PLANO_ABA_TESTES_HISTORICO.md` | Plano para aba de testes e histórico melhorado |
+| `HISTORICO_SIMPLES.md` | Histórico simples do projeto (uma linha por coisa) |
 
 ---
 

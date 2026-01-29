@@ -1,6 +1,9 @@
 import * as esbuild from 'esbuild';
-import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
+import postcss from 'postcss';
+import tailwindcss from '@tailwindcss/postcss';
+import autoprefixer from 'autoprefixer';
 
 const isWatch = process.argv.includes('--watch');
 
@@ -28,9 +31,48 @@ if (existsSync('assets/icons')) {
   }
 }
 
-// Copy CSS
-if (existsSync('src/ui/panel.css')) {
+// Process CSS with PostCSS (Tailwind)
+async function processCSS(inputPath, outputPath) {
+  if (!existsSync(inputPath)) {
+    console.warn(`CSS file not found: ${inputPath}`);
+    return;
+  }
+
+  const css = readFileSync(inputPath, 'utf-8');
+  try {
+    const result = await postcss([tailwindcss, autoprefixer])
+      .process(css, { from: inputPath, to: outputPath });
+    writeFileSync(outputPath, result.css);
+    console.log(`✓ Processed CSS: ${inputPath} → ${outputPath}`);
+  } catch (error) {
+    console.error(`Error processing CSS: ${error.message}`);
+    // Fallback: copy original file
+    copyFileSync(inputPath, outputPath);
+  }
+}
+
+// Process Tailwind CSS
+if (existsSync('src/ui/tailwind-input.css')) {
+  await processCSS('src/ui/tailwind-input.css', 'dist/panel.css');
+} else if (existsSync('src/ui/panel.css')) {
+  // Fallback: copy existing CSS if tailwind-input.css doesn't exist
   copyFileSync('src/ui/panel.css', 'dist/panel.css');
+}
+
+// Copy themes
+if (existsSync('src/ui/theme/themes')) {
+  if (!existsSync('dist/themes')) {
+    mkdirSync('dist/themes');
+  }
+  const themeFiles = readdirSync('src/ui/theme/themes');
+  for (const theme of themeFiles) {
+    if (theme.endsWith('.css')) {
+      copyFileSync(
+        path.join('src/ui/theme/themes', theme),
+        path.join('dist/themes', theme)
+      );
+    }
+  }
 }
 
 // Build configuration
@@ -58,6 +100,13 @@ const backgroundBuild = {
 
 async function build() {
   try {
+    // Process CSS first (before building JS)
+    if (existsSync('src/ui/tailwind-input.css')) {
+      await processCSS('src/ui/tailwind-input.css', 'dist/panel.css');
+    } else if (existsSync('src/ui/panel.css')) {
+      copyFileSync('src/ui/panel.css', 'dist/panel.css');
+    }
+
     if (isWatch) {
       const contentCtx = await esbuild.context(contentBuild);
       const backgroundCtx = await esbuild.context(backgroundBuild);
@@ -66,7 +115,10 @@ async function build() {
 
       console.log('Watching for changes...');
     } else {
-      await Promise.all([esbuild.build(contentBuild), esbuild.build(backgroundBuild)]);
+      await Promise.all([
+        esbuild.build(contentBuild),
+        esbuild.build(backgroundBuild)
+      ]);
 
       console.log('Build completed successfully!');
     }

@@ -92,6 +92,9 @@
 | **Zod** | 3.x | Validação de dados em runtime |
 | **document.elementFromPoint()** | - | Hit test para auto-mapeamento |
 | **webpackChunkwhatsapp_web_client** | N/A | Interceptação de módulos WhatsApp |
+| **Fetch API** | - | Envio de webhooks/API (exportação tempo real) |
+| **Chat.getModelsArray()** | N/A | Ordenação de chats (padrão WA-Sync) |
+| **ConversationMsgs.loadEarlierMsgs()** | N/A | Raspagem histórica (padrão WA-Sync) |
 
 **Por que Zod:**
 - ✅ Zero dependências
@@ -710,17 +713,30 @@ FASE 4: Completo (futuro)
 
 ### 8.1 Por que não React/Vue/Svelte?
 
-**Decisão:** Manter Vanilla JS/TS para UI.
+**Decisão:** Manter Vanilla JS/TS para UI com Plugin System.
 
 **Razão:**
 - Extensão Chrome tem bundle size limit
 - Performance é crítica (roda dentro do WhatsApp)
 - Menos dependências = menos bugs
 - UI é simples (painel lateral)
+- **Plugin System resolve isolamento sem framework pesado**
 
-**Quando reconsiderar:**
+**Arquitetura:**
+- **PanelShell (Core)**: Apenas navegação, não conhece módulos específicos
+- **ModuleRegistry**: Descobre módulos automaticamente via escaneamento
+- **Modules/**: Cada módulo se registra sozinho, isolado dos outros
+- **Lazy Loading**: Carrega módulos apenas quando necessário
+
+**Quando reconsiderar React:**
 - Se UI ficar muito complexa (muitos estados)
 - Se precisar de componentes reutilizáveis demais
+- Se time crescer e precisar de DX melhor
+
+**Migração futura:**
+- Plugin System permite migração gradual
+- Módulos podem migrar para React individualmente
+- Core permanece Vanilla TS (performance)
 
 ### 8.2 Por que esbuild e não Webpack/Vite?
 

@@ -7,21 +7,79 @@ import {
 } from '../types/schemas';
 import { z } from 'zod';
 
-const DB_NAME = 'mettri-db';
+const DB_NAME_BASE = 'mettri-db';
 const DB_VERSION = 1;
 const STORE_MESSAGES = 'messages';
 
 export class MessageDB {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  private currentUserWid: string | null = null;
 
   constructor() {
+    // Inicializa com banco padrão para compatibilidade
+    // Pode ser trocado para banco específico via setUserWid()
     this.initPromise = this.init();
   }
 
+  /**
+   * Sanitiza WID para uso como nome de banco de dados.
+   */
+  private sanitizeWidForDB(wid: string): string {
+    return wid.replace(/[@.]/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+  }
+
+  /**
+   * Retorna o nome do banco de dados baseado no userWid atual.
+   */
+  private getDBName(): string {
+    if (this.currentUserWid) {
+      const sanitized = this.sanitizeWidForDB(this.currentUserWid);
+      return `${DB_NAME_BASE}-${sanitized}`;
+    }
+    return DB_NAME_BASE; // Banco padrão para compatibilidade
+  }
+
+  /**
+   * Define o WID do usuário atual e abre o banco correspondente.
+   * Fecha o banco atual se existir e abre um novo.
+   */
+  async setUserWid(wid: string): Promise<void> {
+    if (this.currentUserWid === wid) {
+      // Mesmo usuário, não precisa fazer nada
+      return;
+    }
+
+    // Fechar banco atual se existir
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+
+    this.currentUserWid = wid;
+    this.initPromise = null; // Reset init promise
+
+    // Inicializar novo banco
+    await this.init();
+    console.log(`[MessageDB] Banco aberto para usuário: ${wid} (${this.getDBName()})`);
+  }
+
+  /**
+   * Retorna o WID do usuário atual.
+   */
+  getCurrentUserWid(): string | null {
+    return this.currentUserWid;
+  }
+
   private async init(): Promise<void> {
+    // Se já está inicializado e o banco está aberto, não precisa fazer nada
+    if (this.db && this.db.name === this.getDBName()) {
+      return;
+    }
+
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      const dbName = this.getDBName();
+      const request = indexedDB.open(dbName, DB_VERSION);
 
       request.onerror = () => {
         console.error('Mettri: Failed to open database');
@@ -236,7 +294,82 @@ export class MessageDB {
   public async exportMessages(): Promise<CapturedMessage[]> {
     return this.getMessages(undefined, 10000); // Export up to 10k messages
   }
+
+  /**
+   * Agrupa mensagens por contato.
+   * Retorna um mapa onde a chave é o chatId e o valor contém informações do contato e suas mensagens.
+   */
+  public async groupMessagesByContact(): Promise<Map<string, {
+    chatId: string;
+    chatName: string;
+    messageCount: number;
+    lastMessage: CapturedMessage | null;
+    lastMessageTime: Date | null;
+  }>> {
+    const db = await this.ensureReady();
+    const contactsMap = new Map<string, {
+      chatId: string;
+      chatName: string;
+      messageCount: number;
+      lastMessage: CapturedMessage | null;
+      lastMessageTime: Date | null;
+    }>();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readonly');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      // Usar índice de timestamp para percorrer na ordem correta (mais recente primeiro)
+      const index = store.index('timestamp');
+      const request = index.openCursor(null, 'prev'); // 'prev' = ordem descendente (mais recente primeiro)
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          // Processamento completo - já está ordenado por timestamp descendente
+          resolve(contactsMap);
+          return;
+        }
+
+        const rawEntry = cursor.value as unknown;
+        try {
+          const validatedEntry = this.validateDBEntry(rawEntry);
+          const message = dbEntryToMessage(validatedEntry);
+
+          const existing = contactsMap.get(message.chatId);
+          if (!existing) {
+            // Primeira mensagem deste contato (como estamos percorrendo do mais recente para o mais antigo,
+            // a primeira mensagem encontrada já é a mais recente)
+            contactsMap.set(message.chatId, {
+              chatId: message.chatId,
+              chatName: message.chatName,
+              messageCount: 1,
+              lastMessage: message,
+              lastMessageTime: message.timestamp,
+            });
+          } else {
+            // Incrementar contador apenas
+            // Como estamos percorrendo do mais recente para o mais antigo,
+            // a primeira mensagem já foi definida como lastMessage
+            existing.messageCount++;
+          }
+        } catch (error) {
+          console.error('Mettri: Erro ao processar mensagem no agrupamento:', error);
+        }
+
+        cursor.continue();
+      };
+    });
+  }
+
+  /**
+   * Obtém todas as mensagens de um contato específico, ordenadas por data.
+   */
+  public async getContactMessages(chatId: string, limit = 1000): Promise<CapturedMessage[]> {
+    return this.getMessages(chatId, limit);
+  }
 }
 
 // Singleton instance
+// IMPORTANTE: Não inicializa automaticamente - deve chamar setUserWid() ou init() manualmente
 export const messageDB = new MessageDB();
