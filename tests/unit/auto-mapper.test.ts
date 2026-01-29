@@ -23,10 +23,12 @@ describe('SelectorGenerator', () => {
   it('deve gerar candidatos a partir de um elemento com id único', () => {
     const element = document.createElement('div');
     element.id = 'unique-id';
+    document.body.appendChild(element);
 
     const candidates = generator.generateCandidates(element);
 
     expect(candidates).toContain('#unique-id');
+    document.body.removeChild(element);
   });
 
   it('deve gerar candidatos a partir de classes', () => {
@@ -65,7 +67,9 @@ describe('SelectorValidator', () => {
     const context = {
       selectorId: 'test',
       expectedCount: 1,
-      mustBeVisible: true,
+      // Em JSDOM não há layout real (offsetWidth/offsetHeight == 0),
+      // então visibilidade visual não é um requisito confiável aqui.
+      mustBeVisible: false,
     };
 
     const result = await validator.validate('#test-element', element, context);

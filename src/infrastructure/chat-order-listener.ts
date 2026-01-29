@@ -10,7 +10,7 @@ type OrderUpdateCallback = () => void;
 export class ChatOrderListener {
   private callbacks: OrderUpdateCallback[] = [];
   private isListening = false;
-  private debounceTimer: NodeJS.Timeout | null = null;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly DEBOUNCE_MS = 500; // Debounce de 500ms para evitar muitas atualizações
 
   /**
@@ -37,7 +37,7 @@ export class ChatOrderListener {
    * @param maxAttempts Número máximo de tentativas (padrão: 5)
    * @param interceptors Instância de WhatsAppInterceptors (opcional, tenta buscar globalmente)
    */
-  public start(maxAttempts: number = 5, interceptors?: any): void {
+  public start(maxAttempts = 5, interceptors?: unknown): void {
     if (this.isListening) {
       return; // Já está escutando
     }
@@ -57,8 +57,9 @@ export class ChatOrderListener {
 
     // Tentar acessar Chat e Msg via interceptors
     try {
-      const Chat = interceptors.Chat;
-      const Msg = interceptors.Msg;
+      const maybe = interceptors as { Chat?: unknown; Msg?: unknown } | null;
+      const Chat = maybe?.Chat as any;
+      const Msg = maybe?.Msg as any;
 
       if (!Chat || !Msg) {
         if (maxAttempts > 0) {
@@ -99,7 +100,7 @@ export class ChatOrderListener {
         // Mudança de timestamp (propriedade 't') - afeta ordem diretamente
         // IMPORTANTE: WhatsApp pode não disparar evento específico para 't'
         // Então escutamos mudanças genéricas mas verificamos se é relevante
-        Chat.on('change', (chat: any) => {
+        Chat.on('change', (_chat: unknown) => {
           // Quando qualquer chat muda, pode ter afetado a ordem
           // O WhatsApp reordena automaticamente quando 't' muda
           // Então sempre notificamos (com debounce para evitar spam)

@@ -259,7 +259,7 @@ export class ReactivationPanel {
     // Calcular métricas para novo design
     this.totalContacts = 33232; // TODO: Buscar do banco real
     this.eligibleCount = this.eligibleClients.filter(c =>
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     ).length;
 
     // Calcular filtros de período
@@ -304,7 +304,7 @@ export class ReactivationPanel {
   /**
    * Atualiza seção unificada de inativos (mantido para compatibilidade).
    */
-  private updateUnifiedInactive(): void {
+  public updateUnifiedInactive(): void {
     this.updateUnifiedFlow();
   }
 
@@ -381,8 +381,7 @@ export class ReactivationPanel {
       c.daysInactive >= minDays &&
       c.daysInactive < maxDays &&
       c.status === 'pending' &&
-      !c.isSpecialList &&
-      c.status !== 'excluded'
+      !c.isSpecialList
     );
 
     // Verificar se todos estão selecionados
@@ -555,9 +554,9 @@ export class ReactivationPanel {
   /**
    * Configura listeners da seção unificada de inativos.
    */
-  private setupUnifiedInactiveListeners(): void {
-    const daySelector = this.container?.querySelector('#reactivation-day-selector');
-    const dropdown = this.container?.querySelector('#reactivation-cadence-dropdown');
+  public setupUnifiedInactiveListeners(): void {
+    const daySelector = this.container?.querySelector('#reactivation-day-selector') as HTMLElement | null;
+    const dropdown = this.container?.querySelector('#reactivation-cadence-dropdown') as HTMLElement | null;
 
     // Toggle dropdown (agora dropdown pode ser customizado via Tailwind)
     daySelector?.addEventListener('click', (e) => {
@@ -627,13 +626,13 @@ export class ReactivationPanel {
   /**
    * Configura listeners das ações de seleção (Todos, por dia, limpar).
    */
-  private setupUnifiedFlowActions(): void {
+  public setupUnifiedFlowActions(): void {
     // Selecionar todos
     const selectAllBtn = this.container?.querySelector('#reactivation-select-all-days');
     selectAllBtn?.addEventListener('click', () => {
       const selectedDay = this.selectedInactiveDay || this.cadenceDays[0] || 21;
       this.eligibleClients
-        .filter(c => c.daysInactive >= selectedDay && c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded')
+        .filter(c => c.daysInactive >= selectedDay && c.status === 'pending' && !c.isSpecialList)
         .forEach(client => {
           this.selectedClients.add(client.chatId);
         });
@@ -649,8 +648,7 @@ export class ReactivationPanel {
           c.daysInactive >= day &&
           c.daysInactive < (this.cadenceDays[this.cadenceDays.indexOf(day) + 1] || Infinity) &&
           c.status === 'pending' &&
-          !c.isSpecialList &&
-          c.status !== 'excluded'
+          !c.isSpecialList
         );
         dayClients.forEach(client => {
           this.selectedClients.add(client.chatId);
@@ -672,7 +670,7 @@ export class ReactivationPanel {
   /**
    * Configura listeners da lista de destinatários.
    */
-  private setupUnifiedRecipients(): void {
+  public setupUnifiedRecipients(): void {
     // Checkboxes individuais (agora dentro de glass-subtle cards)
     const checkboxes = this.container?.querySelectorAll('input[type="checkbox"][data-chat-id]');
     checkboxes?.forEach(checkbox => {
@@ -780,7 +778,7 @@ export class ReactivationPanel {
   /**
    * Renderiza visão geral compacta com breakdown por dias.
    */
-  private renderOverview(): string {
+  public renderOverview(): string {
     const totalInactive = this.eligibleClients.length;
     const countsByDay = this.getCadenceCounts();
 
@@ -802,7 +800,7 @@ export class ReactivationPanel {
   /**
    * Renderiza seção de preparação de envios.
    */
-  private renderPrepareSection(): string {
+  public renderPrepareSection(): string {
     const selectedCount = this.selectedClients.size;
     const selectedClients = this.eligibleClients.filter(c => this.selectedClients.has(c.chatId));
 
@@ -895,12 +893,12 @@ export class ReactivationPanel {
     const selectedCount = this.selectedClients.size;
     const selectedClients = this.eligibleClients.filter(c =>
       this.selectedClients.has(c.chatId) &&
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     );
 
     // Clientes elegíveis para exibição
     const eligibleClients = this.eligibleClients.filter(c =>
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     );
 
     return `
@@ -1142,7 +1140,7 @@ export class ReactivationPanel {
   /**
    * Renderiza lista de destinatários no formato unificado (mantido para compatibilidade).
    */
-  private renderUnifiedRecipientsList(clients: InactiveClient[]): string {
+  public renderUnifiedRecipientsList(clients: InactiveClient[]): string {
     return this.renderContactsList(clients);
   }
 
@@ -1169,7 +1167,7 @@ export class ReactivationPanel {
   /**
    * Calcula quantos clientes estão inativos há mais de X dias.
    */
-  private getInactiveCountForDay(day: number): number {
+  public getInactiveCountForDay(day: number): number {
     return this.eligibleClients.filter(client => client.daysInactive >= day).length;
   }
 
@@ -1187,7 +1185,7 @@ export class ReactivationPanel {
     // Período 21-35
     const count21_35 = this.eligibleClients.filter(c =>
       c.daysInactive >= 21 && c.daysInactive < 36 &&
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     ).length;
     const selected21_35 = this.eligibleClients.filter(c =>
       c.daysInactive >= 21 && c.daysInactive < 36 &&
@@ -1204,7 +1202,7 @@ export class ReactivationPanel {
     // Período 36-55
     const count36_55 = this.eligibleClients.filter(c =>
       c.daysInactive >= 36 && c.daysInactive < 56 &&
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     ).length;
     const selected36_55 = this.eligibleClients.filter(c =>
       c.daysInactive >= 36 && c.daysInactive < 56 &&
@@ -1221,7 +1219,7 @@ export class ReactivationPanel {
     // Período 56-83
     const count56_83 = this.eligibleClients.filter(c =>
       c.daysInactive >= 56 && c.daysInactive < 84 &&
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     ).length;
     const selected56_83 = this.eligibleClients.filter(c =>
       c.daysInactive >= 56 && c.daysInactive < 84 &&
@@ -1238,7 +1236,7 @@ export class ReactivationPanel {
     // Período +84 (sempre variant filled quando selecionado)
     const count84Plus = this.eligibleClients.filter(c =>
       c.daysInactive >= 84 &&
-      c.status === 'pending' && !c.isSpecialList && c.status !== 'excluded'
+      c.status === 'pending' && !c.isSpecialList
     ).length;
     const selected84Plus = this.eligibleClients.filter(c =>
       c.daysInactive >= 84 &&
@@ -1287,7 +1285,7 @@ export class ReactivationPanel {
   /**
    * Renderiza cards de estatísticas.
    */
-  private renderStats(): void {
+  public renderStats(): void {
     if (!this.container) return;
 
     const statsContainer = this.container.querySelector('#reactivation-stats');
@@ -1316,7 +1314,7 @@ export class ReactivationPanel {
   /**
    * Renderiza configuração de templates.
    */
-  private renderTemplateConfig(): string {
+  public renderTemplateConfig(): string {
     const selectedDay = this.cadenceDays[0] || 21;
     const template = this.templates[String(selectedDay)] || 'Olá {{name}}! Sentimos sua falta por aqui.';
 
@@ -1472,7 +1470,7 @@ export class ReactivationPanel {
   /**
    * Deseleciona todos os clientes.
    */
-  private deselectAllClients(): void {
+  public deselectAllClients(): void {
     this.selectedClients.clear();
     this.updateUnifiedFlow();
   }

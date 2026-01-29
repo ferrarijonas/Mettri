@@ -510,7 +510,7 @@ export class TestPanel {
         // Escapar HTML para evitar problemas de renderização
         const escapedFriendlyName = this.escapeHtml(friendlyName);
         const escapedModuleName = this.escapeHtml(moduleName);
-        const escapedDescription = this.escapeHtml(description);
+        void description;
         return `
           <div class="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 transition-colors group ${statusClass}" data-module="${escapedModuleName}">
             <div class="w-4 h-4 flex items-center justify-center flex-shrink-0" data-status-indicator>${statusIcon}</div>
@@ -1177,13 +1177,6 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
    */
   private getModuleDescription(moduleName: string): string {
     return this.MODULE_DESCRIPTIONS[moduleName] || 'Módulo da Sentinela do WhatsApp.';
-  }
-
-  /**
-   * Mostra informações do módulo (removido - agora usa tooltip)
-   */
-  private showModuleInfo(moduleName: string): void {
-    // Método removido - tooltip é gerenciado via CSS e eventos
   }
 
   /**
@@ -1899,7 +1892,6 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
             // Se ainda não encontrou grupos, tentar buscar via métodos do GroupMetadata
             if (groups.length === 0 && groupMetadata.default) {
               try {
-                const defaultObj = groupMetadata.default;
                 if (chatModule && chatModule._models) {
                   // Verificar TODOS os chats que têm @ no ID
                   const allChatsWithId = chatModule._models.filter((chat: any) => {

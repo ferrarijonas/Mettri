@@ -1,6 +1,7 @@
 import type { SelectorTarget, ScanResult, ScanSession, ScanConfig, SelectorCategory } from '../types/selector-scanner';
 import { SelectorGenerator } from './auto-mapper/selector-generator';
 import { SelectorValidator, type SelectorContext } from './auto-mapper/selector-validator';
+import { SelectorManager } from './selector-manager';
 import { VisualScanner } from './visual-scanner';
 import { MettriElementFilter } from './mettri-element-filter';
 
@@ -22,6 +23,7 @@ import { MettriElementFilter } from './mettri-element-filter';
 export class SelectorScanner {
   private generator: SelectorGenerator;
   private validator: SelectorValidator;
+  private selectorManager: SelectorManager;
   private visualScanner: VisualScanner;
   private session: ScanSession | null = null;
   private onProgressCallback?: (progress: number) => void;
@@ -35,6 +37,7 @@ export class SelectorScanner {
   constructor() {
     this.generator = new SelectorGenerator();
     this.validator = new SelectorValidator();
+    this.selectorManager = new SelectorManager();
     this.visualScanner = new VisualScanner();
   }
 

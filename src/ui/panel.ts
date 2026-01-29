@@ -1,10 +1,23 @@
 import type { CapturedMessage, PanelState, UserSession } from '../types';
+import type { MessageCapturer } from '../core/message-capturer';
 import { messageDB } from '../storage/message-db';
 import { ModuleRegistry, PanelShell, EventBus } from './core';
 import { getIcon } from './icons/lucide-icons';
 import { KebabMenu } from './components/kebab-menu';
 import { UserSessionModal } from './components/user-session-modal';
 import { getExtensionResourceUrl } from './core/extension-url';
+import { MettriBridgeClient } from '../content/bridge-client';
+import { LocalBatchExporter } from '../infrastructure/local-batch-exporter';
+
+type PanelSettings = Record<string, unknown> & {
+  historyEnabled?: unknown;
+};
+
+function readHistoryEnabled(settings: unknown): boolean {
+  if (!settings || typeof settings !== 'object') return false;
+  const record = settings as PanelSettings;
+  return record.historyEnabled === true;
+}
 
 export class MettriPanel {
   private hostEl: HTMLDivElement | null = null;
@@ -20,6 +33,10 @@ export class MettriPanel {
   private userSessionModal: UserSessionModal | null = null;
   private isDarkMode: boolean = false; // Estado do dark mode
   private userSession: UserSession | null = null; // Sessão do usuário atual
+  private capturer: MessageCapturer | null = null;
+  private bridge = new MettriBridgeClient(2500);
+  private historyEnabled: boolean = false; // Toggle do Histórico (persistido)
+  private exporter: LocalBatchExporter | null = null;
   private state: PanelState = {
     isVisible: true,
     isCapturing: false,
@@ -43,8 +60,25 @@ export class MettriPanel {
     this.userSessionModal = new UserSessionModal();
     // Inicializar UI com aviso (conta ainda não detectada)
     this.updateUserSessionUI(null);
+
+    // Carregar settings antes de renderizar módulos (para o Histórico nascer OFF por padrão)
+    await this.loadAndApplySettings();
+
     await this.initializePluginSystem();
+    this.startExportScheduler();
     this.loadMessages();
+  }
+
+  private startExportScheduler(): void {
+    if (this.exporter) return;
+    this.exporter = new LocalBatchExporter({
+      // checagens periódicas leves enquanto o WhatsApp estiver aberto
+      intervalMs: 30 * 60 * 1000,
+      nearLimitThreshold: 9000,
+    });
+    this.exporter.start();
+    // Debug via console
+    window.MettriExporter = this.exporter;
   }
 
   /**
@@ -150,9 +184,23 @@ export class MettriPanel {
           <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" id="mettri-status-dot"></div>
           <span class="text-[11px] text-muted-foreground" id="mettri-status-text">Sincronizado</span>
         </div>
-        <button class="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center" id="mettri-refresh" title="Atualizar">
-          <span class="w-3.5 h-3.5">${getIcon('RefreshCw')}</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Toggle do Histórico (só aparece no módulo Histórico) -->
+          <div class="flex items-center gap-1.5" id="mettri-history-toggle-wrap" style="display: none;">
+            <span class="text-[10px] text-muted-foreground">Histórico</span>
+            <label class="relative inline-flex items-center cursor-pointer select-none">
+              <input type="checkbox" id="mettri-history-toggle" class="sr-only peer">
+              <!-- trilho com contorno sempre visível -->
+              <span class="w-9 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 border border-black/45 dark:border-white/40 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.20)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.20)] peer-checked:bg-primary transition-colors"></span>
+              <!-- “bolinha” com contorno -->
+              <span class="absolute left-[2px] top-[2px] w-4 h-4 rounded-full bg-white dark:bg-zinc-100 border border-black/60 dark:border-white/60 shadow-md peer-checked:left-[18px] transition-all"></span>
+            </label>
+          </div>
+
+          <button class="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center" id="mettri-refresh" title="Atualizar">
+            <span class="w-3.5 h-3.5">${getIcon('RefreshCw')}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Content Area -->
@@ -175,9 +223,90 @@ export class MettriPanel {
 
     // Setup event listeners
     this.setupEventListeners();
+    this.setupHistoryToggleListeners();
 
     // Criar KebabMenu
     this.createKebabMenu();
+  }
+
+  /**
+   * Lê settings persistidos e aplica no painel.
+   * Importante: roda antes do plugin system para o Histórico iniciar OFF.
+   */
+  private async loadAndApplySettings(): Promise<void> {
+    try {
+      const result = await this.bridge.storageGet(['settings']);
+      const settings = (result?.settings ?? {}) as unknown;
+      this.historyEnabled = readHistoryEnabled(settings);
+
+      // Se ainda não existe no storage, persistir default (OFF)
+      const record = settings && typeof settings === 'object' ? (settings as PanelSettings) : ({} as PanelSettings);
+      if (typeof record.historyEnabled === 'undefined') {
+        await this.bridge.storageSet({
+          settings: {
+            ...record,
+            historyEnabled: false,
+          },
+        });
+      }
+    } catch (error) {
+      // Fallback: manter OFF por padrão
+      this.historyEnabled = false;
+    }
+
+    this.updateHistoryToggleChecked();
+    // Emitir estado para módulos
+    this.eventBus.emit('settings:history-enabled', { enabled: this.historyEnabled });
+  }
+
+  private updateHistoryToggleChecked(): void {
+    const input = this.container?.querySelector('#mettri-history-toggle') as HTMLInputElement | null;
+    if (input) {
+      input.checked = this.historyEnabled;
+    }
+  }
+
+  private updateHistoryToggleVisibility(moduleId: string): void {
+    const wrap = this.container?.querySelector('#mettri-history-toggle-wrap') as HTMLElement | null;
+    if (!wrap) return;
+    wrap.style.display = moduleId === 'clientes.history' ? 'flex' : 'none';
+  }
+
+  private setupHistoryToggleListeners(): void {
+    const input = this.container?.querySelector('#mettri-history-toggle') as HTMLInputElement | null;
+    if (!input) return;
+
+    input.addEventListener('change', async () => {
+      const enabled = input.checked === true;
+      this.historyEnabled = enabled;
+
+      // Persistir
+      try {
+        const result = await this.bridge.storageGet(['settings']);
+        const settings = (result?.settings ?? {}) as unknown;
+        const record = settings && typeof settings === 'object' ? (settings as PanelSettings) : ({} as PanelSettings);
+        await this.bridge.storageSet({
+          settings: {
+            ...record,
+            historyEnabled: enabled,
+          },
+        });
+      } catch (error) {
+        console.warn('[MettriPanel] Falha ao persistir historyEnabled:', error);
+      }
+
+      // Notificar módulos
+      this.eventBus.emit('settings:history-enabled', { enabled });
+
+      // Se estiver no módulo de histórico, re-renderizar para aplicar gating (placeholder ↔ full)
+      if (this.panelShell && this.currentModuleId === 'clientes.history') {
+        try {
+          await this.panelShell.switchToModule('clientes.history');
+        } catch (error) {
+          console.warn('[MettriPanel] Falha ao re-renderizar histórico após toggle:', error);
+        }
+      }
+    });
   }
 
   /**
@@ -410,6 +539,11 @@ export class MettriPanel {
         this.currentModuleId = data.moduleId;
         this.updateSidebarTitle(data.moduleId);
         this.updateNavBarActive(data.moduleId);
+        this.updateHistoryToggleVisibility(data.moduleId);
+        if (data.moduleId === 'clientes.history') {
+          this.updateHistoryToggleChecked();
+          this.eventBus.emit('settings:history-enabled', { enabled: this.historyEnabled });
+        }
         console.log(`[MettriPanel] Módulo ativo: ${data.moduleId}`);
       });
 
@@ -633,8 +767,12 @@ export class MettriPanel {
   /**
    * Define o MessageCapturer para atualizar estatísticas.
    */
-  public setMessageCapturer(capturer: any): void {
-    (this as any).capturer = capturer;
+  public setMessageCapturer(capturer: MessageCapturer): void {
+    this.capturer = capturer;
+  }
+
+  public getMessageCapturer(): MessageCapturer | null {
+    return this.capturer;
   }
 
   /**

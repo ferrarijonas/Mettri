@@ -91,6 +91,15 @@ const contentBuild = {
   outfile: 'dist/content.js',
 };
 
+// Bridge content script (isolated world)
+// - Runs in the default isolated world to access chrome.* APIs safely.
+// - Communicates with MAIN-world script via window.postMessage.
+const bridgeBuild = {
+  ...buildOptions,
+  entryPoints: ['src/content/bridge.ts'],
+  outfile: 'dist/content-bridge.js',
+};
+
 // Background service worker
 const backgroundBuild = {
   ...buildOptions,
@@ -109,14 +118,16 @@ async function build() {
 
     if (isWatch) {
       const contentCtx = await esbuild.context(contentBuild);
+      const bridgeCtx = await esbuild.context(bridgeBuild);
       const backgroundCtx = await esbuild.context(backgroundBuild);
 
-      await Promise.all([contentCtx.watch(), backgroundCtx.watch()]);
+      await Promise.all([contentCtx.watch(), bridgeCtx.watch(), backgroundCtx.watch()]);
 
       console.log('Watching for changes...');
     } else {
       await Promise.all([
         esbuild.build(contentBuild),
+        esbuild.build(bridgeBuild),
         esbuild.build(backgroundBuild)
       ]);
 

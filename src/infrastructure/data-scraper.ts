@@ -20,6 +20,7 @@ function safeLog(obj: any, label: string): void {
   try {
     // Forma 1: Logar propriedades específicas
     const info: any = {
+      label,
       type: typeof obj,
       isFunction: typeof obj === 'function',
       isObject: typeof obj === 'object',
@@ -59,6 +60,7 @@ function safeLog(obj: any, label: string): void {
     // Forma 2: Tentar JSON.stringify (pode falhar com objetos circulares)
     try {
       const json = JSON.stringify(obj, (key, value) => {
+        void key;
         if (typeof value === 'function') return '[Function]';
         if (typeof value === 'object' && value !== null) {
           if (seen.has(value)) return '[Circular]';
