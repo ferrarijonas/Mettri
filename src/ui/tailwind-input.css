@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+/* WhatsApp-inspired color palette for METTRI */
+/* IMPORTANTE: Variáveis APENAS dentro do painel do Mettri - NÃO afeta WhatsApp */
+#mettri-panel,
+#mettri-panel * {
+  /* Core WhatsApp greens */
+  --whatsapp-primary: oklch(0.72 0.17 155) !important;
+  --whatsapp-primary-hover: oklch(0.65 0.15 155) !important;
+  --whatsapp-accent: oklch(0.68 0.14 160) !important;
+
+  /* Light mode backgrounds */
+  --background: oklch(0.98 0.005 155) !important;
+  --foreground: oklch(0.15 0.01 155) !important;
+  --card: oklch(1 0 0 / 0.7) !important;
+  --card-foreground: oklch(0.15 0.01 155) !important;
+  --popover: oklch(1 0 0 / 0.85) !important;
+  --popover-foreground: oklch(0.15 0.01 155) !important;
+  --primary: oklch(0.72 0.17 155) !important;
+  --primary-foreground: oklch(1 0 0) !important;
+  --secondary: oklch(0.96 0.01 155) !important;
+  --secondary-foreground: oklch(0.25 0.02 155) !important;
+  --muted: oklch(0.94 0.01 155) !important;
+  --muted-foreground: oklch(0.45 0.02 155) !important;
+  --accent: oklch(0.72 0.17 155 / 0.15) !important;
+  --accent-foreground: oklch(0.55 0.12 155) !important;
+  --destructive: oklch(0.55 0.22 25) !important;
+  --destructive-foreground: oklch(0.55 0.22 25) !important;
+  --border: oklch(0.88 0.02 155 / 0.5) !important;
+  --input: oklch(0.94 0.01 155) !important;
+  --ring: oklch(0.72 0.17 155 / 0.5) !important;
+  --chart-1: oklch(0.72 0.17 155) !important;
+  --chart-2: oklch(0.65 0.12 180) !important;
+  --chart-3: oklch(0.58 0.08 200) !important;
+  --chart-4: oklch(0.78 0.14 90) !important;
+  --chart-5: oklch(0.7 0.18 30) !important;
+  --radius: 1rem !important;
+  --sidebar: oklch(1 0 0 / 0.6) !important;
+  --sidebar-foreground: oklch(0.15 0.01 155) !important;
+  --sidebar-primary: oklch(0.72 0.17 155) !important;
+  --sidebar-primary-foreground: oklch(1 0 0) !important;
+  --sidebar-accent: oklch(0.72 0.17 155 / 0.1) !important;
+  --sidebar-accent-foreground: oklch(0.55 0.12 155) !important;
+  --sidebar-border: oklch(0.88 0.02 155 / 0.3) !important;
+  --sidebar-ring: oklch(0.72 0.17 155 / 0.4) !important;
+
+  /* Glass effect variables */
+  --glass-bg: oklch(1 0 0 / 0.65) !important;
+  --glass-border: oklch(1 0 0 / 0.3) !important;
+  --glass-shadow: oklch(0 0 0 / 0.08) !important;
+}
+
+#mettri-panel.dark,
+#mettri-panel .dark {
+  /* Dark mode - WhatsApp dark palette */
+  --background: oklch(0.14 0.015 155) !important;
+  --foreground: oklch(0.92 0.01 155) !important;
+  --card: oklch(0.18 0.015 155 / 0.7) !important;
+  --card-foreground: oklch(0.92 0.01 155) !important;
+  --popover: oklch(0.2 0.015 155 / 0.9) !important;
+  --popover-foreground: oklch(0.92 0.01 155) !important;
+  --primary: oklch(0.72 0.17 155) !important;
+  --primary-foreground: oklch(0.12 0.01 155) !important;
+  --secondary: oklch(0.22 0.015 155) !important;
+  --secondary-foreground: oklch(0.88 0.01 155) !important;
+  --muted: oklch(0.25 0.015 155) !important;
+  --muted-foreground: oklch(0.65 0.02 155) !important;
+  --accent: oklch(0.72 0.17 155 / 0.2) !important;
+  --accent-foreground: oklch(0.72 0.17 155) !important;
+  --destructive: oklch(0.45 0.18 25) !important;
+  --destructive-foreground: oklch(0.65 0.22 25) !important;
+  --border: oklch(0.3 0.02 155 / 0.5) !important;
+  --input: oklch(0.22 0.015 155) !important;
+  --ring: oklch(0.72 0.17 155 / 0.5) !important;
+  --chart-1: oklch(0.72 0.17 155) !important;
+  --chart-2: oklch(0.6 0.1 180) !important;
+  --chart-3: oklch(0.5 0.08 200) !important;
+  --chart-4: oklch(0.7 0.12 90) !important;
+  --chart-5: oklch(0.62 0.16 30) !important;
+  --sidebar: oklch(0.16 0.015 155 / 0.8) !important;
+  --sidebar-foreground: oklch(0.92 0.01 155) !important;
+  --sidebar-primary: oklch(0.72 0.17 155) !important;
+  --sidebar-primary-foreground: oklch(0.12 0.01 155) !important;
+  --sidebar-accent: oklch(0.72 0.17 155 / 0.15) !important;
+  --sidebar-accent-foreground: oklch(0.72 0.17 155) !important;
+  --sidebar-border: oklch(0.35 0.02 155 / 0.4) !important;
+  --sidebar-ring: oklch(0.72 0.17 155 / 0.4) !important;
+
+  /* Glass effect variables - dark mode */
+  --glass-bg: oklch(0.16 0.015 155 / 0.75) !important;
+  --glass-border: oklch(0.35 0.02 155 / 0.4) !important;
+  --glass-shadow: oklch(0 0 0 / 0.3) !important;
+}
+
+@theme inline {
+  --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
+  --font-mono: "SF Mono", "Geist Mono", monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 16px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  /* body removido - não aplicar estilos globais que afetam WhatsApp */
+
+  /* Garantir que #mettri-panel e elementos filhos usem font Inter */
+  #mettri-panel,
+  #mettri-navbar,
+  #mettri-panel *,
+  #mettri-navbar * {
+    font-family: var(--font-sans) !important;
+  }
+}
+
+/* Navbar sempre verde WhatsApp - independente do tema */
+#mettri-navbar {
+  background-color: oklch(0.72 0.17 155) !important;
+  --primary: oklch(0.72 0.17 155) !important;
+  --primary-foreground: oklch(1 0 0) !important;
+}
+
+/* Glassmorphism utility classes */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px var(--glass-shadow), inset 0 1px 0 oklch(1 0 0 / 0.1);
+}
+
+.glass-subtle {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid var(--glass-border);
+}
+
+/* Glow effect for buttons */
+.glow-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 20px oklch(0.72 0.17 155 / 0.4), 0 0 40px oklch(0.72 0.17 155 / 0.2);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.72 0.17 155 / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.72 0.17 155 / 0.5);
+}

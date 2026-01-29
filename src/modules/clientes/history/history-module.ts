@@ -1,0 +1,63 @@
+/**
+ * History Module - Módulo de histórico de conversas
+ * 
+ * Exibe histórico completo de mensagens por contato,
+ * com ordenação 1/1 com WhatsApp e busca/filtros.
+ */
+
+import type { ModuleDefinition, PanelFactory } from '../../../ui/core/module-registry';
+import type { EventBus } from '../../../ui/core/event-bus';
+import type { PanelInstance } from '../../../ui/core/module-registry';
+import { HistoryPanel } from './history-panel';
+
+/**
+ * Factory que cria instância do HistoryPanel
+ */
+const createHistoryPanel: PanelFactory = (container: HTMLElement, eventBus: EventBus): PanelInstance => {
+  const panel = new HistoryPanel();
+  
+  // Escutar eventos de nova mensagem para atualizar histórico automaticamente
+  // IMPORTANTE: Aguardar um pouco para garantir que WhatsApp atualizou ordem
+  eventBus.on('message:new', async () => {
+    setTimeout(async () => {
+      try {
+        await panel.refresh();
+      } catch (error) {
+        console.error('[HistoryModule] Erro ao atualizar histórico:', error);
+      }
+    }, 100); // 100ms é suficiente para WhatsApp atualizar ordem
+  });
+  
+  // Adapter para compatibilidade com PanelInstance
+  return {
+    async render() {
+      const element = await panel.render();
+      container.appendChild(element);
+    },
+    destroy() {
+      panel.destroy();
+    }
+  };
+};
+
+/**
+ * Definição do módulo de histórico
+ */
+export const HistoryModule: ModuleDefinition = {
+  id: 'clientes.history',
+  name: 'Histórico',
+  parent: 'clientes', // Módulo filho de clientes
+  icon: '📜',
+  dependencies: [],
+  panelFactory: createHistoryPanel,
+  lazy: true,
+  // modulePath será usado para lazy loading dinâmico no futuro
+  // modulePath: '../../modules/clientes/history/history-module',
+};
+
+/**
+ * Função de registro para descoberta automática
+ */
+export function register(registry: { register: (module: ModuleDefinition) => void }): void {
+  registry.register(HistoryModule);
+}
