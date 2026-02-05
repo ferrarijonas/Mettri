@@ -1,6 +1,6 @@
 {
   "name": "mettri",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Plataforma de vendas conversacionais para WhatsApp Web",
   "type": "module",
   "scripts": {
@@ -50,6 +50,7 @@
     "vitest": "^1.6.1"
   },
   "dependencies": {
+    "xlsx": "^0.18.5",
     "zod": "^3.22.0"
   }
 }
