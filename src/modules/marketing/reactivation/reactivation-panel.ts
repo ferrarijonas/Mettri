@@ -7,6 +7,12 @@
  */
 
 import { getIcon } from '../../../ui/icons/lucide-icons';
+import { messageDB } from '../../../storage/message-db';
+import { clientDB, digitsOnly, normalizePhoneDigitsWithAliases } from '../../../storage/client-db';
+import { daysBetweenByCalendar } from './inactive-days';
+import { classifyNameCandidate } from '../../clientes/name-likelihood';
+import { MettriBridgeClient } from '../../../content/bridge-client';
+import { sendMessageService } from '../../../infrastructure/services';
 
 interface InactiveClient {
   chatId: string;
@@ -35,7 +41,6 @@ export class ReactivationPanel {
   private selectedClients: Set<string> = new Set();
   private selectedInactiveDay: number | null = null;
   private logs: LogEntry[] = [];
-  private templates: Record<string, string> = {};
   private stats = {
     totalEligible: 0,
     selected: 0,
@@ -56,6 +61,13 @@ export class ReactivationPanel {
   private isContactsExpanded: boolean = true;
   private openMenuId: string | null = null;
   private messageText: string = "";
+  private closeMenusHandler: ((e: MouseEvent) => void) | null = null;
+  private closeDropdownHandler: ((e: MouseEvent) => void) | null = null;
+
+  private testContact: { phone: string; name: string } | null = null;
+  private testModeEnabled: boolean = false;
+  private bridge = new MettriBridgeClient(2500);
+  private sendButtonClickHandler: ((e: MouseEvent) => void) | null = null;
 
   constructor() {
     // Constructor vazio - render() será chamado externamente
@@ -94,18 +106,29 @@ export class ReactivationPanel {
   }
 
   /**
-   * Carrega configuração da régua do chrome.storage.
+   * Carrega configuração da régua via bridge (chrome.storage não disponível em world: MAIN).
    */
   private async loadConfig(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['reactivationCadence', 'reactivationTemplates']);
+      const result = await this.bridge.storageGet([
+        'reactivationCadence',
+        'reactivationTestContact',
+        'reactivationTestModeEnabled',
+      ]);
 
       if (result.reactivationCadence && Array.isArray(result.reactivationCadence)) {
         this.cadenceDays = result.reactivationCadence;
       }
 
-      if (result.reactivationTemplates) {
-        this.templates = result.reactivationTemplates;
+      if (result.reactivationTestContact && typeof result.reactivationTestContact === 'object') {
+        const t = result.reactivationTestContact as { phone?: string; name?: string };
+        if (typeof t.phone === 'string' && typeof t.name === 'string') {
+          this.testContact = { phone: t.phone, name: t.name };
+        }
+      }
+
+      if (typeof result.reactivationTestModeEnabled === 'boolean') {
+        this.testModeEnabled = result.reactivationTestModeEnabled;
       }
     } catch (error) {
       console.error('[REACTIVATION] Erro ao carregar configuração:', error);
@@ -114,13 +137,14 @@ export class ReactivationPanel {
   }
 
   /**
-   * Salva configuração da régua no chrome.storage.
+   * Salva configuração da régua via bridge (chrome.storage não disponível em world: MAIN).
    */
   private async saveConfig(): Promise<void> {
     try {
-      await chrome.storage.local.set({
+      await this.bridge.storageSet({
         reactivationCadence: this.cadenceDays,
-        reactivationTemplates: this.templates,
+        reactivationTestContact: this.testContact,
+        reactivationTestModeEnabled: this.testModeEnabled,
       });
       if (this.container) {
         this.addLog('success', 'Configuração salva com sucesso');
@@ -134,145 +158,130 @@ export class ReactivationPanel {
   }
 
   /**
-   * Carrega clientes inativos (MOCK - será implementado depois).
-   * 
-   * TODO: Implementar busca real no IndexedDB
-   * - Buscar mensagens agrupadas por chatId
-   * - Calcular última mensagem por chat
-   * - Filtrar por dias inativos baseado na régua
-   * - Calcular cadenceDay (qual dia da régua o cliente está)
+   * Carrega clientes inativos (REAL via IndexedDB).
+   *
+   * Regra atual (simples):
+   * - última atividade = última mensagem RECEBIDA (incoming)
+   * - elegível quando daysInactive é exatamente um valor da régua (21/35/56/84)
    */
   private async loadInactiveClients(): Promise<void> {
-    // Dados mock para testar UI
-    const now = Date.now();
-    const mockClients: InactiveClient[] = [
-      {
-        chatId: '5511999991111@c.us',
-        chatName: 'João Silva',
-        phone: '+55 11 99999-1111',
-        lastMessageTime: new Date(now - 21 * 24 * 60 * 60 * 1000), // 21 dias atrás
-        daysInactive: 21,
-        cadenceDay: 21,
-        status: 'pending',
-      },
-      {
-        chatId: '5511999992222@c.us',
-        chatName: 'Maria Santos',
-        phone: '+55 11 99999-2222',
-        lastMessageTime: new Date(now - 25 * 24 * 60 * 60 * 1000), // 25 dias atrás
-        daysInactive: 25,
-        cadenceDay: 21, // Ainda no primeiro dia da régua
-        status: 'pending',
-      },
-      {
-        chatId: '5511999993333@c.us',
-        chatName: 'Pedro Oliveira',
-        phone: '+55 11 99999-3333',
-        lastMessageTime: new Date(now - 35 * 24 * 60 * 60 * 1000), // 35 dias atrás
-        daysInactive: 35,
-        cadenceDay: 35,
-        status: 'pending',
-      },
-      {
-        chatId: '5511999994444@c.us',
-        chatName: 'Ana Costa',
-        phone: '+55 11 99999-4444',
-        lastMessageTime: new Date(now - 40 * 24 * 60 * 60 * 1000), // 40 dias atrás
-        daysInactive: 40,
-        cadenceDay: 35, // Ainda no segundo dia da régua
-        status: 'pending',
-      },
-      {
-        chatId: '5511999995555@c.us',
-        chatName: 'Carlos Ferreira',
-        phone: '+55 11 99999-5555',
-        lastMessageTime: new Date(now - 56 * 24 * 60 * 60 * 1000), // 56 dias atrás
-        daysInactive: 56,
-        cadenceDay: 56,
-        status: 'pending',
-      },
-      {
-        chatId: '5511999996666@c.us',
-        chatName: 'Juliana Alves',
-        phone: '+55 11 99999-6666',
-        lastMessageTime: new Date(now - 60 * 24 * 60 * 60 * 1000), // 60 dias atrás
-        daysInactive: 60,
-        cadenceDay: 56, // Ainda no terceiro dia da régua
-        status: 'pending',
-      },
-      {
-        chatId: '5511999997777@c.us',
-        chatName: 'Roberto Lima',
-        phone: '+55 11 99999-7777',
-        lastMessageTime: new Date(now - 84 * 24 * 60 * 60 * 1000), // 84 dias atrás
-        daysInactive: 84,
-        cadenceDay: 84,
-        status: 'pending',
-      },
-      {
-        chatId: '5511999998888@c.us',
-        chatName: 'Fernanda Rocha',
-        phone: '+55 11 99999-8888',
-        lastMessageTime: new Date(now - 90 * 24 * 60 * 60 * 1000), // 90 dias atrás
-        daysInactive: 90,
-        cadenceDay: 84, // Ainda no último dia da régua
-        status: 'pending',
-      },
-      {
-        chatId: '5511999999999@c.us',
-        chatName: 'Lucas Martins',
-        phone: '+55 11 99999-9999',
-        lastMessageTime: new Date(now - 22 * 24 * 60 * 60 * 1000), // 22 dias atrás
-        daysInactive: 22,
-        cadenceDay: 21,
-        status: 'sent', // Já enviado anteriormente
-        generatedMessage: 'Olá Lucas Martins! Sentimos sua falta por aqui.',
-      },
-      {
-        chatId: '5511888881111@c.us',
-        chatName: 'Patricia Souza',
-        phone: '+55 11 88888-1111',
-        lastMessageTime: new Date(now - 36 * 24 * 60 * 60 * 1000), // 36 dias atrás
-        daysInactive: 36,
-        cadenceDay: 35,
-        status: 'responded', // Cliente respondeu
-        generatedMessage: 'Olá Patricia Souza! Sentimos sua falta por aqui.',
-      },
-    ];
+    const now = new Date();
 
-    // Filtrar apenas clientes que estão em um dia da régua
-    this.eligibleClients = mockClients.filter(client => {
-      return this.cadenceDays.includes(client.cadenceDay);
-    });
+    const lastIncomingByContact = await messageDB.getLastIncomingByContact();
 
-    // Calcular cadenceDay correto e primeiro nome formatado para cada cliente
-    this.eligibleClients = this.eligibleClients.map(client => {
-      const cadenceDay = this.calculateCadenceDay(client.daysInactive);
-      const firstName = this.extractFirstName(client.chatName);
-      return {
-        ...client,
-        cadenceDay,
+    // Métrica simples (contatos que têm ao menos 1 mensagem recebida)
+    this.totalContacts = lastIncomingByContact.size;
+
+    const clients: InactiveClient[] = [];
+
+    // Resolver nome via ClientDB (fonte forte) + fallback WhatsApp com “peneira”
+    for (const value of lastIncomingByContact.values()) {
+      const daysInactive = daysBetweenByCalendar(now, value.lastIncomingAt);
+      if (!this.cadenceDays.includes(daysInactive)) continue;
+
+      const rawBeforeAt = value.chatId.split('@')[0] || '';
+      const phone = rawBeforeAt.replace(/\D+/g, '');
+      let firstName = '';
+
+      // 1) Fonte forte: cadastro
+      try {
+        // Tentar bater com/sem 55 e com/sem 9.
+        const normalized = normalizePhoneDigitsWithAliases(phone);
+        const candidates = Array.from(new Set([normalized.phoneDigits, ...normalized.aliasesDigits].filter(Boolean)));
+
+        let record = null as any;
+        for (const d of candidates) {
+          record = (await clientDB.getByPhoneDigits(d)) || (await clientDB.getByKey(d));
+          if (record) break;
+        }
+
+        const candidate = (record?.firstName || record?.fullName || record?.nickname || '').trim();
+        if (candidate) {
+          const classified = classifyNameCandidate(candidate);
+          firstName = classified.kind === 'person' ? this.extractFirstName(classified.firstName) : '';
+        }
+      } catch {
+        // ignore
+      }
+
+      // 2) Fonte fraca: WhatsApp (com peneira)
+      if (!firstName) {
+        const classified = classifyNameCandidate(value.chatName);
+        if (classified.kind === 'person') {
+          firstName = this.extractFirstName(classified.firstName);
+        } else {
+          firstName = ''; // empresa/ruído -> não usar nome
+        }
+      }
+
+      clients.push({
+        chatId: value.chatId,
+        chatName: value.chatName,
+        phone,
+        lastMessageTime: value.lastIncomingAt,
+        daysInactive,
+        cadenceDay: daysInactive, // semântica: dia exato
+        status: 'pending',
         firstName,
-      };
-    });
+      });
+    }
 
-    // Calcular métricas para novo design
-    this.totalContacts = 33232; // TODO: Buscar do banco real
-    this.eligibleCount = this.eligibleClients.filter(c =>
-      c.status === 'pending' && !c.isSpecialList
-    ).length;
+    // Ordenar por mais “frios” primeiro (opcional, mas útil)
+    clients.sort((a, b) => b.daysInactive - a.daysInactive);
 
-    // Calcular filtros de período
+    this.eligibleClients = clients;
+
+    // Default de seleção de dia
+    if (!this.selectedInactiveDay) {
+      this.selectedInactiveDay = this.cadenceDays[0] || 21;
+    }
+
+    this.eligibleCount = this.eligibleClients.filter(c => c.status === 'pending' && !c.isSpecialList).length;
     this.calculatePeriodFilters();
-
     this.updateStats();
   }
 
   /**
-   * Gera mensagem personalizada a partir do template.
+   * Converte telefone para chatId (formato WhatsApp: 5511999999999@c.us).
    */
-  private generateMessage(template: string, name: string): string {
-    return template.replace(/{{\s*name\s*}}/g, name);
+  private phoneToChatId(phone: string): string {
+    const d = digitsOnly(phone);
+    if (!d) return '';
+    let digits = d;
+    if ((d.length === 10 || d.length === 11) && !d.startsWith('55')) {
+      digits = '55' + d;
+    }
+    return `${digits}@c.us`;
+  }
+
+  /**
+   * Converte telefone para chatId (formato WhatsApp: 5511999999999@c.us).
+   */
+  private phoneToChatId2(phone: string): string {
+    const safeName = String(name || '').trim();
+    const safePhone = typeof phone === 'string' ? String(phone).trim() : '';
+    let result: string;
+
+    // Se não temos nome confiável, não deixar “Olá !”.
+    if (!safeName) {
+      // 1) remover saudações comuns que dependem do {{name}}
+      const withoutNameGreeting = template
+        .replace(/Olá\s*{{\s*name\s*}}\s*!/gi, 'Olá!')
+        .replace(/Oi\s*{{\s*name\s*}}\s*!/gi, 'Oi!')
+        .replace(/Olá\s*{{\s*name\s*}}\s*/gi, 'Olá ')
+        .replace(/Oi\s*{{\s*name\s*}}\s*/gi, 'Oi ')
+        .replace(/{{\s*name\s*}}/g, '');
+
+      // 2) limpeza de espaços duplicados
+      result = withoutNameGreeting.replace(/\s{2,}/g, ' ').replace(/\s+([!?.,])/g, '$1').trim();
+    } else {
+      result = template.replace(/{{\s*name\s*}}/g, safeName);
+    }
+
+    if (safePhone) {
+      result = result.replace(/{{\s*phone\s*}}/g, safePhone);
+    }
+    return result;
   }
 
   /**
@@ -332,10 +341,73 @@ export class ReactivationPanel {
     this.setupContactsListeners();
     this.setupMessageInputListeners();
     this.setupHeaderActionsListeners();
+    this.setupTestSectionListeners();
+    this.setupSendButtonListener();
+  }
 
-    // Botão CTA principal de envio
+  /**
+   * Configura listener do botão de enviar.
+   */
+  private setupSendButtonListener(): void {
     const sendBtn = this.container?.querySelector('#reactivation-send-selected');
-    sendBtn?.addEventListener('click', () => this.sendSelectedClients());
+    sendBtn?.addEventListener('click', async () => {
+      if (sendBtn.hasAttribute('disabled')) return;
+      
+      // Desabilitar botão durante envio
+      if (sendBtn) {
+        (sendBtn as HTMLButtonElement).disabled = true;
+      }
+
+      try {
+        await this.sendSelectedClients();
+      } catch (error) {
+        this.addLog('error', `Erro ao enviar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      } finally {
+        // Reabilitar botão
+        if (sendBtn) {
+          (sendBtn as HTMLButtonElement).disabled = false;
+        }
+      }
+    });
+  }
+
+  /**
+   * Configura listeners da seção de envio de teste.
+   */
+  private setupTestSectionListeners(): void {
+    const checkbox = this.container?.querySelector('#reactivation-test-mode') as HTMLInputElement;
+    checkbox?.addEventListener('change', () => {
+      this.testModeEnabled = !!checkbox.checked;
+      this.saveConfig();
+      this.updateUnifiedFlow();
+    });
+
+    // Salvar automaticamente ao digitar nos campos de teste
+    const phoneInput = this.container?.querySelector('#reactivation-test-phone') as HTMLInputElement;
+    phoneInput?.addEventListener('blur', () => {
+      const phone = phoneInput?.value?.trim() ?? '';
+      const nameInput = this.container?.querySelector('#reactivation-test-name') as HTMLInputElement;
+      const name = nameInput?.value?.trim() ?? '';
+      const digits = digitsOnly(phone);
+      if (digits.length >= 10) {
+        this.testContact = { phone, name };
+        this.saveConfig();
+        this.updateUnifiedFlow();
+      }
+    });
+
+    const nameInput = this.container?.querySelector('#reactivation-test-name') as HTMLInputElement;
+    nameInput?.addEventListener('blur', () => {
+      const phoneInput = this.container?.querySelector('#reactivation-test-phone') as HTMLInputElement;
+      const phone = phoneInput?.value?.trim() ?? '';
+      const name = nameInput?.value?.trim() ?? '';
+      const digits = digitsOnly(phone);
+      if (digits.length >= 10) {
+        this.testContact = { phone, name };
+        this.saveConfig();
+        this.updateUnifiedFlow();
+      }
+    });
   }
 
   /**
@@ -358,28 +430,15 @@ export class ReactivationPanel {
    * Alterna seleção de um período.
    */
   private togglePeriodFilter(range: string): void {
-    // Determinar range de dias baseado no período
-    let minDays = 0;
-    let maxDays = Infinity;
+    const day = parseInt(range, 10);
+    if (!Number.isFinite(day)) return;
 
-    if (range === '21-35') {
-      minDays = 21;
-      maxDays = 35;
-    } else if (range === '36-55') {
-      minDays = 36;
-      maxDays = 55;
-    } else if (range === '56-83') {
-      minDays = 56;
-      maxDays = 83;
-    } else if (range === '+84') {
-      minDays = 84;
-      maxDays = Infinity;
-    }
+    // Selecionar o “dia ativo” (útil para texto/template)
+    this.selectedInactiveDay = day;
 
-    // Encontrar clientes no período
+    // Encontrar clientes exatamente nesse dia
     const clientsInRange = this.eligibleClients.filter(c =>
-      c.daysInactive >= minDays &&
-      c.daysInactive < maxDays &&
+      c.daysInactive === day &&
       c.status === 'pending' &&
       !c.isSpecialList
     );
@@ -398,7 +457,7 @@ export class ReactivationPanel {
 
     this.calculatePeriodFilters();
     this.updateUnifiedFlow();
-    this.addLog('info', `${allSelected ? 'Deselecionados' : 'Selecionados'} ${clientsInRange.length} cliente(s) do período ${range}`);
+    this.addLog('info', `${allSelected ? 'Deselecionados' : 'Selecionados'} ${clientsInRange.length} cliente(s) do dia ${day}`);
   }
 
   /**
@@ -486,7 +545,7 @@ export class ReactivationPanel {
           this.openMenuId = null;
           this.calculatePeriodFilters();
           this.updateUnifiedFlow();
-          this.addLog('warning', `${client.firstName || client.chatName} bloqueado permanentemente`);
+          this.addLog('warning', `${client.firstName || client.phone || 'Sem nome'} bloqueado permanentemente`);
         }
       }
     });
@@ -499,12 +558,19 @@ export class ReactivationPanel {
     });
 
     // Fechar menus ao clicar fora
+    // Remover listener anterior para evitar vazamento em re-renders
+    if (this.closeMenusHandler) {
+      document.removeEventListener('click', this.closeMenusHandler);
+      this.closeMenusHandler = null;
+    }
+
     const closeMenusHandler = (e: MouseEvent) => {
       if (this.openMenuId && !(e.target as HTMLElement).closest('[data-kebab-menu]') && !(e.target as HTMLElement).closest('[data-kebab-dropdown]')) {
         this.openMenuId = null;
         this.updateUnifiedFlow();
       }
     };
+    this.closeMenusHandler = closeMenusHandler;
     document.addEventListener('click', closeMenusHandler);
   }
 
@@ -512,23 +578,9 @@ export class ReactivationPanel {
    * Configura listeners do input de mensagem.
    */
   private setupMessageInputListeners(): void {
-    const messageInput = this.container?.querySelector('#reactivation-message-input') as HTMLInputElement;
+    const messageInput = this.container?.querySelector('#reactivation-message-input') as HTMLTextAreaElement;
     messageInput?.addEventListener('input', (e) => {
-      this.messageText = (e.target as HTMLInputElement).value;
-    });
-
-    const sendMessageBtn = this.container?.querySelector('#reactivation-send-message');
-    sendMessageBtn?.addEventListener('click', () => {
-      if (this.messageText.trim()) {
-        // Atualizar templates com a mensagem personalizada
-        this.cadenceDays.forEach(day => {
-          this.templates[String(day)] = this.messageText;
-        });
-        this.saveConfig();
-        this.addLog('success', 'Mensagem personalizada salva');
-        this.messageText = '';
-        this.updateUnifiedFlow();
-      }
+      this.messageText = (e.target as HTMLTextAreaElement).value;
     });
   }
 
@@ -571,6 +623,12 @@ export class ReactivationPanel {
     });
 
     // Fechar dropdown ao clicar fora
+    // Remover listener anterior para evitar vazamento em re-renders
+    if (this.closeDropdownHandler) {
+      document.removeEventListener('click', this.closeDropdownHandler);
+      this.closeDropdownHandler = null;
+    }
+
     const closeDropdown = (e: MouseEvent) => {
       if (dropdown && daySelector &&
         !dropdown.contains(e.target as Node) &&
@@ -580,6 +638,7 @@ export class ReactivationPanel {
     };
 
     // Adicionar listener global (será removido quando o painel for destruído)
+    this.closeDropdownHandler = closeDropdown;
     document.addEventListener('click', closeDropdown);
 
     // Selecionar dia do dropdown
@@ -701,15 +760,17 @@ export class ReactivationPanel {
       });
     });
 
-    // Botão enviar
-    const sendBtn = this.container?.querySelector('#reactivation-send-selected');
-    sendBtn?.addEventListener('click', () => this.sendSelectedClients());
+    // Botão enviar - REMOVIDO: agora usa event delegation em setupUnifiedFlowListeners()
+    // Não precisa mais configurar aqui, pois o event delegation captura todos os cliques
   }
 
   /**
    * Adiciona entrada ao log.
    */
   private addLog(type: LogEntry['type'], message: string): void {
+    if (type === 'error') {
+      console.error('[REACTIVATION]', message);
+    }
     this.logs.push({
       timestamp: new Date(),
       type,
@@ -735,20 +796,6 @@ export class ReactivationPanel {
       <!-- INTERFACE UNIFICADA: INATIVOS + RÉGUA + ENVIOS -->
       <div class="mettri-reactivation-unified-flow flex flex-col gap-4">
         ${this.renderUnifiedFlow()}
-      </div>
-
-      <!-- TEMPLATE DE MENSAGEM (SECUNDÁRIO) -->
-      <div class="space-y-2">
-        <div class="flex items-center justify-between px-1">
-          <span class="text-[11px] font-medium text-foreground">Template</span>
-          <button class="w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center justify-center" id="reactivation-template-info" title="Placeholders disponíveis">
-            <span class="w-3 h-3 flex items-center justify-center">${getIcon('Info')}</span>
-          </button>
-        </div>
-        <div class="glass-subtle rounded-xl p-3" id="reactivation-template-config">
-          <span class="text-[10px] text-muted-foreground">Ativo para</span>
-          <p class="text-xs font-medium text-foreground">${this.selectedInactiveDay || this.cadenceDays[0]} dias</p>
-        </div>
       </div>
 
       <!-- MONITORAMENTO -->
@@ -845,9 +892,9 @@ export class ReactivationPanel {
     }
 
     return clients.map(client => {
-      const firstName = client.firstName || this.extractFirstName(client.chatName);
-      const template = this.templates[String(client.cadenceDay)] || 'Olá {{name}}! Sentimos sua falta por aqui.';
-      const message = this.generateMessage(template, firstName);
+      const firstName = client.firstName || '';
+      const displayLabel = firstName || client.phone || 'Sem nome';
+      const message = this.messageText || 'Olá! Sentimos sua falta por aqui.';
 
       return `
         <div class="mettri-prepare-client-card" data-chat-id="${client.chatId}">
@@ -855,7 +902,7 @@ export class ReactivationPanel {
             <input type="checkbox" class="mettri-prepare-client-checkbox" 
                    checked data-chat-id="${client.chatId}">
             <div class="mettri-prepare-client-info">
-              <div class="mettri-prepare-client-name">${this.escapeHtml(firstName)}</div>
+              <div class="mettri-prepare-client-name">${this.escapeHtml(displayLabel)}</div>
               <div class="mettri-prepare-client-preview" title="${this.escapeHtml(message)}">
                 ${this.escapeHtml(message.substring(0, 50))}${message.length > 50 ? '...' : ''}
               </div>
@@ -903,23 +950,14 @@ export class ReactivationPanel {
 
     return `
       <!-- HEADER: Métricas simples -->
-      <div class="space-y-1 mb-4">
+      <div class="space-y-1 mb-2">
         <p class="text-2xl font-bold text-foreground">${this.eligibleCount} inativos elegíveis</p>
         <p class="text-xs text-muted-foreground">de ${this.totalContacts.toLocaleString('pt-BR')} contatos</p>
       </div>
 
-      <!-- BOTÃO CTA PRINCIPAL -->
-      <button 
-        class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4" 
-        id="reactivation-send-selected" 
-        ${selectedCount === 0 ? 'disabled' : ''} 
-        type="button"
-      >
-        Enviar para ${selectedCount}
-      </button>
 
       <!-- SEÇÃO DE FILTROS (Colapsável) -->
-      <div class="space-y-2 mb-4">
+      <div class="space-y-2 mb-2">
         <div class="flex items-center justify-between px-1">
           <button 
             class="flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors"
@@ -952,7 +990,7 @@ export class ReactivationPanel {
       </div>
 
       <!-- SEÇÃO DE CONTATOS (Colapsável) -->
-      <div class="space-y-2 mb-4">
+      <div class="space-y-1 mb-2">
         <div class="flex items-center justify-between px-1">
           <button 
             class="flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors"
@@ -995,25 +1033,76 @@ export class ReactivationPanel {
       </div>
 
       <!-- INPUT DE MENSAGEM -->
-      <div class="flex items-center gap-2 p-2 rounded-xl border border-border bg-background">
-        <span class="text-lg">😊</span>
-        <input 
-          type="text" 
-          class="flex-1 bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+      <div class="flex items-start gap-2 p-2 rounded-xl border-2 border-border bg-background">
+        <span class="text-lg mt-1">😊</span>
+        <textarea 
+          rows="3"
+          class="flex-1 bg-transparent text-sm placeholder:text-muted-foreground outline-none resize-none"
           placeholder="Escreva uma mensagem..."
-          value="${this.escapeHtml(this.messageText)}"
           id="reactivation-message-input"
-        />
+        >${this.escapeHtml(this.messageText)}</textarea>
+      </div>
+
+      <!-- MODO TESTE -->
+      <div class="mt-0.5">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="reactivation-test-mode" ${this.testModeEnabled ? 'checked' : ''} />
+          <span class="text-[10px] text-muted-foreground">Modo teste</span>
+        </label>
+      </div>
+
+      <!-- BOTÃO DE ENVIAR -->
+      <div class="mt-1.5">
         <button 
-          class="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors"
-          id="reactivation-send-message"
+          class="w-full h-10 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          id="reactivation-send-selected"
           type="button"
+          ${selectedCount === 0 && !this.testModeEnabled ? 'disabled' : ''}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M13 1L7 7M13 1l-5 5M13 1H1l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          ${this.testModeEnabled ? 'Enviar Teste' : selectedCount > 0 ? `Enviar (${selectedCount})` : 'Enviar'}
         </button>
       </div>
+
+      <!-- CAMPOS DE TESTE (quando modo teste ativo) -->
+      ${this.testModeEnabled ? `
+        <div class="mt-2 p-2 rounded-lg border border-border/50 bg-accent/30">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="relative">
+              <input 
+                type="text"
+                class="w-full px-2 pr-7 py-1.5 rounded-lg border border-border bg-background text-sm outline-none"
+                id="reactivation-test-phone" 
+                placeholder="Número (ex: 5511999999999)" 
+                value="${this.testContact ? this.escapeHtml(this.testContact.phone) : ''}"
+              />
+              ${this.testContact?.phone ? `
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-green-500/70 pointer-events-none">
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+              ` : ''}
+            </div>
+            <div class="relative">
+              <input 
+                type="text"
+                class="w-full px-2 pr-7 py-1.5 rounded-lg border border-border bg-background text-sm outline-none"
+                id="reactivation-test-name" 
+                placeholder="Nome" 
+                value="${this.testContact ? this.escapeHtml(this.testContact.name) : ''}"
+              />
+              ${this.testContact?.name ? `
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-green-500/70 pointer-events-none">
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
     `;
   }
 
@@ -1046,7 +1135,7 @@ export class ReactivationPanel {
                   </svg>
                 ` : ''}
               </div>
-              <span class="text-xs font-medium">${filter.range}</span>
+              <span class="text-xs font-medium">${filter.range}d</span>
               <span class="text-[10px] opacity-70">(${filter.count})</span>
             </button>
           `;
@@ -1063,7 +1152,8 @@ export class ReactivationPanel {
     const displayClients = this.isContactsExpanded ? clients : clients.slice(0, 6);
 
     return displayClients.map(client => {
-      const firstName = client.firstName || this.extractFirstName(client.chatName);
+      const firstName = client.firstName || '';
+      const displayLabel = firstName || client.phone || 'Sem nome';
       const isSelected = this.selectedClients.has(client.chatId);
       const isMenuOpen = this.openMenuId === client.chatId;
 
@@ -1087,7 +1177,7 @@ export class ReactivationPanel {
               ` : ''}
             </div>
           </label>
-          <span class="text-xs font-medium text-foreground flex-1">${this.escapeHtml(firstName)}</span>
+          <span class="text-xs font-medium text-foreground flex-1">${this.escapeHtml(displayLabel)}</span>
           <span class="text-[10px] text-muted-foreground">${client.daysInactive}d</span>
           <button 
             class="w-6 h-6 rounded flex items-center justify-center hover:bg-accent/50 transition-colors relative" 
@@ -1168,89 +1258,29 @@ export class ReactivationPanel {
    * Calcula quantos clientes estão inativos há mais de X dias.
    */
   public getInactiveCountForDay(day: number): number {
-    return this.eligibleClients.filter(client => client.daysInactive >= day).length;
+    return this.eligibleClients.filter(client => client.daysInactive === day).length;
   }
 
   /**
-   * Calcula filtros de período (21-35, 36-55, 56-83, +84) com contagens e estado.
+   * Calcula filtros por dia exato (21, 35, 56, 84) com contagens e estado.
    */
   private calculatePeriodFilters(): void {
-    const filters: Array<{
-      range: string;
-      count: number;
-      selected: boolean;
-      variant: 'outline' | 'filled';
-    }> = [];
-
-    // Período 21-35
-    const count21_35 = this.eligibleClients.filter(c =>
-      c.daysInactive >= 21 && c.daysInactive < 36 &&
-      c.status === 'pending' && !c.isSpecialList
-    ).length;
-    const selected21_35 = this.eligibleClients.filter(c =>
-      c.daysInactive >= 21 && c.daysInactive < 36 &&
-      this.selectedClients.has(c.chatId)
-    ).length > 0;
-
-    filters.push({
-      range: '21-35',
-      count: count21_35,
-      selected: selected21_35,
-      variant: selected21_35 ? 'filled' : 'outline',
+    this.periodFilters = this.cadenceDays.map((day) => {
+      const count = this.eligibleClients.filter(c =>
+        c.daysInactive === day &&
+        c.status === 'pending' &&
+        !c.isSpecialList
+      ).length;
+      const selected = this.eligibleClients.some(c =>
+        c.daysInactive === day && this.selectedClients.has(c.chatId)
+      );
+      return {
+        range: String(day),
+        count,
+        selected,
+        variant: selected ? 'filled' : 'outline',
+      };
     });
-
-    // Período 36-55
-    const count36_55 = this.eligibleClients.filter(c =>
-      c.daysInactive >= 36 && c.daysInactive < 56 &&
-      c.status === 'pending' && !c.isSpecialList
-    ).length;
-    const selected36_55 = this.eligibleClients.filter(c =>
-      c.daysInactive >= 36 && c.daysInactive < 56 &&
-      this.selectedClients.has(c.chatId)
-    ).length > 0;
-
-    filters.push({
-      range: '36-55',
-      count: count36_55,
-      selected: selected36_55,
-      variant: selected36_55 ? 'filled' : 'outline',
-    });
-
-    // Período 56-83
-    const count56_83 = this.eligibleClients.filter(c =>
-      c.daysInactive >= 56 && c.daysInactive < 84 &&
-      c.status === 'pending' && !c.isSpecialList
-    ).length;
-    const selected56_83 = this.eligibleClients.filter(c =>
-      c.daysInactive >= 56 && c.daysInactive < 84 &&
-      this.selectedClients.has(c.chatId)
-    ).length > 0;
-
-    filters.push({
-      range: '56-83',
-      count: count56_83,
-      selected: selected56_83,
-      variant: selected56_83 ? 'filled' : 'outline',
-    });
-
-    // Período +84 (sempre variant filled quando selecionado)
-    const count84Plus = this.eligibleClients.filter(c =>
-      c.daysInactive >= 84 &&
-      c.status === 'pending' && !c.isSpecialList
-    ).length;
-    const selected84Plus = this.eligibleClients.filter(c =>
-      c.daysInactive >= 84 &&
-      this.selectedClients.has(c.chatId)
-    ).length > 0;
-
-    filters.push({
-      range: '+84',
-      count: count84Plus,
-      selected: selected84Plus,
-      variant: selected84Plus ? 'filled' : 'outline', // +84 sempre filled quando selecionado
-    });
-
-    this.periodFilters = filters;
   }
 
   /**
@@ -1262,24 +1292,6 @@ export class ReactivationPanel {
       counts[day] = this.eligibleClients.filter(c => c.cadenceDay === day).length;
     });
     return counts;
-  }
-
-  /**
-   * Calcula qual dia da régua um cliente está baseado nos dias inativos.
-   * Retorna o maior dia da régua que o cliente já atingiu.
-   */
-  private calculateCadenceDay(daysInactive: number): number {
-    // Encontrar o maior dia da régua que o cliente já atingiu
-    let cadenceDay = this.cadenceDays[0]; // Primeiro dia por padrão
-
-    for (let i = this.cadenceDays.length - 1; i >= 0; i--) {
-      if (daysInactive >= this.cadenceDays[i]) {
-        cadenceDay = this.cadenceDays[i];
-        break;
-      }
-    }
-
-    return cadenceDay;
   }
 
   /**
@@ -1310,36 +1322,6 @@ export class ReactivationPanel {
       </div>
     `;
   }
-
-  /**
-   * Renderiza configuração de templates.
-   */
-  public renderTemplateConfig(): string {
-    const selectedDay = this.cadenceDays[0] || 21;
-    const template = this.templates[String(selectedDay)] || 'Olá {{name}}! Sentimos sua falta por aqui.';
-
-    return `
-      <div class="mettri-template-config-row">
-        <label class="mettri-label">Template para <select class="mettri-select-inline" id="reactivation-template-day">
-          ${this.cadenceDays.map(day =>
-      `<option value="${day}" ${day === selectedDay ? 'selected' : ''}>${day} dias</option>`
-    ).join('')}
-        </select></label>
-      </div>
-      <div class="mettri-template-config-row">
-        <textarea class="mettri-input mettri-textarea mettri-template-textarea" id="reactivation-template-text" 
-                  placeholder="Olá {{name}}! Sentimos sua falta por aqui...">${this.escapeHtml(template)}</textarea>
-      </div>
-      <div class="mettri-message-preview">
-        <div class="mettri-message-bubble">
-          ${this.escapeHtml(this.generateMessage(template, 'João'))}
-        </div>
-        <div class="mettri-message-time">${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ✓✓</div>
-      </div>
-    `;
-  }
-
-
 
   /**
    * Renderiza logs de monitoramento.
@@ -1384,29 +1366,6 @@ export class ReactivationPanel {
     // Configurar listeners do fluxo unificado
     this.setupUnifiedFlowListeners();
 
-
-
-    // Info de placeholders
-    const templateInfoBtn = this.container?.querySelector('#reactivation-template-info');
-    templateInfoBtn?.addEventListener('click', () => this.showPlaceholdersInfo());
-
-    // Mudar dia do template
-    const templateDaySelect = this.container?.querySelector('#reactivation-template-day');
-    templateDaySelect?.addEventListener('change', () => {
-      this.updateTemplatePreview();
-      this.updateTemplateForDay();
-    });
-
-    // Salvar template automaticamente ao editar
-    const templateText = this.container?.querySelector('#reactivation-template-text');
-    templateText?.addEventListener('input', () => {
-      this.updateTemplatePreview();
-      this.saveTemplateAuto();
-    });
-
-
-
-
     // Limpar logs
     const clearLogsBtn = this.container?.querySelector('#reactivation-clear-logs');
     clearLogsBtn?.addEventListener('click', () => {
@@ -1448,19 +1407,19 @@ export class ReactivationPanel {
       case 'skip-today':
         client.status = 'skipped-today';
         this.selectedClients.delete(chatId);
-        this.addLog('info', `${client.firstName || client.chatName} - Pulado para hoje`);
+        this.addLog('info', `${client.firstName || client.phone || 'Sem nome'} - Pulado para hoje`);
         break;
 
       case 'exclude':
         client.status = 'excluded';
         this.selectedClients.delete(chatId);
-        this.addLog('info', `${client.firstName || client.chatName} - Removido da lista`);
+        this.addLog('info', `${client.firstName || client.phone || 'Sem nome'} - Removido da lista`);
         break;
 
       case 'special-list':
         client.isSpecialList = true;
         this.selectedClients.delete(chatId);
-        this.addLog('info', `${client.firstName || client.chatName} - Movido para lista especial`);
+        this.addLog('info', `${client.firstName || client.phone || 'Sem nome'} - Movido para lista especial`);
         break;
     }
 
@@ -1481,6 +1440,34 @@ export class ReactivationPanel {
    * Envia mensagens para clientes selecionados.
    */
   private async sendSelectedClients(): Promise<void> {
+    if (this.testModeEnabled && this.testContact?.phone) {
+      if (!this.messageText.trim()) {
+        this.addLog('warning', 'Digite uma mensagem para o teste');
+        return;
+      }
+      
+      const chatId = this.phoneToChatId(this.testContact.phone);
+      if (!chatId) {
+        this.addLog('warning', 'Número de teste inválido');
+        return;
+      }
+      
+      try {
+        const message = this.messageText.trim();
+        if (!message) {
+          this.addLog('warning', 'Digite uma mensagem para o teste');
+          return;
+        }
+        await this.sendRawToChatId(chatId, message);
+        const label = this.testContact.name || this.testContact.phone;
+        this.addLog('success', `Teste enviado para ${label}`);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.addLog('error', `Teste: ${msg}`);
+      }
+      return;
+    }
+
     if (this.selectedClients.size === 0) {
       this.addLog('warning', 'Nenhum cliente selecionado');
       return;
@@ -1503,6 +1490,13 @@ export class ReactivationPanel {
   }
 
   /**
+   * Envia mensagem bruta para um chatId via WhatsApp Web.
+   */
+  private async sendRawToChatId(chatId: string, message: string): Promise<void> {
+    await sendMessageService.sendText(chatId, message);
+  }
+
+  /**
    * Envia mensagem para um cliente específico.
    */
   private async sendToClient(chatId: string): Promise<void> {
@@ -1513,87 +1507,18 @@ export class ReactivationPanel {
     }
 
     try {
-      const template = this.templates[String(client.cadenceDay)] || 'Olá {{name}}!';
-      const firstName = client.firstName || this.extractFirstName(client.chatName);
-      const message = this.generateMessage(template, firstName);
-
-      // TODO: Implementar envio real via WhatsApp
-      // const interceptors = new WhatsAppInterceptors();
-      // await interceptors.initialize();
-      // await interceptors.addAndSendMsgToChat(client.chatId, message);
-
-      // MOCK: Simular envio (1 segundo de delay)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const message = this.messageText.trim() || 'Olá! Sentimos sua falta por aqui.';
+      await this.sendRawToChatId(chatId, message);
 
       client.status = 'sent';
       client.generatedMessage = message;
-      this.addLog('success', `${client.firstName || client.chatName} - Enviado`);
+      this.addLog('success', `${client.firstName || client.phone || 'Sem nome'} - Enviado`);
       this.updateUnifiedFlow();
     } catch (error) {
-      this.addLog('error', `${client.firstName || client.chatName} - Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      this.addLog('error', `${client.firstName || client.phone || 'Sem nome'} - Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
-  /**
-   * Mostra informações sobre placeholders disponíveis.
-   */
-  private showPlaceholdersInfo(): void {
-    const info = `
-Placeholders disponíveis:
-
-{{name}} - Primeiro nome do cliente
-{{phone}} - Telefone do cliente
-{{days}} - Dias inativos
-
-Exemplo:
-Olá {{name}}! Sentimos sua falta por aqui. Faz {{days}} dias que não conversamos.
-    `.trim();
-
-    alert(info);
-  }
-
-  /**
-   * Atualiza preview do template.
-   */
-  private updateTemplatePreview(): void {
-    const templateText = this.container?.querySelector('#reactivation-template-text') as HTMLTextAreaElement;
-    const preview = this.container?.querySelector('.mettri-message-bubble');
-
-    if (templateText && preview) {
-      const template = templateText.value;
-      const message = this.generateMessage(template, 'João');
-      preview.textContent = message;
-    }
-  }
-
-  /**
-   * Atualiza template quando muda o dia selecionado.
-   */
-  private updateTemplateForDay(): void {
-    const daySelect = this.container?.querySelector('#reactivation-template-day') as HTMLSelectElement;
-    const templateText = this.container?.querySelector('#reactivation-template-text') as HTMLTextAreaElement;
-
-    if (daySelect && templateText) {
-      const day = daySelect.value;
-      const template = this.templates[day] || 'Olá {{name}}! Sentimos sua falta por aqui.';
-      templateText.value = template;
-      this.updateTemplatePreview();
-    }
-  }
-
-  /**
-   * Salva template automaticamente (sem botão).
-   */
-  private saveTemplateAuto(): void {
-    const daySelect = this.container?.querySelector('#reactivation-template-day') as HTMLSelectElement;
-    const templateText = this.container?.querySelector('#reactivation-template-text') as HTMLTextAreaElement;
-
-    if (daySelect && templateText) {
-      const day = daySelect.value;
-      this.templates[day] = templateText.value;
-      this.saveConfig();
-    }
-  }
 
 
   /**
@@ -1603,5 +1528,30 @@ Olá {{name}}! Sentimos sua falta por aqui. Faz {{days}} dias que não conversam
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+
+  /**
+   * Libera recursos (especialmente listeners globais em document).
+   * Importante para navegação entre módulos sem vazamentos.
+   */
+  public destroy(): void {
+    if (this.closeMenusHandler) {
+      document.removeEventListener('click', this.closeMenusHandler);
+      this.closeMenusHandler = null;
+    }
+    if (this.closeDropdownHandler) {
+      document.removeEventListener('click', this.closeDropdownHandler);
+      this.closeDropdownHandler = null;
+    }
+    if (this.sendButtonClickHandler && this.container) {
+      this.container.removeEventListener('click', this.sendButtonClickHandler);
+      this.sendButtonClickHandler = null;
+    }
+
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
+    this.container = null;
   }
 }

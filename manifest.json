@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mettri",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Plataforma de vendas conversacionais para WhatsApp Web",
   "permissions": [
     "storage",
@@ -9,11 +9,15 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://web.whatsapp.com/*"
+    "https://web.whatsapp.com/*",
+    "https://*.workers.dev/*"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev"
   },
   "content_scripts": [
     {
