@@ -1,13 +1,16 @@
 import type { CapturedMessage, PanelState, UserSession } from '../types';
 import type { MessageCapturer } from '../core/message-capturer';
 import { messageDB } from '../storage/message-db';
-import { ModuleRegistry, PanelShell, EventBus } from './core';
+import { ModuleRegistry, PanelShell, EventBus, emitPanelNavigate, onPanelNavigate } from './core';
 import { getIcon } from './icons/lucide-icons';
 import { KebabMenu } from './components/kebab-menu';
 import { UserSessionModal } from './components/user-session-modal';
+import { SettingsModal } from './components/settings-modal';
 import { getExtensionResourceUrl } from './core/extension-url';
 import { MettriBridgeClient } from '../content/bridge-client';
 import { LocalBatchExporter } from '../infrastructure/local-batch-exporter';
+import { ActiveChatService } from '../infrastructure/active-chat-service';
+import { ModuleUpdater } from '../infrastructure/module-updater';
 
 type PanelSettings = Record<string, unknown> & {
   historyEnabled?: unknown;
@@ -29,14 +32,20 @@ export class MettriPanel {
   private registry: ModuleRegistry;
   private panelShell: PanelShell | null = null;
   private eventBus: EventBus;
-  private currentModuleId: string = 'clientes.history'; // Módulo padrão
+  private disposePanelNavigate: (() => void) | null = null;
+  private enviarMenu: KebabMenu | null = null;
+  private clientesMenu: KebabMenu | null = null;
+  private currentModuleId: string = 'atendimento.dashboard'; // Módulo padrão
   private userSessionModal: UserSessionModal | null = null;
+  private settingsModal: SettingsModal | null = null;
+  private moduleUpdater: ModuleUpdater | null = null;
   private isDarkMode: boolean = false; // Estado do dark mode
   private userSession: UserSession | null = null; // Sessão do usuário atual
   private capturer: MessageCapturer | null = null;
   private bridge = new MettriBridgeClient(2500);
   private historyEnabled: boolean = false; // Toggle do Histórico (persistido)
   private exporter: LocalBatchExporter | null = null;
+  private activeChat: ActiveChatService | null = null;
   private state: PanelState = {
     isVisible: true,
     isCapturing: false,
@@ -58,15 +67,35 @@ export class MettriPanel {
     this.createSidebar();
     this.createToggleButton();
     this.userSessionModal = new UserSessionModal();
+    
+    // Inicializar sistema de atualização de módulos
+    this.moduleUpdater = new ModuleUpdater();
+    this.registry.setModuleUpdater(this.moduleUpdater);
+    this.settingsModal = new SettingsModal(this.moduleUpdater);
+    
     // Inicializar UI com aviso (conta ainda não detectada)
     this.updateUserSessionUI(null);
 
     // Carregar settings antes de renderizar módulos (para o Histórico nascer OFF por padrão)
     await this.loadAndApplySettings();
-
     await this.initializePluginSystem();
+    this.startActiveChatService();
     this.startExportScheduler();
     this.loadMessages();
+  }
+
+  private startActiveChatService(): void {
+    if (this.activeChat) return;
+    this.activeChat = new ActiveChatService({ pollMs: 750 });
+
+    this.activeChat.onChange((chatId) => {
+      this.state.currentChatId = chatId;
+      this.eventBus.emit('chat:active-changed', { chatId });
+    });
+
+    this.activeChat
+      .start()
+      .catch((error) => console.warn('[MettriPanel] Falha ao iniciar ActiveChatService:', error));
   }
 
   private startExportScheduler(): void {
@@ -97,6 +126,11 @@ export class MettriPanel {
 
       <div class="w-8 h-px bg-primary-foreground/20 my-1"></div>
 
+      <!-- Module: Atendimento -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="atendimento" title="Atendimento">
+        <span class="w-5 h-5">${getIcon('MessageSquare')}</span>
+      </button>
+
       <!-- Module: Clientes / Histórico -->
       <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="clientes" title="Clientes - Histórico de conversas">
         <span class="w-5 h-5">${getIcon('Users')}</span>
@@ -108,7 +142,7 @@ export class MettriPanel {
       </button>
 
       <!-- Module: Marketing / Reativação -->
-      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="marketing" title="Marketing - Reativação de clientes">
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="marketing" title="Marketing - Enviar">
         <span class="w-5 h-5">${getIcon('Megaphone')}</span>
       </button>
 
@@ -146,7 +180,6 @@ export class MettriPanel {
     this.shadowContainer?.appendChild(navbar);
     this.navbar = navbar;
 
-    // Setup NavBar listeners
     this.setupNavBarListeners();
   }
 
@@ -184,7 +217,7 @@ export class MettriPanel {
           <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" id="mettri-status-dot"></div>
           <span class="text-[11px] text-muted-foreground" id="mettri-status-text">Sincronizado</span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2" id="mettri-status-actions">
           <!-- Toggle do Histórico (só aparece no módulo Histórico) -->
           <div class="flex items-center gap-1.5" id="mettri-history-toggle-wrap" style="display: none;">
             <span class="text-[10px] text-muted-foreground">Histórico</span>
@@ -199,6 +232,16 @@ export class MettriPanel {
 
           <button class="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center" id="mettri-refresh" title="Atualizar">
             <span class="w-3.5 h-3.5">${getIcon('RefreshCw')}</span>
+          </button>
+
+          <!-- Menu de navegação de Clientes (apenas em clientes.*) -->
+          <button class="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center" id="mettri-clientes-menu" title="Clientes" style="display: none;">
+            <span class="w-3.5 h-3.5">${getIcon('MoreVertical')}</span>
+          </button>
+
+          <!-- Menu de navegação do Enviar (apenas em marketing.enviar.*) -->
+          <button class="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center" id="mettri-enviar-menu" title="Enviar" style="display: none;">
+            <span class="w-3.5 h-3.5">${getIcon('MoreVertical')}</span>
           </button>
         </div>
       </div>
@@ -227,6 +270,74 @@ export class MettriPanel {
 
     // Criar KebabMenu
     this.createKebabMenu();
+    this.createClientesMenu();
+    this.createEnviarMenu();
+    this.updateClientesMenuVisibility(this.currentModuleId);
+    this.updateEnviarMenuVisibility(this.currentModuleId);
+  }
+
+  private updateClientesMenuVisibility(moduleId: string): void {
+    const btn = this.container?.querySelector('#mettri-clientes-menu') as HTMLButtonElement | null;
+    if (!btn) return;
+    const shouldShow = typeof moduleId === 'string' && moduleId.startsWith('clientes');
+    btn.style.display = shouldShow ? 'flex' : 'none';
+  }
+
+  private createClientesMenu(): void {
+    const statusActions = this.container?.querySelector('#mettri-status-actions') as HTMLElement | null;
+    if (!statusActions) return;
+
+    // Evitar criar múltiplas vezes
+    if (this.clientesMenu) return;
+
+    this.clientesMenu = new KebabMenu(
+      statusActions,
+      [
+        {
+          label: 'Cadastro',
+          onClick: () => emitPanelNavigate(this.eventBus, 'clientes.directory'),
+        },
+        {
+          label: 'Histórico',
+          onClick: () => emitPanelNavigate(this.eventBus, 'clientes.history'),
+        },
+      ],
+      { buttonSelector: '#mettri-clientes-menu' }
+    );
+  }
+
+  private updateEnviarMenuVisibility(moduleId: string): void {
+    const btn = this.container?.querySelector('#mettri-enviar-menu') as HTMLButtonElement | null;
+    if (!btn) return;
+    const shouldShow = typeof moduleId === 'string' && moduleId.startsWith('marketing.enviar');
+    btn.style.display = shouldShow ? 'flex' : 'none';
+  }
+
+  private createEnviarMenu(): void {
+    const statusActions = this.container?.querySelector('#mettri-status-actions') as HTMLElement | null;
+    if (!statusActions) return;
+
+    // Evitar criar múltiplas vezes
+    if (this.enviarMenu) return;
+
+    this.enviarMenu = new KebabMenu(
+      statusActions,
+      [
+        {
+          label: 'Retomar',
+          onClick: () => emitPanelNavigate(this.eventBus, 'marketing.enviar.retomar'),
+        },
+        {
+          label: 'Responder',
+          onClick: () => emitPanelNavigate(this.eventBus, 'marketing.enviar.responder'),
+        },
+        {
+          label: 'Divulgar',
+          onClick: () => emitPanelNavigate(this.eventBus, 'marketing.enviar.divulgar'),
+        },
+      ],
+      { buttonSelector: '#mettri-enviar-menu' }
+    );
   }
 
   /**
@@ -383,19 +494,35 @@ export class MettriPanel {
     moduleButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         const moduleId = btn.getAttribute('data-module-id');
-        console.log(`[MettriPanel] 🖱️ Botão clicado: data-module-id="${moduleId}"`);
-        if (moduleId && this.panelShell) {
-          // Mapear para moduleId correto e trocar módulo
-          // updateNavBarActive será chamado via evento panel:module-changed
+        if (!moduleId) return;
+
+        const trySwitch = (): void => {
+          if (!this.panelShell) return;
           const mappedId = this.mapModuleId(moduleId);
-          console.log(`[MettriPanel] 🔄 Chamando switchToModule com ID mapeado: "${mappedId}"`);
           this.panelShell.switchToModule(mappedId).catch(error => {
-            console.error(`[MettriPanel] ❌ Erro ao trocar módulo:`, error);
-            console.error(`[MettriPanel] Stack trace:`, error instanceof Error ? error.stack : 'N/A');
+            console.error('[MettriPanel] Erro ao trocar módulo:', error);
           });
-        } else {
-          console.warn(`[MettriPanel] ⚠️ moduleId ou panelShell não disponível:`, { moduleId, hasPanelShell: !!this.panelShell });
+        };
+
+        if (this.panelShell) {
+          trySwitch();
+          return;
         }
+
+        const maxWait = 15000;
+        const interval = 200;
+        const start = Date.now();
+        const t = window.setInterval(() => {
+          if (this.panelShell) {
+            window.clearInterval(t);
+            trySwitch();
+            return;
+          }
+          if (Date.now() - start >= maxWait) {
+            window.clearInterval(t);
+            console.warn('[MettriPanel] PanelShell não disponível. Verifique erros no console.');
+          }
+        }, interval);
       });
     });
 
@@ -411,11 +538,10 @@ export class MettriPanel {
       this.showUserSessionModal();
     });
 
-    // Settings e Help (placeholders)
+    // Settings
     const settingsBtn = this.navbar.querySelector('#mettri-navbar-settings');
     settingsBtn?.addEventListener('click', () => {
-      console.log('[MettriPanel] Settings clicado');
-      // TODO: Implementar settings
+      this.settingsModal?.show();
     });
 
     const helpBtn = this.navbar.querySelector('#mettri-navbar-help');
@@ -482,13 +608,12 @@ export class MettriPanel {
    */
   private mapModuleId(navbarModuleId: string): string {
     const mapping: Record<string, string> = {
-      'clientes': 'clientes.history',
+      'atendimento': 'atendimento.dashboard',
+      'clientes': 'clientes.directory',
       'infraestrutura': 'infrastructure.tests', // PanelShell vai ativar o primeiro filho
-      'marketing': 'marketing.reactivation',
+      'marketing': 'marketing.enviar',
     };
-    const mappedId = mapping[navbarModuleId] || navbarModuleId;
-    console.log(`[MettriPanel] mapModuleId: "${navbarModuleId}" → "${mappedId}"`);
-    return mappedId;
+    return mapping[navbarModuleId] || navbarModuleId;
   }
 
   /**
@@ -511,43 +636,41 @@ export class MettriPanel {
    * Inicializa o Plugin System (ModuleRegistry + PanelShell)
    */
   private async initializePluginSystem(): Promise<void> {
-    console.log('[MettriPanel] 🚀 Inicializando Plugin System...');
-    console.log('[MettriPanel] 📦 Container disponível:', this.container ? `✅ SIM (id: ${this.container.id})` : '❌ NÃO');
-
     if (!this.container) {
-      console.error('[MettriPanel] ❌ Container não disponível! Abortando inicialização.');
+      console.error('[MettriPanel] Container não disponível.');
       return;
     }
 
     try {
-      // Criar PanelShell (não renderiza tabs, apenas gerencia conteúdo)
-      console.log('[MettriPanel] 🏗️ Criando PanelShell...');
       this.panelShell = new PanelShell({
         container: this.container,
         registry: this.registry,
         eventBus: this.eventBus,
         defaultModuleId: this.currentModuleId,
       });
-      console.log('[MettriPanel] ✅ PanelShell criado. Chamando init()...');
-
-      // Inicializar (descobre módulos mas NÃO renderiza tabs - NavBar faz isso)
       await this.panelShell.init();
-      console.log('[MettriPanel] ✅ PanelShell.init() concluído');
 
-      // Escutar eventos de mudança de módulo
+      this.disposePanelNavigate?.();
+      this.disposePanelNavigate = onPanelNavigate(this.eventBus, ({ moduleId }) => {
+        if (!this.panelShell || this.currentModuleId === moduleId) return;
+        this.panelShell.switchToModule(moduleId).catch((err) => {
+          console.error('[MettriPanel] Falha ao navegar:', err);
+        });
+      });
+
       this.eventBus.on('panel:module-changed', (data: { moduleId: string }) => {
         this.currentModuleId = data.moduleId;
         this.updateSidebarTitle(data.moduleId);
         this.updateNavBarActive(data.moduleId);
         this.updateHistoryToggleVisibility(data.moduleId);
+        this.updateClientesMenuVisibility(data.moduleId);
+        this.updateEnviarMenuVisibility(data.moduleId);
         if (data.moduleId === 'clientes.history') {
           this.updateHistoryToggleChecked();
           this.eventBus.emit('settings:history-enabled', { enabled: this.historyEnabled });
         }
-        console.log(`[MettriPanel] Módulo ativo: ${data.moduleId}`);
       });
 
-      // Ativar módulo padrão
       await this.panelShell.switchToModule(this.currentModuleId);
     } catch (error) {
       console.error('[MettriPanel] Erro ao inicializar Plugin System:', error);
@@ -559,12 +682,18 @@ export class MettriPanel {
    */
   private updateSidebarTitle(moduleId: string): void {
     const titleMap: Record<string, string> = {
-      'clientes': 'Histórico',
+      'atendimento': 'Atendimento',
+      'atendimento.dashboard': 'Atendimento',
+      'clientes': 'Clientes',
+      'clientes.directory': 'Clientes',
       'clientes.history': 'Histórico',
       'infraestrutura': 'Sentinela',
       'infraestrutura.tests': 'Sentinela',
-      'marketing': 'Reativação',
-      'marketing.reactivation': 'Reativação',
+      'marketing': 'Enviar',
+      'marketing.enviar': 'Enviar',
+      'marketing.enviar.retomar': 'Enviar',
+      'marketing.enviar.responder': 'Enviar',
+      'marketing.enviar.divulgar': 'Enviar',
     };
 
     const parts = moduleId.split('.');

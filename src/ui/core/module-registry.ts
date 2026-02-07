@@ -6,6 +6,7 @@
  */
 
 import type { EventBus } from './event-bus';
+import { ModuleUpdater } from '../../infrastructure/module-updater';
 
 /**
  * Factory function para criar instância do painel
@@ -20,7 +21,7 @@ export type PanelFactory = (
  * Definição de um módulo
  */
 export interface ModuleDefinition {
-  /** ID único do módulo (ex: 'clientes.history', 'marketing.reactivation') */
+  /** ID único do módulo (ex: 'clientes.history', 'marketing.retomar') */
   id: string;
   
   /** Nome exibido na UI */
@@ -43,6 +44,14 @@ export interface ModuleDefinition {
   
   /** Caminho do arquivo do módulo (usado para lazy loading dinâmico) */
   modulePath?: string;
+
+  /**
+   * Submódulo padrão quando este módulo é um container (tem filhos).
+   * Evita depender de ordenação alfabética de IDs.
+   *
+   * Ex.: "marketing.enviar.retomar"
+   */
+  defaultSubModuleId?: string;
 }
 
 /**
@@ -63,6 +72,14 @@ export class ModuleRegistry {
   private modules: Map<string, ModuleDefinition> = new Map();
   private hierarchy: Map<string, string[]> = new Map(); // parent -> children[]
   private loadedModules: Set<string> = new Set();
+  private moduleUpdater: ModuleUpdater | null = null;
+
+  /**
+   * Define o ModuleUpdater para carregar módulos remotos
+   */
+  setModuleUpdater(updater: ModuleUpdater): void {
+    this.moduleUpdater = updater;
+  }
 
   /**
    * Registra um módulo no registry
@@ -171,6 +188,7 @@ export class ModuleRegistry {
 
   /**
    * Carrega um módulo lazy (import dinâmico)
+   * Verifica cache remoto antes de carregar local
    */
   async loadModule(id: string): Promise<ModuleDefinition | null> {
     const module = this.getModule(id);
@@ -184,7 +202,73 @@ export class ModuleRegistry {
       return module;
     }
 
-    // Se tem modulePath, carrega dinamicamente
+    // Tentar carregar módulo remoto primeiro (se disponível)
+    const remoteCode = await this.loadRemoteModule(id);
+    if (remoteCode) {
+      try {
+        // Criar contexto isolado para executar código remoto
+        // O código compilado deve exportar o módulo em uma variável global
+        const globalName = `MettriModule_${id.replace(/\./g, '_')}`;
+        
+        // Criar função register temporária para capturar registro
+        let capturedModule: ModuleDefinition | null = null;
+        const tempRegistry = {
+          register: (mod: ModuleDefinition) => {
+            capturedModule = mod;
+            // Registrar no registry real
+            this.register(mod);
+          }
+        };
+        
+        // Executar código remoto com registry temporário disponível
+        const executeCode = new Function('register', `
+          ${remoteCode}
+          // Tentar chamar register se disponível
+          if (typeof register === 'function') {
+            try {
+              const module = typeof ${globalName} !== 'undefined' ? ${globalName} : null;
+              if (module && module.module) {
+                register(module.module);
+              } else if (module && module.id) {
+                register(module);
+              }
+            } catch (e) {
+              console.warn('[ModuleRegistry] Erro ao registrar módulo remoto:', e);
+            }
+          }
+        `);
+        
+        executeCode(tempRegistry.register);
+        
+        // Se módulo foi capturado, usar ele
+        if (capturedModule) {
+          this.loadedModules.add(id);
+          console.log(`[ModuleRegistry] ✅ Módulo "${id}" carregado do cache remoto`);
+          return capturedModule;
+        }
+        
+        // Fallback: tentar buscar da variável global diretamente
+        const globalModule = (window as any)[globalName];
+        if (globalModule) {
+          if (globalModule.module) {
+            this.register(globalModule.module);
+            this.loadedModules.add(id);
+            console.log(`[ModuleRegistry] ✅ Módulo "${id}" carregado do cache remoto (via global)`);
+            return this.getModule(id);
+          } else if (globalModule.id === id) {
+            this.register(globalModule);
+            this.loadedModules.add(id);
+            console.log(`[ModuleRegistry] ✅ Módulo "${id}" carregado do cache remoto (via global)`);
+            return this.getModule(id);
+          }
+        }
+      } catch (error) {
+        console.error(`[ModuleRegistry] Erro ao executar módulo remoto "${id}":`, error);
+        // Fallback para código local
+      }
+    }
+
+    // Fallback: carregar módulo local
     if (module.modulePath && module.lazy) {
       try {
         const loaded = await import(module.modulePath);
@@ -193,7 +277,7 @@ export class ModuleRegistry {
           loaded.register(this);
         }
         this.loadedModules.add(id);
-        console.log(`[ModuleRegistry] Módulo "${id}" carregado com sucesso.`);
+        console.log(`[ModuleRegistry] ✅ Módulo "${id}" carregado localmente`);
       } catch (error) {
         console.error(`[ModuleRegistry] Erro ao carregar módulo "${id}":`, error);
         return null;
@@ -204,6 +288,23 @@ export class ModuleRegistry {
     }
 
     return module;
+  }
+
+  /**
+   * Carrega módulo do cache remoto (se disponível)
+   */
+  private async loadRemoteModule(id: string): Promise<string | null> {
+    if (!this.moduleUpdater) {
+      return null;
+    }
+
+    try {
+      const code = await this.moduleUpdater.getModuleCode(id);
+      return code;
+    } catch (error) {
+      console.warn(`[ModuleRegistry] Não foi possível carregar módulo remoto "${id}":`, error);
+      return null;
+    }
   }
 
   /**

@@ -1,0 +1,57 @@
+# Publica os módulos atualizados no GitHub Pages.
+# Assim que você der push (ou rodar manualmente), os testadores recebem as atualizações
+# na próxima verificação automática da extensão.
+#
+# Configuração única no GitHub:
+# 1. Repo → Settings → Pages → Source: Deploy from a branch
+# 2. Branch: gh-pages, folder: / (root)
+# 3. Na extensão, o baseUrl em module-updater.ts deve ser:
+#    https://<SEU_USER>.github.io/<NOME_DO_REPO>
+#    (ex: https://ferrarijonas.github.io/Mettri)
+
+name: Deploy modules to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/modules/**'
+      - 'package.json'
+      - 'modules-updates/**'
+      - '.github/workflows/deploy-modules.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-modules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build modules
+        run: npm run build:modules
+
+      - name: Publish modules (generate manifest + files)
+        run: npm run publish-modules
+        env:
+          # PowerShell script uses default BaseUrl; optional override:
+          # BASE_URL: ${{ github.server_url }}/${{ github.repository_owner }}.github.io/...
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./modules-updates
+          force_orphan: true

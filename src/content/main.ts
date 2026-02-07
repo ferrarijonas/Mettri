@@ -5,6 +5,7 @@ import { whatsappInterceptors } from '../infrastructure/interceptors-core';
 import { whatsappInterceptors as interceptorsWrapper } from '../infrastructure/whatsapp-interceptors';
 import { UserSessionManager } from '../infrastructure/user-session-manager';
 import { MettriBridgeClient } from './bridge-client';
+import { ModuleUpdater } from '../infrastructure/module-updater';
 
 class MettriApp {
   private panel: MettriPanel | null = null;
@@ -58,12 +59,35 @@ class MettriApp {
 
       console.log('[MettriApp] ✅ WhatsAppInterceptors inicializado!');
       
+      // Verificar atualizações de módulos antes de iniciar UI
+      await this.checkModuleUpdates();
+      
       // Iniciar UI após interceptors estarem prontos
       this.startUI();
     } catch (error) {
       console.error('[MettriApp] Erro ao inicializar:', error);
       // Mesmo com erro, tentar iniciar UI (pode funcionar parcialmente)
       this.startUI();
+    }
+  }
+
+  /**
+   * Verifica atualizações de módulos
+   */
+  private async checkModuleUpdates(): Promise<void> {
+    try {
+      console.log('[MettriApp] Verificando atualizações de módulos...');
+      const moduleUpdater = new ModuleUpdater();
+      const result = await moduleUpdater.checkForUpdates();
+      
+      if (result.hasUpdate) {
+        console.log(`[MettriApp] ✅ Atualizações disponíveis: ${result.modulesToUpdate.length} módulos`);
+      } else {
+        console.log('[MettriApp] Nenhuma atualização disponível');
+      }
+    } catch (error) {
+      console.warn('[MettriApp] Erro ao verificar atualizações (continuando com código local):', error);
+      // Não bloquear inicialização se verificação falhar
     }
   }
 
