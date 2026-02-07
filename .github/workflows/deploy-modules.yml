@@ -44,10 +44,9 @@ jobs:
         run: npm run build:modules
 
       - name: Publish modules (generate manifest + files)
-        run: npm run publish-modules
+        run: node scripts/publish-modules.mjs
         env:
-          # PowerShell script uses default BaseUrl; optional override:
-          # BASE_URL: ${{ github.server_url }}/${{ github.repository_owner }}.github.io/...
+          BASE_URL: https://ferrarijonas.github.io/Mettri
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
