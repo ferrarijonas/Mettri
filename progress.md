@@ -361,6 +361,7 @@
 | 2026-01-11 | Criado HISTORICO_SIMPLES.md para documentação rápida |
 | 2026-01-11 | Criado PLANO_ABA_TESTES_HISTORICO.md com plano detalhado |
 | 2026-01-29 | **UI:** Visual 100% isolado em Shadow DOM; `panel.css`/temas carregados via `<link>` no ShadowRoot (sem CSS global no `manifest.json`) |
+| 2026-02-08 | **Marketing - Retomar:** Etiquetas Bloqueados/CNPJ; modo dia e modo etiqueta; kebab adicionar/remover/mover; listas customizadas; refinamento e push. |
 
 ---
 
