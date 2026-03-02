@@ -146,6 +146,11 @@ export class MettriPanel {
         <span class="w-5 h-5">${getIcon('Megaphone')}</span>
       </button>
 
+      <!-- Module: Cadastro / Mapear compras -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="cadastro" title="Cadastro - Mapear compras já existentes">
+        <span class="w-5 h-5">${getIcon('ClipboardList')}</span>
+      </button>
+
       <div class="flex-1"></div>
 
       <div class="w-8 h-px bg-primary-foreground/20 my-1"></div>
@@ -612,6 +617,7 @@ export class MettriPanel {
       'clientes': 'clientes.directory',
       'infraestrutura': 'infrastructure.tests', // PanelShell vai ativar o primeiro filho
       'marketing': 'marketing.enviar',
+      'cadastro': 'cadastro.purchase-mapping',
     };
     return mapping[navbarModuleId] || navbarModuleId;
   }
@@ -689,11 +695,13 @@ export class MettriPanel {
       'clientes.history': 'Histórico',
       'infraestrutura': 'Sentinela',
       'infraestrutura.tests': 'Sentinela',
-      'marketing': 'Enviar',
-      'marketing.enviar': 'Enviar',
-      'marketing.enviar.retomar': 'Enviar',
-      'marketing.enviar.responder': 'Enviar',
-      'marketing.enviar.divulgar': 'Enviar',
+      'marketing': 'Studio Mettri',
+      'marketing.enviar': 'Studio Mettri',
+      'marketing.enviar.retomar': 'Studio Mettri',
+      'marketing.enviar.responder': 'Studio Mettri',
+      'marketing.enviar.divulgar': 'Studio Mettri',
+      'cadastro': 'Cadastro',
+      'cadastro.purchase-mapping': 'Mapear compras já existentes',
     };
 
     const parts = moduleId.split('.');
@@ -995,10 +1003,11 @@ export class MettriPanel {
 
   /**
    * Mostra modal de configurações da conta.
+   * Passa o shadow root para o modal ser anexado dentro do painel e herdar os estilos (evita modal invisível).
    */
   private showUserSessionModal(): void {
-    if (this.userSessionModal) {
-      this.userSessionModal.show(this.userSession);
+    if (this.userSessionModal && this.shadow) {
+      this.userSessionModal.show(this.userSession, this.shadow);
     }
   }
 

@@ -7,6 +7,7 @@ import type {
   SelectorDefinition,
   SelectorsConfig,
   MessageDBEntry,
+  RetomarMeta,
   AutoMappingSession,
   AutoMappingResult,
 } from './schemas';
@@ -17,6 +18,7 @@ export type {
   SelectorDefinition,
   SelectorsConfig,
   MessageDBEntry,
+  RetomarMeta,
   AutoMappingSession,
   AutoMappingResult,
 };
@@ -27,6 +29,7 @@ export {
   SelectorDefinitionSchema,
   SelectorsConfigSchema,
   MessageDBEntrySchema,
+  RetomarMetaSchema,
   AutoMappingSessionSchema,
   AutoMappingResultSchema,
   messageToDBEntry,

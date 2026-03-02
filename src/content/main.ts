@@ -11,7 +11,7 @@ class MettriApp {
   private panel: MettriPanel | null = null;
   private capturer: MessageCapturer | null = null;
   private isInitialized = false;
-  private bridge = new MettriBridgeClient(2500);
+  private bridge = new MettriBridgeClient(60000);
 
   constructor() {
     console.log('[MettriApp] Inicializando no contexto MAIN (acesso direto)');

@@ -1,0 +1,2605 @@
+/* Mettri Panel Styles - DESIGN V0 PREMIUM
+ * 
+ * Baseado no design premium do v0 com glassmorphism, NavBar vertical e Sidebar.
+ * As cores e variáveis CSS vêm dos temas em src/ui/theme/themes/
+ * 
+ * Para trocar visual, use ThemeLoader:
+ *   import { ThemeLoader } from './ui/theme';
+ *   await ThemeLoader.load('wa-web-2026');
+ */
+
+/* ============================================
+   GLASSMORPHISM - Efeitos de vidro
+   ============================================ */
+
+.glass {
+  /* CORREÇÃO 4: Glassmorphism escuro e delicado */
+  background: rgba(32, 39, 43, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* CORREÇÃO 3: Borda quase transparente */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* CORREÇÃO 2: Sombras muito sutis */
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-subtle {
+  /* CORREÇÃO 4: Glassmorphism mais sutil */
+  background: rgba(32, 39, 43, 0.6);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  /* CORREÇÃO 3: Borda quase transparente */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Glow effect para botões */
+.glow-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-hover:hover {
+  box-shadow: 
+    0 0 20px var(--mettri-accent, #1DAA61) / 0.4,
+    0 0 40px var(--mettri-accent, #1DAA61) / 0.2;
+}
+
+/* ============================================
+   NAVBAR - Barra vertical direita (Design v0)
+   ============================================ */
+
+.mettri-navbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 56px;
+  height: 100vh;
+  background: var(--mettri-accent, #1DAA61);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  z-index: 10000;
+  /* CORREÇÃO 2: Sombra mais sutil */
+  box-shadow: -1px 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.mettri-navbar-divider {
+  width: 32px;
+  height: 1px;
+  background: var(--mettri-text-on-accent, #FFFFFF);
+  opacity: 0.2;
+  margin: 4px 0;
+}
+
+.mettri-navbar-spacer {
+  flex: 1;
+}
+
+.mettri-navbar-btn {
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  border-radius: 12px;
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+.mettri-navbar-btn svg {
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.mettri-navbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+}
+
+.mettri-navbar-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+}
+
+.mettri-navbar-module {
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.5;
+}
+
+.mettri-navbar-module:hover,
+.mettri-navbar-module.active {
+  opacity: 1;
+}
+
+/* ============================================
+   SIDEBAR - Painel de conteúdo (Design v0)
+   ============================================ */
+
+#mettri-panel.mettri-sidebar {
+  position: fixed;
+  top: 0;
+  right: 56px; /* NavBar width */
+  width: 300px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* CORREÇÃO 1: Background escuro com glassmorphism */
+  background: var(--mettri-bg, rgba(18, 24, 28, 0.85));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  color: var(--mettri-text, #FFFFFF);
+  /* CORREÇÃO 3: Borda quase transparente */
+  border-left: 1px solid var(--mettri-border, rgba(255, 255, 255, 0.05));
+  font-family: var(--wa-font-family, "Roboto Variable", "Segoe UI", "Helvetica Neue", Helvetica, "Lucida Grande", Arial, Ubuntu, Cantarell, "Fira Sans", sans-serif);
+  z-index: 9999;
+  /* CORREÇÃO 2: Sombra muito mais sutil */
+  box-shadow: -1px 0 3px rgba(0, 0, 0, 0.2);
+  animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Fallback para compatibilidade - manter IDs antigos */
+#mettri-panel {
+  /* Se não tem classe mettri-sidebar, manter estilos antigos */
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100vh;
+  background: var(--mettri-bg, #FFFFFF);
+  color: var(--mettri-text, #0A1014);
+  border-left: 1px solid var(--mettri-border, rgba(17, 27, 33, 0.1));
+  display: flex;
+  flex-direction: column;
+  font-family: var(--wa-font-family, "Roboto Variable", "Segoe UI", "Helvetica Neue", Helvetica, "Lucida Grande", Arial, Ubuntu, Cantarell, "Fira Sans", sans-serif);
+  z-index: 9999;
+  box-shadow: var(--wa-shadow-lg, -2px 0 8px rgba(0, 0, 0, 0.1));
+  
+  /* Fallback apenas - será sobrescrito pelo tema */
+  --mettri-bg: var(--mettri-bg, #FFFFFF);
+  --mettri-bg-secondary: var(--mettri-bg-secondary, #F7F5F3);
+  --mettri-bg-tertiary: var(--mettri-bg-tertiary, #EAEDEE);
+  --mettri-text: var(--mettri-text, #0A1014);
+  --mettri-text-secondary: var(--mettri-text-secondary, #5B6368);
+  --mettri-text-disabled: var(--mettri-text-disabled, #B3B9BD);
+  --mettri-text-on-accent: var(--mettri-text-on-accent, #FFFFFF);
+  --mettri-border: var(--mettri-border, rgba(17, 27, 33, 0.1));
+  --mettri-accent: var(--mettri-accent, #1DAA61);
+  --mettri-accent-hover: var(--mettri-accent-hover, #1B8755);
+  --mettri-accent-active: var(--mettri-accent-active, #15603E);
+  --mettri-message-in: var(--mettri-message-in, #FFFFFF);
+  --mettri-message-out: var(--mettri-message-out, #D9FDD3);
+  --mettri-success-color: var(--mettri-success-color, #00A884);
+  --mettri-error-color: var(--mettri-error-color, #EA0038);
+  --mettri-warning-color: var(--mettri-warning-color, #FFB938);
+  --mettri-glass-bg: var(--mettri-glass-bg, rgba(255, 255, 255, 0.65));
+  --mettri-glass-border: var(--mettri-glass-border, rgba(255, 255, 255, 0.3));
+  --mettri-glass-shadow: var(--mettri-glass-shadow, rgba(0, 0, 0, 0.08));
+}
+
+/* Scrollbar global - estilo WhatsApp */
+#mettri-panel *::-webkit-scrollbar {
+  width: var(--wa-scrollbar-width, 6px);
+}
+
+#mettri-panel *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#mettri-panel *::-webkit-scrollbar-thumb {
+  background: var(--mettri-border);
+  border-radius: var(--wa-radius-sm, 3px);
+}
+
+#mettri-panel *::-webkit-scrollbar-thumb:hover {
+  background: var(--wa-cool-gray-300, #B3B9BD);
+}
+
+/* Sidebar Header (Design v0 - Refinado) */
+.mettri-sidebar-header {
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--mettri-accent, #1DAA61);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  /* CORREÇÃO 2: Sem sombra no header - mais delicado */
+  box-shadow: none;
+}
+
+.mettri-sidebar-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mettri-sidebar-title-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  margin: 0;
+}
+
+.mettri-sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mettri-kebab-menu,
+.mettri-header-btn {
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  /* CORREÇÃO 7: Opacidade mais baixa para delicadeza */
+  opacity: 0.6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mettri-kebab-menu svg,
+.mettri-header-btn svg {
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.mettri-kebab-menu:hover,
+.mettri-header-btn:hover {
+  /* CORREÇÃO 8: Hover mais sutil */
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.9;
+}
+
+/* Header (compatibilidade - manter estilos antigos) */
+.mettri-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--wa-padding-header, 16px);
+  background: var(--mettri-accent, #1DAA61);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+}
+
+.mettri-header h1 {
+  margin: 0;
+  font-size: var(--wa-font-size-lg, 18px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-header-actions {
+  display: flex;
+  gap: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-btn {
+  background: none;
+  border: none;
+  color: var(--mettri-text-on-accent);
+  cursor: pointer;
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-sm, 3px);
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  transition: background var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+}
+
+.mettri-btn:hover {
+  background: var(--mettri-btn-hover-overlay, rgba(255, 255, 255, 0.2));
+}
+
+/* Tabs */
+.mettri-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--mettri-border);
+  background: var(--mettri-bg-secondary);
+  position: relative;
+}
+
+.mettri-tab {
+  flex: 1;
+  padding: var(--wa-spacing-md, 12px) var(--wa-spacing-lg, 16px);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text-secondary);
+  line-height: var(--wa-line-height-normal, 1.4);
+  transition: all var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+}
+
+.mettri-tab:hover {
+  background: var(--mettri-bg-tertiary);
+}
+
+.mettri-tab.active {
+  color: var(--mettri-accent);
+  border-bottom-color: var(--mettri-accent);
+  background: var(--mettri-bg);
+  font-weight: var(--wa-font-weight-semibold, 600);
+}
+
+/* Dropdown tabs (hierarquia) */
+.mettri-tab-dropdown {
+  position: relative;
+  flex: 1;
+}
+
+.mettri-tab-dropdown-toggle {
+  width: 100%;
+  position: relative;
+}
+
+.mettri-dropdown-arrow {
+  font-size: var(--wa-font-size-xs, 11px);
+  margin-left: var(--wa-spacing-xs, 4px);
+  transition: transform var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  display: inline-block;
+}
+
+.mettri-tab-dropdown-toggle.active .mettri-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.mettri-tab-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--mettri-bg);
+  border: 1px solid var(--mettri-border);
+  border-top: none;
+  border-radius: 0 0 var(--wa-radius-md, 6px) var(--wa-radius-md, 6px);
+  box-shadow: var(--wa-shadow-md, 0 2px 4px rgba(0, 0, 0, 0.1));
+  z-index: var(--wa-layer-10, 1000);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.mettri-tab-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--wa-spacing-md, 12px) var(--wa-spacing-lg, 16px);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text);
+  line-height: var(--wa-line-height-normal, 1.4);
+  transition: background var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  border-bottom: 1px solid var(--mettri-border);
+}
+
+.mettri-tab-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.mettri-tab-dropdown-item:hover {
+  background: var(--mettri-bg-secondary);
+}
+
+.mettri-tab-dropdown-item:active,
+.mettri-tab-dropdown-item.active {
+  background: var(--mettri-accent);
+  color: var(--mettri-text-on-accent, #ffffff);
+}
+
+/* Content area - Refinado Design v0 Delicado */
+.mettri-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* CORREÇÃO 6: Padding mais generoso */
+  padding: 12px;
+  gap: 0;
+}
+
+.mettri-content > * {
+  /* CORREÇÃO 6: Espaçamento mais generoso */
+  margin-bottom: 16px;
+}
+
+.mettri-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.mettri-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  height: 0;
+  min-height: 0;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Status bar */
+.mettri-status {
+  display: flex;
+  align-items: center;
+  gap: var(--wa-spacing-sm, 8px);
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-lg, 16px);
+  background: var(--mettri-bg-secondary);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text-secondary);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--wa-cool-gray-400, #8D9599);
+}
+
+.mettri-status-dot.active {
+  background: var(--mettri-accent);
+}
+
+/* Messages container */
+.mettri-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--wa-spacing-lg, 16px);
+}
+
+/* Empty state */
+.mettri-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--mettri-text-secondary);
+  text-align: center;
+  padding: var(--wa-spacing-2xl, 32px);
+}
+
+
+/* Message item */
+.mettri-message {
+  margin-bottom: var(--wa-spacing-sm, 8px);
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  max-width: 90%;
+  word-wrap: break-word;
+}
+
+.mettri-message.incoming {
+  background: var(--mettri-message-in);
+  margin-right: auto;
+  border-bottom-left-radius: 0;
+}
+
+.mettri-message.outgoing {
+  background: var(--mettri-message-out);
+  margin-left: auto;
+  border-bottom-right-radius: 0;
+}
+
+.mettri-message-sender {
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-accent);
+  margin-bottom: var(--wa-spacing-xs, 4px);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-message-text {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-message-time {
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text-secondary);
+  text-align: right;
+  margin-top: var(--wa-spacing-xs, 4px);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+/* Footer */
+.mettri-footer {
+  padding: var(--wa-spacing-md, 12px) var(--wa-spacing-lg, 16px);
+  background: var(--mettri-bg-secondary);
+  border-top: 1px solid var(--mettri-border);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text-secondary);
+  text-align: center;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+/* Toggle button */
+#mettri-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--mettri-shadow-button, var(--wa-shadow-md, 0 2px 4px rgba(0, 0, 0, 0.1)));
+  font-size: var(--wa-font-size-lg, 18px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  transition: transform var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1)), 
+              background var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+}
+
+#mettri-toggle:hover {
+  transform: scale(1.1);
+  background: var(--mettri-accent-hover);
+}
+
+#mettri-toggle.panel-open {
+  display: none;
+}
+
+/* Webpack Stats Tab */
+.mettri-webpack-stats {
+  padding: var(--wa-spacing-lg, 16px);
+}
+
+.mettri-webpack-stats h3 {
+  margin: 0 0 var(--wa-spacing-lg, 16px) 0;
+  font-size: var(--wa-font-size-md, 16px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-text);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-webpack-status {
+  margin-bottom: var(--wa-spacing-xl, 24px);
+  padding: var(--wa-spacing-lg, 16px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+}
+
+.mettri-webpack-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-webpack-status-item:last-child {
+  margin-bottom: 0;
+}
+
+.status-label {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text-secondary);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.status-value {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-sm, 3px);
+}
+
+.status-value.success {
+  color: var(--mettri-success-color, var(--wa-emerald-500, #00A884));
+  background: var(--mettri-success-bg, rgba(0, 168, 132, 0.1));
+}
+
+.status-value.error {
+  color: var(--mettri-error-color, var(--WDS-red-400, #EA0038));
+  background: var(--mettri-error-bg, rgba(234, 0, 56, 0.1));
+}
+
+.status-value.warning {
+  color: var(--mettri-warning-color, var(--WDS-yellow-400, #FFB938));
+  background: var(--mettri-warning-bg, rgba(255, 152, 0, 0.1));
+}
+
+.mettri-webpack-modules {
+  margin-bottom: var(--wa-spacing-xl, 24px);
+}
+
+.mettri-module-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-module-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--wa-spacing-md, 12px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-md, 6px);
+}
+
+.module-name {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.module-status {
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-sm, 3px);
+}
+
+.module-status.success {
+  color: var(--mettri-success-color);
+  background: var(--mettri-success-bg);
+}
+
+.module-status.error {
+  color: var(--mettri-error-color);
+  background: var(--mettri-error-bg);
+}
+
+.mettri-webpack-stats-numbers {
+  margin-bottom: var(--wa-spacing-xl, 24px);
+}
+
+.mettri-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--wa-spacing-md, 12px);
+}
+
+.mettri-stat-card {
+  padding: var(--wa-spacing-lg, 16px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  text-align: center;
+}
+
+.stat-label {
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text-secondary);
+  margin-bottom: var(--wa-spacing-sm, 8px);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.stat-value {
+  font-size: var(--wa-font-size-xl, 24px);
+  font-weight: var(--wa-font-weight-bold, 700);
+  color: var(--mettri-accent);
+  line-height: var(--wa-line-height-tight, 1.2);
+}
+
+.mettri-webpack-info {
+  padding: var(--wa-spacing-md, 12px);
+  background: var(--mettri-success-bg, rgba(0, 168, 132, 0.1));
+  border-left: 3px solid var(--mettri-accent);
+  border-radius: var(--wa-radius-sm, 3px);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text-secondary);
+  line-height: var(--wa-line-height-relaxed, 1.6);
+}
+
+.mettri-webpack-info strong {
+  color: var(--mettri-text);
+  font-weight: var(--wa-font-weight-semibold, 600);
+}
+
+/* Test Panel Styles */
+.mettri-test-panel {
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mettri-test-section {
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.mettri-test-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.375;
+  letter-spacing: -0.01em;
+}
+
+.mettri-test-number-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mettri-test-number-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--mettri-accent, #1DAA61);
+  flex-shrink: 0;
+}
+
+.mettri-test-number-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.3;
+}
+
+.mettri-test-number-config {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.mettri-test-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 400;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.375;
+  letter-spacing: -0.01em;
+  box-sizing: border-box;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+.mettri-test-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mettri-test-input::placeholder {
+  color: var(--mettri-text-secondary, #8D9599);
+  opacity: 0.5;
+}
+
+.mettri-test-btn-small {
+  padding: 6px 12px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mettri-accent, #1DAA61);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mettri-test-btn-small:hover {
+  background: var(--mettri-accent, rgba(29, 170, 97, 0.1));
+}
+
+.mettri-test-btn {
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-sm, 3px);
+  background: var(--mettri-bg);
+  color: var(--mettri-text);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  cursor: pointer;
+  transition: all var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-test-btn:hover {
+  background: var(--mettri-bg-secondary);
+  border-color: var(--mettri-accent);
+}
+
+.mettri-test-btn-primary {
+  padding: 8px 12px;
+  height: 32px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--mettri-text, #FFFFFF);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.mettri-test-btn-primary:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mettri-test-btn-primary.glass-subtle {
+  background: rgba(32, 39, 43, 0.6);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mettri-test-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mettri-test-number-saved {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--mettri-accent, #1DAA61);
+  margin-top: 4px;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+
+.mettri-test-modules-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--mettri-text, #FFFFFF);
+  margin-bottom: 8px;
+  display: block;
+  padding: 0 2px;
+}
+
+.mettri-test-modules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.mettri-test-level {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.mettri-test-level-header {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--mettri-text, #FFFFFF);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mettri-test-level-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mettri-test-level-header svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--mettri-text-secondary, #8D9599);
+  opacity: 0.7;
+}
+
+.mettri-test-level-header[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.mettri-test-level-modules {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mettri-test-module,
+.mettri-test-module-item {
+  display: flex;
+  align-items: center;
+  gap: var(--wa-spacing-xs, 4px);
+  padding: 10px var(--wa-spacing-md, 12px);
+  border-bottom: 1px solid var(--mettri-border);
+  transition: background var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+  min-height: 44px;
+  overflow: hidden;
+}
+
+.mettri-test-module:last-child {
+  border-bottom: none;
+}
+
+.mettri-test-module:hover {
+  background: var(--mettri-bg-secondary);
+}
+
+.mettri-test-module.status-success,
+.mettri-test-module-item.status-success {
+  background: rgba(0, 168, 132, 0.08);
+}
+
+.mettri-test-module.status-error,
+.mettri-test-module-item.status-error {
+  background: rgba(234, 0, 56, 0.08);
+}
+
+.mettri-test-module.status-testing,
+.mettri-test-module-item.status-testing {
+  background: rgba(255, 185, 56, 0.08);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.mettri-test-module-status {
+  font-size: var(--wa-font-size-md, 16px);
+  width: 24px;
+  text-align: center;
+}
+
+.mettri-test-module-name {
+  flex: 0 1 auto;
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text);
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: var(--wa-line-height-tight, 1.2);
+  max-width: 140px;
+  min-width: 60px;
+}
+
+.mettri-test-module-tech {
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text-secondary);
+  font-family: var(--wa-font-family-monospace, Consolas, Menlo, Monaco, "Lucida Console", monospace);
+  opacity: 0.6;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mettri-test-module-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  cursor: help;
+  flex-shrink: 0;
+  transition: all var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  user-select: none;
+}
+
+.mettri-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--mettri-bg-secondary);
+  border: 1px solid var(--mettri-border);
+  color: var(--mettri-text-secondary);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  font-style: normal;
+  line-height: 1;
+}
+
+.mettri-test-module-info:hover .mettri-info-icon {
+  background: var(--mettri-accent);
+  border-color: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+  transform: scale(1.1);
+}
+
+/* Tooltip estilo WhatsApp */
+.mettri-info-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--wa-spacing-sm, 8px));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--mettri-tooltip-bg, rgba(32, 44, 51, 0.95));
+  color: var(--mettri-tooltip-text, #e9edef);
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  line-height: var(--wa-line-height-normal, 1.4);
+  white-space: normal;
+  max-width: 200px;
+  min-width: 150px;
+  box-shadow: var(--wa-shadow-lg, 0 4px 8px rgba(0, 0, 0, 0.15));
+  z-index: var(--wa-layer-10, 1000);
+  display: none;
+  word-wrap: break-word;
+  pointer-events: none;
+}
+
+.mettri-info-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--mettri-tooltip-bg, rgba(32, 44, 51, 0.95));
+}
+
+.mettri-test-module.executing {
+  background: var(--mettri-success-bg, rgba(0, 168, 132, 0.1));
+  border-left: 3px solid var(--mettri-accent);
+}
+
+.mettri-test-execution-indicator {
+  display: none;
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  font-style: italic;
+  color: var(--mettri-accent);
+  margin-top: var(--wa-spacing-xs, 4px);
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  background: var(--mettri-success-bg-light, rgba(0, 168, 132, 0.05));
+  border-radius: var(--wa-radius-sm, 3px);
+  width: 100%;
+  box-sizing: border-box;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-test-module-actions {
+  display: flex;
+  gap: var(--wa-spacing-xs, 4px);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.mettri-test-module-btn {
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-sm, 3px);
+  background: var(--mettri-bg);
+  color: var(--mettri-text);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  cursor: pointer;
+  transition: all var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-test-module-btn:hover {
+  background: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+  border-color: var(--mettri-accent);
+}
+
+.mettri-test-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mettri-test-actions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.mettri-test-actions button svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.mettri-test-report {
+  padding: 12px;
+  background: transparent;
+  border: none;
+}
+
+.mettri-test-report-stat {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.mettri-test-report-stat:last-of-type {
+  margin-bottom: 12px;
+}
+
+.mettri-test-report-stat strong {
+  color: var(--mettri-text, #FFFFFF);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.mettri-test-report-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.mettri-error {
+  padding: var(--wa-spacing-lg, 16px);
+  text-align: center;
+  color: var(--mettri-error-color, var(--WDS-red-400, #EA0038));
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+/* Toast fixo para feedback de testes */
+.mettri-test-feedback-toast {
+  position: fixed;
+  top: 50vh;
+  right: 20px;
+  transform: translateY(-50%);
+  z-index: 10001;
+  max-width: 380px;
+  width: calc(320px - 32px);
+  box-shadow: var(--wa-shadow-xl, 0 8px 16px rgba(0, 0, 0, 0.2));
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  animation: toastSlideIn var(--wa-transition-normal, 0.18s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  pointer-events: auto;
+  max-height: 70vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mettri-test-feedback-toast-content {
+  position: relative;
+  padding: var(--wa-spacing-lg, 16px) 40px var(--wa-spacing-lg, 16px) var(--wa-spacing-lg, 16px);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  line-height: var(--wa-line-height-relaxed, 1.6);
+  max-height: calc(70vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+.mettri-test-feedback-toast-close {
+  position: absolute;
+  top: var(--wa-spacing-sm, 8px);
+  right: var(--wa-spacing-sm, 8px);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: var(--wa-font-size-lg, 18px);
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+  padding: 0;
+  opacity: 0.7;
+}
+
+.mettri-test-feedback-toast-close:hover {
+  background: rgba(0, 0, 0, 0.2);
+  opacity: 1;
+}
+
+.mettri-test-feedback-message {
+  white-space: pre-line;
+  word-wrap: break-word;
+}
+
+.mettri-test-feedback-message > div {
+  margin-bottom: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-test-feedback-message > div:last-child {
+  margin-bottom: 0;
+}
+
+.mettri-test-feedback-toast-success {
+  background: var(--mettri-toast-bg, #ffffff);
+  color: var(--mettri-success-color, var(--wa-emerald-500, #00A884));
+  border: 2px solid var(--mettri-success-color, var(--wa-emerald-500, #00A884));
+}
+
+.mettri-test-feedback-toast-error {
+  background: var(--mettri-toast-bg, #ffffff);
+  color: var(--mettri-error-color, var(--WDS-red-400, #EA0038));
+  border: 2px solid var(--mettri-error-color, var(--WDS-red-400, #EA0038));
+}
+
+.mettri-test-feedback-toast-warning {
+  background: var(--mettri-toast-bg, #ffffff);
+  color: var(--mettri-warning-color, var(--WDS-yellow-400, #FFB938));
+  border: 2px solid var(--mettri-warning-color, var(--WDS-yellow-400, #FFB938));
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+/* ============================================
+   HISTÓRICO MELHORADO
+   ============================================ */
+
+.mettri-history-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mettri-history-header {
+  padding: 0 0 12px 0;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 0;
+}
+
+.mettri-history-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.375;
+  letter-spacing: -0.01em;
+  flex: 1;
+  padding: 0;
+}
+
+.mettri-btn-back {
+  background: var(--mettri-bg-secondary);
+  border: 1px solid var(--mettri-border);
+  color: var(--mettri-text);
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  border-radius: var(--wa-radius-md, 6px);
+  cursor: pointer;
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  line-height: var(--wa-line-height-normal, 1.4);
+  transition: all var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+}
+
+.mettri-btn-back:hover {
+  background: var(--mettri-bg-tertiary);
+}
+
+/* Input/search bar - Design v0 Premium Refinado */
+.mettri-history-search {
+  padding: 0 0 12px 0;
+  border-bottom: none;
+  position: relative;
+}
+
+.mettri-history-search::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238D9599' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.4;
+  z-index: 1;
+}
+
+.mettri-input {
+  width: 100%;
+  padding: 6px 12px 6px 34px; /* Padding-left para ícone de busca */
+  border: none;
+  /* CORREÇÃO 5: Border-radius mais sutil */
+  border-radius: 18px;
+  /* CORREÇÃO 10: Glassmorphism no input */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--mettri-text, #FFFFFF);
+  font-size: 12px;
+  font-weight: 400;
+  box-sizing: border-box;
+  line-height: 1.375;
+  letter-spacing: -0.01em;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.mettri-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  /* CORREÇÃO 2: Sombra muito sutil no foco */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.mettri-input::placeholder {
+  color: var(--mettri-text-secondary, #8D9599);
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.5;
+}
+
+/* Filtros - Botões Pílula (Design v0) */
+.mettri-history-filters {
+  padding: 0;
+  border-bottom: none;
+  display: flex;
+  gap: 6px;
+  padding-bottom: 12px;
+}
+
+.mettri-filter-btn {
+  flex: 1;
+  padding: 6px 12px;
+  height: 28px;
+  border: none;
+  border-radius: 999px; /* Pílula completa */
+  background: transparent;
+  color: var(--mettri-text-secondary, #8D9599);
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* CORREÇÃO 7: Opacidade inicial */
+  opacity: 0.7;
+}
+
+.mettri-filter-btn:hover {
+  /* CORREÇÃO 8: Hover sutil com glassmorphism */
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--mettri-text, #FFFFFF);
+  opacity: 0.9;
+}
+
+.mettri-filter-btn.active {
+  background: var(--mettri-accent, #1DAA61);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.mettri-select {
+  flex: 1;
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-md, 6px);
+  background: var(--mettri-bg);
+  color: var(--mettri-text);
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  cursor: pointer;
+  line-height: var(--wa-line-height-normal, 1.4);
+  transition: border-color var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+}
+
+.mettri-select:focus {
+  outline: none;
+  border-color: var(--mettri-accent);
+}
+
+.mettri-history-contacts {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Contact Item (Design v0 - Premium - Refinado Delicado) */
+.mettri-contact-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* CORREÇÃO 6: Padding mais generoso */
+  padding: 8px 4px;
+  /* CORREÇÃO 5: Border-radius sutil */
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  border: none;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.mettri-contact-card:hover {
+  /* CORREÇÃO 8: Hover muito mais sutil com glassmorphism */
+  background: rgba(255, 255, 255, 0.04);
+  transform: none;
+}
+
+.mettri-contact-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: var(--mettri-accent, #1DAA61);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+  /* CORREÇÃO 3: Borda quase transparente */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  /* CORREÇÃO 2: Sombra muito sutil */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.mettri-contact-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mettri-contact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.mettri-contact-name {
+  font-weight: 400; /* Mais leve - design v0 */
+  font-size: 12px;
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.375; /* Refinado: 16.5px / 12px = 1.375 */
+  letter-spacing: -0.01em; /* Levemente mais apertado */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.mettri-contact-time {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--mettri-text-secondary, #8D9599);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.3;
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.6;
+}
+
+.mettri-contact-details {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0;
+}
+
+.mettri-contact-meta {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--mettri-text-secondary, #8D9599);
+  line-height: 1.3;
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.5;
+}
+
+.mettri-contact-preview {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--mettri-text-secondary, #8D9599);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.5;
+  letter-spacing: -0.01em;
+}
+
+.mettri-history-actions {
+  padding: var(--wa-spacing-md, 12px) var(--wa-padding-header, 16px);
+  border-bottom: 1px solid var(--mettri-border);
+  display: flex;
+  gap: var(--wa-spacing-sm, 8px);
+  align-items: center;
+}
+
+.mettri-history-actions .mettri-btn {
+  flex: 1;
+  padding: 10px var(--wa-spacing-lg, 16px);
+  background: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+  border: none;
+  border-radius: var(--wa-radius-md, 6px);
+  cursor: pointer;
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  line-height: var(--wa-line-height-normal, 1.4);
+  transition: background var(--wa-transition-fast, 0.08s) var(--wa-ease, cubic-bezier(.1, .82, .25, 1));
+}
+
+.mettri-history-actions .mettri-btn:hover {
+  background: var(--mettri-accent-hover);
+}
+
+.mettri-history-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-messages-date-group {
+  margin-bottom: var(--wa-spacing-xl, 24px);
+}
+
+.mettri-messages-date-header {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-text-secondary);
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  margin-bottom: var(--wa-spacing-sm, 8px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-md, 6px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-history-message {
+  padding: 10px var(--wa-spacing-md, 12px);
+  margin-bottom: var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  max-width: 85%;
+  word-wrap: break-word;
+}
+
+.mettri-history-message.incoming {
+  background: var(--mettri-message-in);
+  border: 1px solid var(--mettri-border);
+  margin-right: auto;
+}
+
+.mettri-history-message.outgoing {
+  background: var(--mettri-message-out);
+  border: 1px solid var(--mettri-accent);
+  margin-left: auto;
+}
+
+.mettri-history-message-sender {
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-text-secondary);
+  margin-bottom: var(--wa-spacing-xs, 4px);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-history-message-text {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text);
+  line-height: var(--wa-line-height-relaxed, 1.6);
+  margin-bottom: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-history-message-time {
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-normal, 400);
+  color: var(--mettri-text-secondary);
+  text-align: right;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-history-message.outgoing .mettri-history-message-time {
+  text-align: right;
+}
+
+.mettri-history-message.incoming .mettri-history-message-time {
+  text-align: left;
+}
+
+/* ============================================
+   REATIVAÇÃO - NOVA UI
+   ============================================ */
+
+/* Seções do painel de reativação */
+.mettri-reactivation-section {
+  padding: var(--wa-spacing-md, 12px) var(--wa-spacing-lg, 16px);
+  border-bottom: 1px solid var(--mettri-border);
+}
+
+.mettri-reactivation-section:last-child {
+  border-bottom: none;
+}
+
+.mettri-reactivation-section-compact {
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-lg, 16px);
+}
+
+.mettri-reactivation-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--wa-spacing-md, 12px);
+}
+
+.mettri-reactivation-section-header-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-section-title-small {
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mettri-btn-link {
+  background: none;
+  border: none;
+  color: var(--mettri-accent);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  cursor: pointer;
+  padding: calc(var(--wa-spacing-xs, 4px) * 0.5) var(--wa-spacing-xs, 4px);
+  text-decoration: none;
+  transition: opacity var(--wa-transition-fast, 0.08s);
+}
+
+.mettri-btn-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.mettri-info-icon {
+  width: var(--wa-spacing-md, 12px);
+  height: var(--wa-spacing-md, 12px);
+  border-radius: var(--wa-radius-full, 9999px);
+  background: var(--mettri-bg-secondary);
+  border: 1px solid var(--mettri-border);
+  color: var(--mettri-text-secondary);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  transition: all var(--wa-transition-fast, 0.08s);
+}
+
+/* Esconder ícones quando tema VSCode está ativo */
+#mettri-panel:has(~ link[id="mettri-theme"][href*="vscode-industrial"]) .mettri-info-icon,
+#mettri-panel[data-theme="vscode-industrial"] .mettri-info-icon {
+  display: none !important;
+}
+
+.mettri-info-icon:hover {
+  background: var(--mettri-accent);
+  border-color: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+}
+
+/* Visão Geral (COMPACTA) */
+.mettri-reactivation-overview-compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-overview-compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-overview-total-compact {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-text);
+}
+
+.mettri-overview-breakdown-compact {
+  display: flex;
+  gap: var(--wa-spacing-sm, 8px);
+  flex-wrap: wrap;
+  font-size: var(--wa-font-size-xs, 11px);
+  color: var(--mettri-text-secondary);
+}
+
+.mettri-overview-day-compact {
+  display: inline-block;
+}
+
+/* Template de Mensagem */
+.mettri-template-config-row {
+  margin-bottom: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-template-config-row:last-child {
+  margin-bottom: 0;
+}
+
+.mettri-label {
+  display: block;
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text);
+  margin-bottom: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-select-inline {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-sm, 3px);
+  background: var(--mettri-bg);
+  color: var(--mettri-text);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  margin-left: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-textarea {
+  min-height: calc(var(--wa-spacing-xl, 24px) * 3.33);
+  resize: vertical;
+  font-family: inherit;
+}
+
+.mettri-template-textarea {
+  font-size: var(--wa-font-size-base, 14px);
+  line-height: var(--wa-line-height-relaxed, 1.6);
+}
+
+
+.mettri-message-preview {
+  margin-top: var(--wa-spacing-sm, 8px);
+  padding: var(--wa-spacing-sm, 8px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-sm, 3px);
+}
+
+.mettri-message-bubble {
+  background: var(--mettri-message-out);
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  margin-bottom: calc(var(--wa-spacing-xs, 4px) * 0.5);
+  max-width: 85%;
+  margin-left: auto;
+  word-wrap: break-word;
+  font-size: var(--wa-font-size-sm, 12.6px);
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-message-time {
+  font-size: var(--wa-font-size-xs, 11px);
+  color: var(--mettri-text-secondary);
+  text-align: right;
+  margin-top: calc(var(--wa-spacing-xs, 4px) * 0.5);
+  opacity: var(--mettri-opacity-hint, 0.7);
+}
+
+/* Preparar Envios */
+.mettri-prepare-actions {
+  display: flex;
+  gap: var(--wa-spacing-md, 12px);
+  flex-wrap: wrap;
+  margin-bottom: var(--wa-spacing-md, 12px);
+  padding-bottom: var(--wa-spacing-sm, 8px);
+  border-bottom: 1px solid var(--mettri-border);
+}
+
+.mettri-prepare-selected {
+  display: flex;
+  flex-direction: column;
+}
+
+.mettri-prepare-selected-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-prepare-clients-list {
+  max-height: calc(var(--wa-spacing-xl, 24px) * 12.5);
+  overflow-y: auto;
+  margin-bottom: var(--wa-spacing-md, 12px);
+}
+
+.mettri-prepare-send-footer {
+  padding-top: var(--wa-spacing-md, 12px);
+  border-top: 1px solid var(--mettri-border);
+  display: flex;
+  justify-content: center;
+}
+
+.mettri-btn-send {
+  width: 100%;
+  padding: var(--wa-spacing-md, 12px);
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+}
+
+.mettri-prepare-empty {
+  padding: var(--wa-spacing-xl, 24px);
+  text-align: center;
+  color: var(--mettri-text-secondary);
+  font-size: var(--wa-font-size-sm, 12.6px);
+}
+
+.mettri-prepare-client-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--wa-spacing-md, 12px);
+  margin-bottom: var(--wa-spacing-xs, 4px);
+  background: var(--mettri-bg);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-md, 6px);
+  transition: all var(--wa-transition-fast, 0.08s);
+}
+
+.mettri-prepare-client-card:hover {
+  background: var(--mettri-bg-secondary);
+  border-color: var(--mettri-accent);
+}
+
+.mettri-prepare-client-main {
+  display: flex;
+  align-items: center;
+  gap: var(--wa-spacing-sm, 8px);
+  flex: 1;
+  min-width: 0;
+}
+
+.mettri-prepare-client-checkbox {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.mettri-prepare-client-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mettri-prepare-client-name {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text);
+  margin-bottom: calc(var(--wa-spacing-xs, 4px) * 0.5);
+}
+
+.mettri-prepare-client-preview {
+  font-size: var(--wa-font-size-xs, 11px);
+  color: var(--mettri-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--wa-line-height-normal, 1.4);
+}
+
+.mettri-prepare-client-actions {
+  display: flex;
+  gap: var(--wa-spacing-sm, 8px);
+  flex-shrink: 0;
+}
+
+.mettri-btn-small {
+  font-size: var(--wa-font-size-xs, 11px);
+  padding: calc(var(--wa-spacing-xs, 4px) * 0.5) var(--wa-spacing-xs, 4px);
+}
+
+.mettri-btn-special-list {
+  opacity: var(--mettri-opacity-secondary, 0.6);
+  font-size: var(--wa-font-size-xs, 11px);
+}
+
+.mettri-btn-special-list:hover {
+  opacity: 1;
+}
+
+
+/* Monitoramento */
+.mettri-reactivation-section-header-compact:has(+ .mettri-reactivation-logs) {
+  margin-bottom: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-reactivation-logs {
+  max-height: calc(var(--wa-spacing-xl, 24px) * 6.25);
+  overflow-y: auto;
+  padding: var(--wa-spacing-xs, 4px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-sm, 3px);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-family: var(--wa-font-family-monospace, monospace);
+}
+
+.mettri-logs-empty {
+  text-align: center;
+  color: var(--mettri-text-secondary);
+  padding: var(--wa-spacing-lg, 16px);
+}
+
+.mettri-log-entry {
+  display: flex;
+  gap: var(--wa-spacing-xs, 4px);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--mettri-border);
+}
+
+.mettri-log-entry:last-child {
+  border-bottom: none;
+}
+
+.mettri-log-time {
+  color: var(--mettri-text-secondary);
+  flex-shrink: 0;
+}
+
+.mettri-log-icon {
+  flex-shrink: 0;
+  width: var(--wa-spacing-md, 12px);
+}
+
+.mettri-log-message {
+  flex: 1;
+  color: var(--mettri-text);
+}
+
+.mettri-log-success .mettri-log-icon {
+  color: var(--mettri-success-color);
+}
+
+.mettri-log-error .mettri-log-icon {
+  color: var(--mettri-error-color);
+}
+
+.mettri-log-info .mettri-log-icon {
+  color: var(--mettri-accent);
+}
+
+.mettri-log-warning .mettri-log-icon {
+  color: var(--mettri-warning-color);
+}
+
+/* ============================================
+   KEBAB MENU - Dropdown menu (Design v0)
+   ============================================ */
+
+.mettri-kebab-menu-container {
+  position: relative;
+}
+
+.mettri-kebab-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 176px;
+  /* CORREÇÃO 4: Glassmorphism mais forte e escuro */
+  background: rgba(32, 39, 43, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* CORREÇÃO 3: Borda quase transparente */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 4px;
+  /* CORREÇÃO 2: Sombra muito mais sutil */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10001;
+  display: none;
+  animation: fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mettri-kebab-menu-dropdown.show {
+  display: block;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.mettri-kebab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--mettri-text, #FFFFFF);
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mettri-kebab-menu-item:hover,
+.mettri-kebab-menu-item:focus {
+  /* CORREÇÃO 8: Hover mais sutil */
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.mettri-kebab-menu-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--mettri-text-secondary, #8D9599);
+  flex-shrink: 0;
+  /* CORREÇÃO 7: Opacidade mais baixa */
+  opacity: 0.7;
+}
+
+.mettri-kebab-menu-item.destructive {
+  color: var(--mettri-error-color, #EA0038);
+}
+
+.mettri-kebab-menu-item.destructive:hover {
+  background: rgba(234, 0, 56, 0.15);
+}
+
+.mettri-kebab-menu-divider {
+  height: 1px;
+  /* CORREÇÃO 3: Divisor quase invisível */
+  background: rgba(255, 255, 255, 0.05);
+  margin: 4px 0;
+}
+
+/* Esconder ícones quando tema VSCode está ativo */
+#mettri-panel[data-theme="vscode-industrial"] .mettri-info-icon,
+#mettri-panel[data-theme="vscode-industrial"] .mettri-log-icon,
+#mettri-panel[data-theme="vscode-industrial"] [class*="icon"]::before,
+#mettri-panel[data-theme="vscode-industrial"] [class*="icon"]::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* ============================================
+   FLUXO UNIFICADO - DESIGN MODERNO
+   (Mailchimp/Intercom Style)
+   TODOS OS VALORES VÊM DO TEMA
+   ============================================ */
+
+.mettri-reactivation-unified-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+/* HEADER: Stats + Seletor de dia */
+.mettri-flow-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-md, 12px);
+  position: relative;
+}
+
+.mettri-flow-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--wa-spacing-xs, 4px);
+  padding-bottom: var(--wa-spacing-md, 12px);
+  border-bottom: 1px solid var(--mettri-border);
+}
+
+.mettri-flow-number {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--mettri-text, #FFFFFF);
+  line-height: 1.2;
+  letter-spacing: -2px;
+}
+
+.mettri-flow-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--mettri-text-secondary, #8D9599);
+  flex-wrap: wrap;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.mettri-flow-day-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 11px;
+  color: var(--mettri-accent, #1DAA61);
+  font-weight: 500;
+}
+
+.mettri-flow-day-selector:hover {
+  opacity: 0.8;
+}
+
+.mettri-flow-cadence-pills {
+  display: flex;
+  gap: var(--wa-spacing-xs, 4px);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mettri-flow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--mettri-text-secondary, #8D9599);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.mettri-flow-pill:hover {
+  background: rgba(255, 255, 255, 0.05);
+  opacity: 0.9;
+}
+
+.mettri-flow-pill.active {
+  background: var(--mettri-accent, #1DAA61);
+  color: var(--mettri-text-on-accent, #FFFFFF);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.mettri-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--wa-spacing-md, 12px) + var(--wa-spacing-xs, 4px));
+  height: calc(var(--wa-spacing-md, 12px) + var(--wa-spacing-xs, 4px));
+  padding: 0 var(--wa-spacing-xs, 4px);
+  background: var(--mettri-overlay-light);
+  border-radius: var(--wa-radius-full, 9999px);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+}
+
+.mettri-flow-pill.active .mettri-pill-badge {
+  background: var(--mettri-overlay-medium);
+}
+
+.mettri-flow-edit-link {
+  margin-left: auto;
+  font-size: var(--wa-font-size-xs, 11px);
+  color: var(--mettri-text-secondary);
+  text-decoration: none;
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-sm, 3px);
+  transition: all var(--wa-transition-fast, 0.08s);
+}
+
+.mettri-flow-edit-link:hover {
+  background: var(--mettri-bg-secondary);
+  color: var(--mettri-accent);
+}
+
+/* AÇÕES DE SELEÇÃO */
+.mettri-flow-actions {
+  display: flex;
+  gap: var(--wa-spacing-xs, 4px);
+  flex-wrap: wrap;
+  padding: var(--wa-spacing-sm, 8px) 0;
+  border-bottom: 1px solid var(--mettri-border);
+}
+
+.mettri-flow-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wa-spacing-xs, 4px);
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  background: var(--mettri-bg);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-md, 6px);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  color: var(--mettri-text);
+  cursor: pointer;
+  transition: all var(--wa-transition-fast, 0.08s);
+  font-weight: var(--wa-font-weight-medium, 500);
+}
+
+.mettri-flow-action-btn:hover {
+  background: var(--mettri-bg-secondary);
+  border-color: var(--mettri-accent);
+  color: var(--mettri-accent);
+}
+
+.mettri-action-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--wa-spacing-md, 12px) + var(--wa-spacing-xs, 4px));
+  height: calc(var(--wa-spacing-md, 12px) + var(--wa-spacing-xs, 4px));
+  padding: 0 var(--wa-spacing-xs, 4px);
+  background: var(--mettri-bg-secondary);
+  border-radius: var(--wa-radius-full, 9999px);
+  font-size: var(--wa-font-size-xs, 11px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-text-secondary);
+}
+
+.mettri-flow-action-btn:hover .mettri-action-count {
+  background: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+}
+
+.mettri-flow-action-clear {
+  margin-left: auto;
+  color: var(--mettri-error-color);
+  border-color: var(--mettri-error-color);
+}
+
+.mettri-flow-action-clear:hover {
+  background: var(--mettri-error-bg);
+  color: var(--mettri-error-color);
+}
+
+/* LISTA DE DESTINATÁRIOS */
+.mettri-flow-recipients {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-sm, 8px);
+}
+
+.mettri-flow-recipients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-flow-recipients-title {
+  font-size: var(--wa-font-size-sm, 12.6px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  color: var(--mettri-text);
+  text-transform: uppercase;
+  letter-spacing: calc(var(--wa-font-size-xs, 11px) * 0.045);
+}
+
+.mettri-flow-recipients-count {
+  font-size: var(--wa-font-size-xs, 11px);
+  color: var(--mettri-text-secondary);
+}
+
+.mettri-flow-recipients-list {
+  max-height: calc(var(--wa-spacing-xl, 24px) * 16.67);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-flow-recipient {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--wa-spacing-sm, 8px);
+  padding: var(--wa-spacing-sm, 8px);
+  background: var(--mettri-bg);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-md, 6px);
+  transition: all var(--wa-transition-fast, 0.08s);
+}
+
+.mettri-flow-recipient:hover {
+  background: var(--mettri-bg-secondary);
+  border-color: var(--mettri-accent);
+}
+
+.mettri-flow-recipient-checkbox {
+  flex-shrink: 0;
+  margin-top: calc(var(--wa-spacing-xs, 4px) * 0.5);
+  cursor: pointer;
+}
+
+.mettri-flow-recipient-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wa-spacing-xs, 4px);
+}
+
+.mettri-flow-recipient-name {
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-medium, 500);
+  color: var(--mettri-text);
+}
+
+.mettri-flow-recipient-preview {
+  display: flex;
+  align-items: flex-start;
+}
+
+.mettri-flow-message-bubble {
+  background: var(--mettri-message-out);
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  border-radius: var(--wa-radius-bubble, 7.5px);
+  font-size: var(--wa-font-size-xs, 11px);
+  line-height: var(--wa-line-height-normal, 1.4);
+  color: var(--mettri-text);
+  max-width: 85%;
+  word-wrap: break-word;
+}
+
+.mettri-flow-recipient-actions {
+  display: flex;
+  gap: var(--wa-spacing-xs, 4px);
+  flex-shrink: 0;
+}
+
+.mettri-flow-recipient-action {
+  padding: var(--wa-spacing-xs, 4px) var(--wa-spacing-sm, 8px);
+  background: none;
+  border: none;
+  color: var(--mettri-text-secondary);
+  font-size: var(--wa-font-size-xs, 11px);
+  cursor: pointer;
+  border-radius: var(--wa-radius-sm, 3px);
+  transition: all var(--wa-transition-fast, 0.08s);
+}
+
+.mettri-flow-recipient-action:hover {
+  background: var(--mettri-bg-secondary);
+  color: var(--mettri-accent);
+}
+
+.mettri-flow-recipient-special {
+  opacity: var(--mettri-opacity-secondary, 0.6);
+}
+
+.mettri-flow-recipient-special:hover {
+  opacity: 1;
+}
+
+.mettri-flow-empty {
+  padding: var(--wa-spacing-xl, 24px);
+  text-align: center;
+  color: var(--mettri-text-secondary);
+  font-size: var(--wa-font-size-sm, 12.6px);
+}
+
+.mettri-flow-empty-hint {
+  margin-top: var(--wa-spacing-xs, 4px);
+  font-size: var(--wa-font-size-xs, 11px);
+  opacity: var(--mettri-opacity-hint-light, 0.8);
+}
+
+/* BOTÃO DE ENVIAR */
+.mettri-flow-send {
+  padding-top: var(--wa-spacing-md, 12px);
+  border-top: 1px solid var(--mettri-border);
+}
+
+.mettri-flow-send-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wa-spacing-sm, 8px);
+  padding: var(--wa-spacing-md, 12px) var(--wa-spacing-lg, 16px);
+  background: var(--mettri-accent);
+  color: var(--mettri-text-on-accent);
+  border: none;
+  border-radius: var(--wa-radius-md, 6px);
+  font-size: var(--wa-font-size-base, 14px);
+  font-weight: var(--wa-font-weight-semibold, 600);
+  cursor: pointer;
+  transition: all var(--wa-transition-fast, 0.08s);
+}
+
+.mettri-flow-send-btn:hover:not(:disabled) {
+  background: var(--mettri-accent-hover);
+  transform: translateY(calc(var(--wa-spacing-xs, 4px) * -0.25));
+  box-shadow: var(--mettri-shadow-button);
+}
+
+.mettri-flow-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mettri-flow-send-btn svg {
+  flex-shrink: 0;
+}
+
+/* DROPDOWN DE CADÊNCIA */
+.mettri-cadence-dropdown {
+  position: absolute;
+  top: calc(100% + var(--wa-spacing-xs, 4px));
+  left: 0;
+  right: 0;
+  background: var(--mettri-bg);
+  border: 1px solid var(--mettri-border);
+  border-radius: var(--wa-radius-md, 6px);
+  box-shadow: var(--mettri-shadow-button);
+  z-index: var(--wa-layer-10, 1000);
+  overflow: hidden;
+  max-height: calc(var(--wa-spacing-xl, 24px) * 8.33);
+  overflow-y: auto;
+}
+
+.mettri-cadence-dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--wa-spacing-sm, 8px) var(--wa-spacing-md, 12px);
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--wa-transition-fast, 0.08s);
+  font-size: var(--wa-font-size-sm, 12.6px);
+  color: var(--mettri-text);
+}
+
+.mettri-cadence-dropdown-item:hover {
+  background: var(--mettri-bg-secondary);
+}
+
+.mettri-dropdown-day {
+  font-weight: var(--wa-font-weight-medium, 500);
+}
+
+.mettri-dropdown-count {
+  font-size: var(--wa-font-size-xs, 11px);
+  color: var(--mettri-text-secondary);
+}

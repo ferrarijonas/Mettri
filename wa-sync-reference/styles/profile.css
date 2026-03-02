@@ -1,0 +1,58 @@
+/**
+ * Profile Page Styles
+ * Simple, minimal profile layout
+ */
+
+/* Profile List */
+.profile-list {
+  padding: 8px 0;
+}
+
+.profile-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-item:last-child {
+  border-bottom: none;
+}
+
+.profile-item-label {
+  font-size: 14px;
+  color: var(--gray);
+}
+
+.profile-item-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+}
+
+/* Profile Links */
+.profile-links {
+  padding: 8px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-link {
+  display: block;
+  padding: 14px 0;
+  font-size: 14px;
+  color: var(--wa-green);
+  text-decoration: none;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-link:last-child {
+  border-bottom: none;
+}
+
+.profile-link:hover {
+  color: var(--wa-green-dark);
+}

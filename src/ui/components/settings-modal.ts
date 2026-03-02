@@ -78,7 +78,11 @@ export class SettingsModal {
     modal.style.backgroundColor = 'var(--mettri-bg, #ffffff)';
     modal.style.color = 'var(--mettri-text, #0A1014)';
 
-    const currentVersion = (typeof chrome !== 'undefined' && chrome?.runtime?.getManifest?.())?.version ?? '—';
+    const manifest =
+      typeof chrome !== 'undefined' && typeof chrome.runtime?.getManifest === 'function'
+        ? chrome.runtime.getManifest()
+        : null;
+    const currentVersion = manifest?.version ?? '—';
     const updateVersion = await this.getUpdateVersion();
     const lastChecked = await this.getLastChecked();
 

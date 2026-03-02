@@ -1,9 +1,11 @@
 import type { CapturedMessage } from '../types';
 import { CapturedMessageSchema } from '../types/schemas';
 import { messageDB } from '../storage/message-db';
+import { clientDB, normalizePhoneDigitsWithAliases } from '../storage/client-db';
 import { DataScraper } from '../infrastructure/data-scraper';
 import { webhookService } from '../infrastructure/webhook-service';
 import { whatsappInterceptors } from '../infrastructure/whatsapp-interceptors';
+import { classifyNameCandidate } from '../modules/clientes/name-likelihood';
 import { z } from 'zod';
 
 type MessageCallback = (message: CapturedMessage) => void;
@@ -107,11 +109,25 @@ export class MessageCapturer {
       // Garantir que chatId seja sempre uma string
       const finalChatId: string = chatId || 'unknown';
 
-      const chatName = msg.__x_senderObj?.name || msg.__x_senderObj?.pushname || 'Unknown';
-      const sender = msg.__x_senderObj?.name || msg.__x_senderObj?.pushname || chatName;
+      const isOutgoing = msg.id?.fromMe || msg.self === 'out';
+
+      // Resolver melhor nome possível (Chat/Contact do WhatsApp > chat do modelo > fallback seguro)
+      // BUGFIX: para mensagens enviadas (fromMe), `senderObj` é você — não pode virar nome do cliente.
+      const resolved = this.resolveBestContactSnapshot(finalChatId, msg);
+      const chatModelName = String(msg?.chat?.name || msg?.chat?.formattedTitle || msg?.chat?.formattedName || '').trim();
+      const senderObjName = String(msg.__x_senderObj?.name || msg.__x_senderObj?.pushname || '').trim();
+      const phoneFallback = finalChatId.endsWith('@c.us') ? `+${finalChatId.split('@')[0]}` : '';
+
+      const chatName =
+        String(resolved.bestName || '').trim() ||
+        chatModelName ||
+        (!isOutgoing ? senderObjName : '') ||
+        phoneFallback ||
+        'Unknown';
+
+      const sender = senderObjName || (isOutgoing ? 'Eu' : chatName);
       const text = msg.__x_body || msg.__x_text || '';
       const timestamp = msg.__x_t ? new Date(msg.__x_t * 1000) : new Date();
-      const isOutgoing = msg.id?.fromMe || msg.self === 'out';
       
       // ChatId extraído da mensagem
 
@@ -145,6 +161,9 @@ export class MessageCapturer {
             text: validated.text.substring(0, 30) + (validated.text.length > 30 ? '...' : ''),
             timestamp: validated.timestamp.toISOString(),
           });
+
+          // Melhorar cadastro automaticamente (sem “novo cadastro”): só enriquece se estiver vazio.
+          this.upsertClientFromSnapshot(finalChatId, resolved).catch(() => {});
         })
         .catch(error => {
           console.error('[METTRI] ❌ Erro ao salvar mensagem interceptada:', error);
@@ -171,6 +190,187 @@ export class MessageCapturer {
         console.error('Mettri: Erro ao processar mensagem interceptada:', error);
       }
     }
+  }
+
+  /**
+   * Tenta ler a “ficha oficial” do contato no WhatsApp (Contact.get),
+   * mas sem travar: se falhar, volta pro que veio na mensagem.
+   */
+  private resolveBestContactSnapshot(
+    chatId: string,
+    msg: any
+  ): { bestName: string; candidateName: string; isBusiness?: boolean; verifiedName?: string | null } {
+    const isOutgoing = msg?.id?.fromMe || msg?.self === 'out';
+    const chatModelName = String(msg?.chat?.name || msg?.chat?.formattedTitle || msg?.chat?.formattedName || '').trim();
+    // Para mensagens enviadas, NÃO usar senderObj (é você).
+    const senderFallback = isOutgoing ? '' : String(msg?.__x_senderObj?.name || msg?.__x_senderObj?.pushname || '').trim();
+    const fallback = chatModelName || senderFallback;
+
+    try {
+      const Contact = whatsappInterceptors.Contact;
+      if (!Contact || typeof Contact.get !== 'function') {
+        return { bestName: fallback, candidateName: fallback };
+      }
+
+      const contact = Contact.get(chatId);
+      if (!contact) return { bestName: fallback, candidateName: fallback };
+
+      // BUGFIX: às vezes o WhatsApp devolve o contato errado (ex.: “eu mesmo”).
+      // Metáfora: se o crachá não bate com a pessoa, não confia no crachá.
+      const contactId =
+        contact?.id?._serialized ??
+        (typeof contact?.id === 'string' ? contact.id : null) ??
+        (typeof contact?.id?.toString === 'function' ? contact.id.toString() : null);
+      if (contactId && String(contactId) !== String(chatId)) {
+        return { bestName: fallback, candidateName: fallback };
+      }
+      if (contact?.isMe === true) {
+        return { bestName: fallback, candidateName: fallback };
+      }
+
+      const verifiedName = (contact.verifiedName ?? null) as string | null;
+      const isBusiness = contact.isBusiness === true || contact.isEnterprise === true;
+
+      const candidateName =
+        contact.name ||
+        contact.pushName ||
+        contact.pushname ||
+        contact.notifyName ||
+        contact.formattedName ||
+        contact.displayName ||
+        contact.shortName ||
+        contact.fullName ||
+        verifiedName ||
+        fallback ||
+        '';
+
+      // Melhor nome: preferir o que tende a ser mais “estável”
+      const bestName =
+        contact.name ||
+        verifiedName ||
+        contact.pushName ||
+        contact.pushname ||
+        contact.notifyName ||
+        contact.displayName ||
+        contact.formattedName ||
+        contact.shortName ||
+        contact.fullName ||
+        fallback ||
+        '';
+
+      return { bestName: String(bestName || '').trim(), candidateName: String(candidateName || '').trim(), isBusiness, verifiedName };
+    } catch {
+      return { bestName: fallback, candidateName: fallback };
+    }
+  }
+
+  private async upsertClientFromSnapshot(
+    chatId: string,
+    snapshot: { bestName: string; candidateName: string; isBusiness?: boolean; verifiedName?: string | null }
+  ): Promise<void> {
+    if (!chatId || !chatId.endsWith('@c.us')) return;
+
+    const phoneDigitsRaw = chatId.replace('@c.us', '');
+    const normalized = normalizePhoneDigitsWithAliases(phoneDigitsRaw);
+    if (!normalized.phoneDigits) return;
+
+    // Importante: NÃO criar “cliente duplicado” quando o telefone vier com/sem 55 ou com/sem 9.
+    // Metáfora: o mesmo cliente pode usar “sobrenome” no telefone; a gente precisa reconhecer.
+    const candidates = Array.from(
+      new Set([normalized.clientKey, normalized.phoneDigits, ...normalized.aliasesDigits].filter(Boolean))
+    );
+
+    let existing: any = null;
+    try {
+      existing = await clientDB.getByWhatsAppChatId(chatId);
+    } catch {
+      existing = null;
+    }
+
+    if (!existing) {
+      for (const d of candidates) {
+        try {
+          existing = (await clientDB.getByKey(d)) || (await clientDB.getByPhoneDigits(d));
+        } catch {
+          // ignore
+        }
+        if (existing) break;
+      }
+    }
+
+    const hasStrong =
+      // Manual/import: se já tem nome forte, não mexer.
+      !!(existing?.firstName && existing.firstName.trim()) ||
+      !!(existing?.lastName && existing.lastName.trim()) ||
+      !!(existing?.nickname && existing.nickname.trim()) ||
+      // Import internacional pode ter só fullName
+      !!(existing?.fullName && String(existing.fullName).trim()) ||
+      String((existing as any)?.nameSource || '') === 'manual' ||
+      String((existing as any)?.nameSource || '') === 'import' ||
+      !!(existing?.sourceMeta?.importedAtIso);
+
+    // Sempre atualiza o “crachá” (última observação), mas sem sobrescrever o que você editou.
+    const baseRecord = {
+      // Se já existe cadastro/import, manter o mesmo clientKey (não duplicar).
+      clientKey: String(existing?.clientKey || normalized.clientKey || normalized.phoneDigits),
+      // Manter phoneDigits “principal” se já existir; senão usar o que veio do WhatsApp.
+      phoneDigits: String(existing?.phoneDigits || normalized.phoneDigits),
+      // Unir aliases
+      aliasesDigits: Array.from(new Set([...(existing?.aliasesDigits ?? []), ...normalized.aliasesDigits])),
+      whatsAppChatId: chatId,
+      whatsAppCandidateName: snapshot.candidateName || snapshot.bestName || undefined,
+      updatedAtIso: new Date().toISOString(),
+    };
+
+    if (hasStrong) {
+      await clientDB.upsert({
+        ...existing,
+        ...baseRecord,
+        firstName: existing?.firstName,
+        lastName: existing?.lastName,
+        nickname: existing?.nickname,
+      });
+      return;
+    }
+
+    const classified = classifyNameCandidate(snapshot.bestName || snapshot.candidateName, {
+      isBusiness: snapshot.isBusiness === true,
+      verifiedName: snapshot.verifiedName ?? null,
+    });
+
+    if (classified.kind === 'person') {
+      await clientDB.upsert({
+        ...(existing ?? {}),
+        ...baseRecord,
+        firstName: classified.firstName,
+        lastName: classified.lastName,
+        nickname: undefined,
+        nameSource: 'whatsapp',
+      });
+      return;
+    }
+
+    if (classified.kind === 'business') {
+      await clientDB.upsert({
+        ...(existing ?? {}),
+        ...baseRecord,
+        firstName: undefined,
+        lastName: undefined,
+        nickname: classified.nickname,
+        nameSource: 'whatsapp',
+      });
+      return;
+    }
+
+    // Ruído: não inventar nome
+    await clientDB.upsert({
+      ...(existing ?? {}),
+      ...baseRecord,
+      firstName: undefined,
+      lastName: undefined,
+      nickname: undefined,
+      nameSource: 'whatsapp',
+    });
   }
 
   /**

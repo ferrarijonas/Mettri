@@ -398,6 +398,12 @@ export class WhatsAppInterceptors {
         if (userWid) {
           const { messageDB } = await import('../storage/message-db');
           await messageDB.setUserWid(userWid);
+          const { clientDB } = await import('../storage/client-db');
+          await clientDB.setUserWid(userWid);
+          const { orderDB } = await import('../storage/order-db');
+          await orderDB.setUserWid(userWid);
+          const { purchaseDB } = await import('../storage/purchase-db');
+          await purchaseDB.setUserWid(userWid);
           console.log('[Mettri] Banco inicializado com WID:', userWid);
         } else {
           console.warn('[Mettri] Banco não inicializado - conta não detectada');
@@ -427,6 +433,12 @@ export class WhatsAppInterceptors {
         // Inicializar banco de dados com WID
         const { messageDB } = await import('../storage/message-db');
         await messageDB.setUserWid(userWid);
+        const { clientDB } = await import('../storage/client-db');
+        await clientDB.setUserWid(userWid);
+        const { orderDB } = await import('../storage/order-db');
+        await orderDB.setUserWid(userWid);
+        const { purchaseDB } = await import('../storage/purchase-db');
+        await purchaseDB.setUserWid(userWid);
         console.log('[Mettri] Banco inicializado com WID:', userWid);
       } else {
         console.warn('[Mettri] Banco não inicializado - conta não detectada');

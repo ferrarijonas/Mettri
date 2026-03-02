@@ -305,8 +305,29 @@ export class PanelShell {
     }
     
     if (subModules.length > 0) {
-      // Módulo container: ativar primeiro sub-módulo
-      console.log(`[PanelShell] 📦 Módulo "${moduleId}" é container, ativando primeiro sub-módulo: ${subModules[0].id}`);
+      // Módulo container: ativar sub-módulo padrão (se definido), senão o primeiro (fallback)
+      const defaultSubModuleId =
+        typeof module.defaultSubModuleId === 'string' && module.defaultSubModuleId.trim()
+          ? module.defaultSubModuleId.trim()
+          : null;
+
+      if (defaultSubModuleId && defaultSubModuleId !== moduleId) {
+        const exists = subModules.some((m) => m.id === defaultSubModuleId);
+        if (exists) {
+          console.log(
+            `[PanelShell] 📦 Módulo "${moduleId}" é container, ativando sub-módulo padrão: ${defaultSubModuleId}`
+          );
+          await this.switchToModule(defaultSubModuleId);
+          return;
+        }
+        console.warn(
+          `[PanelShell] ⚠️ defaultSubModuleId="${defaultSubModuleId}" não é filho de "${moduleId}". Fallback para primeiro filho.`
+        );
+      }
+
+      console.log(
+        `[PanelShell] 📦 Módulo "${moduleId}" é container, ativando primeiro sub-módulo: ${subModules[0].id}`
+      );
       await this.switchToModule(subModules[0].id);
       return;
     }

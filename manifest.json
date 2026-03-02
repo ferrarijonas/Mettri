@@ -12,14 +12,15 @@
   "host_permissions": [
     "https://web.whatsapp.com/*",
     "https://*.workers.dev/*",
-    "https://*.github.io/*"
+    "https://*.github.io/*",
+    "https://api.openai.com/*"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev https://*.github.io"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev https://*.github.io https://api.openai.com"
   },
   "content_scripts": [
     {

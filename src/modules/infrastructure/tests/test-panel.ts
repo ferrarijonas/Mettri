@@ -289,23 +289,27 @@ export class TestPanel {
         : (document.getElementById('mettri-test-feedback-toast') as HTMLElement | null);
     
     if (!toastEl) {
-      // Criar toast e anexar ao painel principal (mettri-panel)
+      // Criar toast e anexar ao painel principal (mettri-panel) ou ao próprio container como fallback
       const mettriPanel =
         root instanceof ShadowRoot
           ? (root.querySelector('#mettri-panel') as HTMLElement | null)
           : (document.getElementById('mettri-panel') as HTMLElement | null);
-      if (mettriPanel) {
+      const parent = mettriPanel ?? this.container ?? null;
+      if (parent) {
         toastEl = document.createElement('div');
         toastEl.id = 'mettri-test-feedback-toast';
         toastEl.className = 'mettri-test-feedback-toast';
         toastEl.style.display = 'none';
         toastEl.innerHTML = `
           <div class="mettri-test-feedback-toast-content">
-            <button class="mettri-test-feedback-toast-close" id="mettri-test-feedback-close">×</button>
-            <div id="mettri-test-feedback-message" class="mettri-test-feedback-message"></div>
+            <div class="mettri-test-feedback-toast-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-shrink: 0;">
+              <button type="button" id="mettri-test-feedback-copy" title="Copiar log completo" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; border: none; background: var(--accent, #eee); color: var(--accent-foreground, #333); cursor: pointer;">Copiar</button>
+              <button type="button" class="mettri-test-feedback-toast-close" id="mettri-test-feedback-close" title="Fechar">×</button>
+            </div>
+            <div id="mettri-test-feedback-message" class="mettri-test-feedback-message" style="max-height: 50vh; overflow-y: auto;"></div>
           </div>
         `;
-        mettriPanel.appendChild(toastEl);
+        parent.appendChild(toastEl);
       }
     }
   }
@@ -512,11 +516,11 @@ export class TestPanel {
         const escapedModuleName = this.escapeHtml(moduleName);
         void description;
         return `
-          <div class="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 transition-colors group ${statusClass}" data-module="${escapedModuleName}">
+          <div class="${TestPanel.MODULE_ROW_BASE_CLASS} ${statusClass}" data-module="${escapedModuleName}">
             <div class="w-4 h-4 flex items-center justify-center flex-shrink-0" data-status-indicator>${statusIcon}</div>
             <span class="w-3.5 h-3.5 text-muted-foreground/60 flex items-center justify-center">${getIcon('Info')}</span>
             <span class="flex-1 text-[11px] text-foreground truncate" title="${escapedFriendlyName}">${escapedFriendlyName}</span>
-            <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center gap-0.5">
               <button class="h-5 px-1.5 text-[10px] text-primary hover:text-primary hover:bg-primary/10 rounded-md" data-action="test" data-module="${escapedModuleName}">Testar</button>
               <button class="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-accent rounded-md" data-action="details" data-module="${escapedModuleName}">Ver</button>
             </div>
@@ -935,6 +939,9 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
     alert(details.trim());
   }
 
+  /** Classes base da linha de módulo (igual ao renderModuleHierarchy) — não sobrescrever para não perder layout e botões */
+  private static readonly MODULE_ROW_BASE_CLASS = 'flex items-center gap-2 px-3 py-2 hover:bg-accent/50 transition-colors group';
+
   /**
    * Atualiza display de um módulo
    */
@@ -942,7 +949,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
     if (!this.container) return;
 
     const moduleEl = this.container.querySelector(`[data-module="${moduleName}"]`);
-    if (!moduleEl) return;
+    if (!moduleEl || !(moduleEl instanceof HTMLElement)) return;
 
     const status = this.getModuleStatus(moduleName);
     const statusIcon = this.getStatusIcon(status);
@@ -954,8 +961,8 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
       statusIndicator.innerHTML = statusIcon;
     }
 
-    // Atualizar classe
-    moduleEl.className = `mettri-test-module ${statusClass}`;
+    // Preservar classes de layout e só atualizar a classe de status (evita sumir botões Testar/Ver)
+    moduleEl.className = `${TestPanel.MODULE_ROW_BASE_CLASS} ${statusClass}`;
   }
 
   /**
@@ -1185,10 +1192,13 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
   private showFeedback(message: string, type: 'success' | 'error' | 'warning' = 'success'): void {
     // Garantir que o toast existe
     this.createToast();
-    
-    const toastEl = document.getElementById('mettri-test-feedback-toast') as HTMLElement;
-    const messageEl = document.getElementById('mettri-test-feedback-message');
-    const closeBtn = document.getElementById('mettri-test-feedback-close');
+    // Buscar toast no mesmo root do painel (document ou Shadow DOM)
+    const rootNode = this.container?.getRootNode();
+    const root = rootNode && rootNode instanceof ShadowRoot ? rootNode : document;
+    const toastEl = root.querySelector('#mettri-test-feedback-toast') as HTMLElement | null;
+    const messageEl = root.querySelector('#mettri-test-feedback-message') as HTMLElement | null;
+    const closeBtn = root.querySelector('#mettri-test-feedback-close');
+    const copyBtn = root.querySelector('#mettri-test-feedback-copy') as HTMLButtonElement | null;
     
     if (toastEl && messageEl) {
       // Suportar múltiplas linhas
@@ -1212,19 +1222,151 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
       };
       
       if (closeBtn) {
-        // Remover listeners anteriores e adicionar novo
         const newCloseBtn = closeBtn.cloneNode(true) as HTMLElement;
         closeBtn.parentNode?.replaceChild(newCloseBtn, closeBtn);
         newCloseBtn.addEventListener('click', closeHandler);
       }
       
-      // Ocultar automaticamente após 10 segundos (mais tempo para ler múltiplas linhas)
+      if (copyBtn) {
+        const newCopyBtn = copyBtn.cloneNode(true) as HTMLButtonElement;
+        copyBtn.parentNode?.replaceChild(newCopyBtn, copyBtn);
+        newCopyBtn.textContent = 'Copiar';
+        newCopyBtn.addEventListener('click', () => {
+          const text = messageEl.innerText || messageEl.textContent || '';
+          navigator.clipboard.writeText(text).then(() => {
+            newCopyBtn.textContent = 'Copiado!';
+            setTimeout(() => { newCopyBtn.textContent = 'Copiar'; }, 1500);
+          }).catch(() => {
+            newCopyBtn.textContent = 'Erro';
+            setTimeout(() => { newCopyBtn.textContent = 'Copiar'; }, 1500);
+          });
+        });
+      }
+      
+      // Ocultar automaticamente após 10 segundos
       setTimeout(() => {
         if (toastEl.style.display === 'flex') {
           toastEl.style.display = 'none';
         }
       }, 10000);
     }
+  }
+
+  /**
+   * Spike: tenta várias abordagens para obter chatIds de uma etiqueta.
+   * TODO: remover após implementar WhatsAppLabelsService.
+   */
+  private async runLabelToChatsSpike(Label: any, Chat: any): Promise<Array<{
+    approach: string; success: boolean; chatIds: string[]; error?: string;
+  }>> {
+    const toIds = (chats: any[]): string[] => {
+      if (!Array.isArray(chats)) return [];
+      return chats.map((c: any) => c?.id?.toString?.() ?? c?.id ?? '').filter(Boolean);
+    };
+    const labels = (Label._models && Array.isArray(Label._models))
+      ? Label._models
+      : (typeof Label.all === 'function' ? Label.all() : []) ?? [];
+    const firstLabel = labels.find((l: any) => l?.id != null) ?? labels[0];
+    if (!firstLabel?.id) return [];
+    const labelId = firstLabel.id;
+    const results: Array<{ approach: string; success: boolean; chatIds: string[]; error?: string }> = [];
+
+    const run = async (approach: string, fn: () => Promise<any>) => {
+      try {
+        const out = await Promise.resolve(fn());
+        const chatIds = Array.isArray(out) ? toIds(out as any) : [];
+        return { approach, success: chatIds.length > 0, chatIds, error: undefined };
+      } catch (e: any) {
+        return { approach, success: false, chatIds: [], error: (e as Error)?.message || String(e) };
+      }
+    };
+
+    results.push(await run('firstLabel.getChats()', () => Promise.resolve(firstLabel.getChats ? firstLabel.getChats() : [])));
+    results.push(await run('Label.getChatsByLabelId(id)', () => Promise.resolve(Label.getChatsByLabelId?.(labelId) ?? [])));
+    results.push(await run('firstLabel.chats', () => Promise.resolve(Array.isArray(firstLabel.chats) ? firstLabel.chats : [])));
+    results.push(await run('firstLabel.chatIds', () => Promise.resolve(Array.isArray(firstLabel.chatIds) ? firstLabel.chatIds : [])));
+    results.push(await run('firstLabel._chats', () => Promise.resolve(Array.isArray(firstLabel._chats) ? firstLabel._chats : [])));
+
+    const chatModels = (Chat.getModelsArray && Chat.getModelsArray()) ?? (Array.isArray(Chat._models) ? Chat._models : []);
+    results.push(await run('Chat.getModelsArray + labelIds', () => Promise.resolve(chatModels.filter((c: any) => c?.labelIds?.includes?.(labelId)))));
+    results.push(await run('Chat.getModelsArray + labels', () => Promise.resolve(chatModels.filter((c: any) => {
+      const L = c?.labels;
+      if (!Array.isArray(L)) return false;
+      return L.some((l: any) => l?.id === labelId || l === labelId);
+    }))));
+    results.push(await run('Chat._models + labelIds', () => Promise.resolve((Chat._models || []).filter((c: any) => (c?.labelIds && Array.isArray(c.labelIds)) && c.labelIds.includes(labelId)))));
+    results.push(await run('Chat._models + getLabels()', async () => {
+      const list: any[] = [];
+      for (const c of Chat._models || []) {
+        const labels = typeof c?.getLabels === 'function' ? (await c.getLabels()) : [];
+        if (Array.isArray(labels) && labels.some((l: any) => l?.id === labelId || l === labelId)) list.push(c);
+      }
+      return list;
+    }));
+    results.push(await run('Label.get(id) + getChats', async () => {
+      const labelObj = typeof Label.get === 'function' ? Label.get(labelId) : null;
+      const chats = labelObj?.getChats ? await labelObj.getChats() : [];
+      return Array.isArray(chats) ? chats : [];
+    }));
+
+    return results;
+  }
+
+  /**
+   * Para uma etiqueta (labelId), obtém chatIds usando uma abordagem específica.
+   */
+  private async getChatIdsForLabelByApproach(
+    Label: any,
+    Chat: any,
+    labelId: string,
+    approachName: string
+  ): Promise<string[]> {
+    const toIds = (chats: any[]): string[] =>
+      (Array.isArray(chats) ? chats : []).map((c: any) => c?.id?.toString?.() ?? c?.id ?? '').filter(Boolean);
+    const chatModels = (Chat.getModelsArray && Chat.getModelsArray()) ?? (Array.isArray(Chat._models) ? Chat._models : []);
+
+    switch (approachName) {
+      case 'Label.getChatsByLabelId(id)':
+        return toIds(Label.getChatsByLabelId?.(labelId) ?? []);
+      case 'Chat.getModelsArray + labelIds':
+        return toIds(chatModels.filter((c: any) => c?.labelIds?.includes?.(labelId)));
+      case 'Chat.getModelsArray + labels':
+        return toIds(chatModels.filter((c: any) => {
+          const L = c?.labels;
+          if (!Array.isArray(L)) return false;
+          return L.some((l: any) => l?.id === labelId || l === labelId);
+        }));
+      case 'Chat._models + labelIds':
+        return toIds((Chat._models || []).filter((c: any) => (c?.labelIds && Array.isArray(c.labelIds)) && c.labelIds.includes(labelId)));
+      case 'Chat._models + getLabels()': {
+        const list: any[] = [];
+        for (const c of Chat._models || []) {
+          const labels = typeof c?.getLabels === 'function' ? (await c.getLabels()) : [];
+          if (Array.isArray(labels) && labels.some((l: any) => l?.id === labelId || l === labelId)) list.push(c);
+        }
+        return toIds(list);
+      }
+      case 'Label.get(id) + getChats': {
+        const labelObj = typeof Label.get === 'function' ? Label.get(labelId) : null;
+        const chats = labelObj?.getChats ? await labelObj.getChats() : [];
+        return toIds(Array.isArray(chats) ? chats : []);
+      }
+      default:
+        return [];
+    }
+  }
+
+  /** Formata chatId (ex: 5531999999999@c.us) para exibição (ex: 55 31 99999-9999). */
+  private formatChatIdForDisplay(chatId: string): string {
+    if (!chatId) return '';
+    const num = chatId.replace(/@.*$/, '').replace(/\D/g, '');
+    if (num.length >= 10) {
+      const ddd = num.slice(0, 2);
+      const rest = num.slice(2);
+      const tail = rest.length > 8 ? `${rest.slice(0, -4)}-${rest.slice(-4)}` : rest;
+      return `${ddd} ${tail}`.trim();
+    }
+    return chatId;
   }
 
   /**
@@ -1323,10 +1465,11 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
         
         try {
           let resultMsg = '';
-          
+          let totalLabels = 0;
+
           // Buscar todas as etiquetas
           if (module._models && Array.isArray(module._models)) {
-            const totalLabels = module._models.length;
+            totalLabels = module._models.length;
             resultMsg = `🏷️ Total: ${totalLabels} etiqueta(s) encontrada(s)`;
             
             if (totalLabels > 0) {
@@ -1348,7 +1491,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
             try {
               const allLabels = module.all ? module.all() : null;
               if (allLabels && Array.isArray(allLabels) && allLabels.length > 0) {
-                const totalLabels = allLabels.length;
+                totalLabels = allLabels.length;
                 resultMsg = `🏷️ Total: ${totalLabels} etiqueta(s) encontrada(s)`;
                 const labelNames = allLabels
                   .slice(0, 10)
@@ -1362,7 +1505,50 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
               // Ignorar erro
             }
           }
-          
+
+          // Spike: Label → Chats (10 abordagens na primeira etiqueta)
+          const labelsList: Array<{ id: string; name: string }> = [];
+          let winnerApproachName: string | null = null;
+          if (totalLabels > 0) {
+            const spikeResults = await this.runLabelToChatsSpike(module, this.interceptors.Chat);
+            const successResults = spikeResults.filter(r => r.success);
+            const winner = successResults.reduce((best, r) =>
+              (r.chatIds.length >= (best?.chatIds?.length ?? 0) ? r : best), successResults[0] ?? null) as typeof spikeResults[0] | null;
+            if (winner) winnerApproachName = winner.approach;
+            if (spikeResults.length > 0) {
+              resultMsg += '\n\n--- Label→Chats (spike) ---';
+              spikeResults.forEach(r => {
+                resultMsg += `\n${r.success ? '✓' : '✗'} ${r.approach}: ${r.success ? r.chatIds.length + ' chats' : (r.error || 'falhou')}`;
+              });
+              if (winner) resultMsg += `\n→ USE: ${winner.approach}`;
+            }
+            const rawLabels = (module._models && Array.isArray(module._models))
+              ? module._models
+              : (typeof module.all === 'function' ? module.all() : []) ?? [];
+            rawLabels.forEach((l: any) => {
+              if (l?.id != null) labelsList.push({ id: l.id, name: (l.name || l.id || 'Sem nome').toString() });
+            });
+          }
+
+          // Lista completa por etiqueta (nome, quantidade, todos os números) — pronto para copiar
+          if (labelsList.length > 0) {
+            const Chat = this.interceptors.Chat;
+            const winnerName = winnerApproachName ?? 'Chat.getModelsArray + labels';
+            const chatArr = (Chat.getModelsArray && Chat.getModelsArray()) ?? (Array.isArray(Chat._models) ? Chat._models : []);
+            const totalChatsInMemory = chatArr.length;
+            resultMsg += '\n\n--- Lista completa (pronto para copiar) ---';
+            resultMsg += `\n(Contagem baseada nos ${totalChatsInMemory} chats carregados nesta sessão. O "Items" do WhatsApp pode ser maior pois inclui todos os chats do servidor.)`;
+            for (const label of labelsList) {
+              const idsWinner = await this.getChatIdsForLabelByApproach(module, Chat, label.id, winnerName);
+              const nums = idsWinner.map(id => this.formatChatIdForDisplay(id));
+              const n = idsWinner.length;
+              resultMsg += `\n\nEtiqueta: ${label.name} | ${n} contato${n !== 1 ? 's' : ''}`;
+              if (nums.length > 0) {
+                resultMsg += '\n' + nums.join('\n');
+              }
+            }
+          }
+
           this.hideExecutionIndicator(moduleName);
           return resultMsg || '✅ Módulo funcionando corretamente!';
         } catch (error: any) {

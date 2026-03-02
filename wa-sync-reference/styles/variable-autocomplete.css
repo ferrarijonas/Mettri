@@ -1,0 +1,140 @@
+/**
+ * Variable Autocomplete Styles
+ * Shared styles for the variable autocomplete dropdown component
+ */
+
+/* Autocomplete Popover Container */
+.variable-autocomplete-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-height: 300px;
+  z-index: 10000;
+  display: none;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.variable-autocomplete-popover.visible {
+  display: block;
+}
+
+/* Autocomplete Content */
+.autocomplete-content {
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Autocomplete Group */
+.variable-autocomplete-popover .autocomplete-group {
+  padding: 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.variable-autocomplete-popover .autocomplete-group:last-child {
+  border-bottom: none;
+}
+
+/* Group Header */
+.variable-autocomplete-popover .autocomplete-group-header {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #666666;
+  text-transform: uppercase;
+  background: #f5f5f5;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Autocomplete Item */
+.variable-autocomplete-popover .autocomplete-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  gap: 12px;
+}
+
+.variable-autocomplete-popover .autocomplete-item:hover,
+.variable-autocomplete-popover .autocomplete-item.selected {
+  background: #e8f5e9;
+}
+
+/* Item Name (Variable) */
+.variable-autocomplete-popover .autocomplete-item-name {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #000000;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Highlighted Match */
+.variable-autocomplete-popover .autocomplete-match {
+  background: rgba(37, 211, 102, 0.3);
+  font-weight: 600;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
+/* Item Description */
+.variable-autocomplete-popover .autocomplete-item-desc {
+  font-size: 11px;
+  color: #666666;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty State */
+.variable-autocomplete-popover .autocomplete-empty {
+  padding: 16px;
+  text-align: center;
+  color: #666666;
+  font-size: 12px;
+}
+
+/* Scrollbar Styling for Autocomplete */
+.variable-autocomplete-popover::-webkit-scrollbar {
+  width: 6px;
+}
+
+.variable-autocomplete-popover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.variable-autocomplete-popover::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 3px;
+}
+
+.variable-autocomplete-popover::-webkit-scrollbar-thumb:hover {
+  background: #666666;
+}
+
+/* Input wrapper positioning */
+.param-value-wrapper,
+.custom-field-item input {
+  position: relative;
+}
+
+/* Make sure parent containers allow relative positioning */
+.custom-field-item,
+.query-param-row {
+  position: relative;
+}

@@ -4,6 +4,7 @@ import {
   MessageDBEntrySchema,
   messageToDBEntry,
   dbEntryToMessage,
+  type RetomarMeta,
 } from '../types/schemas';
 import { z } from 'zod';
 
@@ -411,6 +412,29 @@ export class MessageDB {
     });
   }
 
+  /**
+   * Estatísticas do banco para RAG/debug: total de mensagens e de clientes (chats).
+   * Use no painel ou em dev: messageDB.getStats().then(console.log)
+   */
+  public async getStats(): Promise<{
+    totalMessages: number;
+    contactCount: number;
+    perContact: Array<{ chatId: string; chatName: string; messageCount: number }>;
+  }> {
+    const totalMessages = await this.getMessageCount();
+    const contactsMap = await this.groupMessagesByContact();
+    const perContact = Array.from(contactsMap.entries()).map(([chatId, info]) => ({
+      chatId,
+      chatName: info.chatName,
+      messageCount: info.messageCount,
+    }));
+    return {
+      totalMessages,
+      contactCount: contactsMap.size,
+      perContact,
+    };
+  }
+
   public async exportMessages(): Promise<CapturedMessage[]> {
     return this.getMessages(undefined, 10000); // Export up to 10k messages
   }
@@ -483,10 +507,235 @@ export class MessageDB {
   }
 
   /**
+   * Retorna a última mensagem RECEBIDA por contato (apenas @c.us), em memória.
+   * Metáfora: “a última vez que o cliente falou com você”.
+   *
+   * Implementação eficiente:
+   * - percorre mensagens do mais recente para o mais antigo (cursor 'prev')
+   * - para cada chatId, guarda o primeiro incoming encontrado (é o mais recente)
+   */
+  public async getLastIncomingByContact(): Promise<
+    Map<
+      string,
+      {
+        chatId: string;
+        chatName: string;
+        lastIncomingAt: Date;
+      }
+    >
+  > {
+    const db = await this.ensureReady();
+    const map = new Map<
+      string,
+      {
+        chatId: string;
+        chatName: string;
+        lastIncomingAt: Date;
+      }
+    >();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readonly');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      const index = store.index('timestamp');
+      const request = index.openCursor(null, 'prev'); // mais recente primeiro
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(map);
+          return;
+        }
+
+        const rawEntry = cursor.value as unknown;
+        try {
+          const validatedEntry = this.validateDBEntry(rawEntry);
+          const message = dbEntryToMessage(validatedEntry);
+
+          // Só RECEBIDAS (incoming)
+          if (message.isOutgoing === true) {
+            cursor.continue();
+            return;
+          }
+
+          // Só contatos (evitar grupos e IDs inválidos)
+          if (!message.chatId || !message.chatId.endsWith('@c.us')) {
+            cursor.continue();
+            return;
+          }
+
+          // Como estamos no mais recente → mais antigo, o primeiro incoming é o último incoming
+          if (!map.has(message.chatId)) {
+            map.set(message.chatId, {
+              chatId: message.chatId,
+              chatName: message.chatName,
+              lastIncomingAt: message.timestamp,
+            });
+          }
+        } catch (error) {
+          console.error('[MessageDB] Erro ao calcular lastIncoming por contato:', error);
+        }
+
+        cursor.continue();
+      };
+    });
+  }
+
+  /**
+   * Retorna a última mensagem ENVIADA por contato (apenas @c.us), em memória.
+   * Metáfora: “a última vez que você falou com o cliente”.
+   *
+   * Implementação eficiente:
+   * - percorre mensagens do mais recente para o mais antigo (cursor 'prev')
+   * - para cada chatId, guarda a primeira outgoing encontrada (é a mais recente)
+   */
+  public async getLastOutgoingByContact(): Promise<
+    Map<
+      string,
+      {
+        chatId: string;
+        chatName: string;
+        lastOutgoingAt: Date;
+      }
+    >
+  > {
+    const db = await this.ensureReady();
+    const map = new Map<
+      string,
+      {
+        chatId: string;
+        chatName: string;
+        lastOutgoingAt: Date;
+      }
+    >();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readonly');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      const index = store.index('timestamp');
+      const request = index.openCursor(null, 'prev'); // mais recente primeiro
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(map);
+          return;
+        }
+
+        const rawEntry = cursor.value as unknown;
+        try {
+          const validatedEntry = this.validateDBEntry(rawEntry);
+          const message = dbEntryToMessage(validatedEntry);
+
+          // Só ENVIADAS (outgoing)
+          if (message.isOutgoing !== true) {
+            cursor.continue();
+            return;
+          }
+
+          // Só contatos (evitar grupos e IDs inválidos)
+          if (!message.chatId || !message.chatId.endsWith('@c.us')) {
+            cursor.continue();
+            return;
+          }
+
+          // Como estamos no mais recente → mais antigo, o primeiro outgoing é o último outgoing
+          if (!map.has(message.chatId)) {
+            map.set(message.chatId, {
+              chatId: message.chatId,
+              chatName: message.chatName,
+              lastOutgoingAt: message.timestamp,
+            });
+          }
+        } catch (error) {
+          console.error('[MessageDB] Erro ao calcular lastOutgoing por contato:', error);
+        }
+
+        cursor.continue();
+      };
+    });
+  }
+
+  /**
    * Obtém todas as mensagens de um contato específico, ordenadas por data.
    */
   public async getContactMessages(chatId: string, limit = 1000): Promise<CapturedMessage[]> {
     return this.getMessages(chatId, limit);
+  }
+
+  /**
+   * Salva uma mensagem com metadados Retomar (ciclo, variante, campanha).
+   * Não altera saveMessage — campo retomarMeta é opcional no schema.
+   */
+  public async saveMessageWithRetomarMeta(
+    message: CapturedMessage,
+    meta: RetomarMeta,
+  ): Promise<void> {
+    const validatedMessage = this.validateMessage(message);
+    const dbEntry = { ...messageToDBEntry(validatedMessage), retomarMeta: meta };
+    const validatedEntry = this.validateDBEntry(dbEntry);
+
+    const db = await this.ensureReady();
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_MESSAGES], 'readwrite');
+      const store = tx.objectStore(STORE_MESSAGES);
+      const request = store.put(validatedEntry);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.schedulePrune();
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Busca envios Retomar filtrados por accountId, cycleIndex, variant e período.
+   * Filtra em memória — sem índice extra no IndexedDB.
+   */
+  public async getRetomarSends(
+    accountId: string,
+    options?: {
+      cycleIndex?: number;
+      variant?: 'A' | 'B';
+      since?: Date;
+      until?: Date;
+    },
+  ): Promise<MessageDBEntry[]> {
+    const db = await this.ensureReady();
+    const since = options?.since ?? new Date(0);
+    const until = options?.until ?? new Date();
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_MESSAGES], 'readonly');
+      const store = tx.objectStore(STORE_MESSAGES);
+      const index = store.index('timestamp');
+      const range = IDBKeyRange.bound(since.toISOString(), until.toISOString());
+      const request = index.getAll(range);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const results: MessageDBEntry[] = [];
+        for (const raw of request.result) {
+          try {
+            const entry = this.validateDBEntry(raw);
+            if (!entry.isOutgoing) continue;
+            const rm = (entry as MessageDBEntry).retomarMeta;
+            if (!rm) continue;
+            if (rm.accountId !== accountId) continue;
+            if (options?.cycleIndex != null && rm.cycleIndex !== options.cycleIndex) continue;
+            if (options?.variant != null && rm.variant !== options.variant) continue;
+            results.push(entry);
+          } catch {
+            // dados corrompidos — pula
+          }
+        }
+        resolve(results);
+      };
+    });
   }
 }
 

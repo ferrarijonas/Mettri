@@ -33,7 +33,7 @@ const createReactivationPanel: PanelFactory = async (container: HTMLElement, _ev
       }
     },
     destroy() {
-      // ReactivationPanel não tem destroy explícito ainda
+      panel.destroy();
       if (container) {
         container.innerHTML = '';
       }

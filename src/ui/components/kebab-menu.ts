@@ -18,21 +18,39 @@ export class KebabMenu {
   private dropdown: HTMLElement | null = null;
   private isOpen: boolean = false;
   private closeHandler: ((e: MouseEvent) => void) | null = null;
+  private buttonClickHandler: ((e: MouseEvent) => void) | null = null;
+  private readonly buttonSelector: string;
 
-  constructor(private container: HTMLElement, private options: KebabMenuOption[]) {
-    // Container deve ser o header actions onde o botão já existe
-    if (!container.querySelector('#mettri-kebab-menu')) {
-      console.warn('[KebabMenu] Container não contém #mettri-kebab-menu');
+  constructor(
+    private container: HTMLElement,
+    private options: KebabMenuOption[],
+    config?: { buttonSelector?: string }
+  ) {
+    this.buttonSelector = config?.buttonSelector ?? '#mettri-kebab-menu';
+
+    // Container deve conter o botão alvo
+    if (!container.querySelector(this.buttonSelector)) {
+      console.warn(`[KebabMenu] Container não contém "${this.buttonSelector}"`);
       return;
     }
     this.render();
   }
 
   private render(): void {
+    // Garantir posicionamento para o dropdown ancorar no container
+    try {
+      const style = getComputedStyle(this.container);
+      if (style.position === 'static') {
+        this.container.style.position = 'relative';
+      }
+    } catch {
+      // ignore
+    }
+
     // Botão kebab (já existe no HTML, apenas encontrar)
-    const btn = this.container.querySelector('#mettri-kebab-menu') as HTMLButtonElement;
+    const btn = this.container.querySelector(this.buttonSelector) as HTMLButtonElement;
     if (!btn) {
-      console.warn('[KebabMenu] Botão #mettri-kebab-menu não encontrado');
+      console.warn(`[KebabMenu] Botão "${this.buttonSelector}" não encontrado`);
       return;
     }
 
@@ -78,10 +96,11 @@ export class KebabMenu {
     });
 
     // Toggle dropdown
-    btn.addEventListener('click', (e) => {
+    this.buttonClickHandler = (e: MouseEvent) => {
       e.stopPropagation();
       this.toggle();
-    });
+    };
+    btn.addEventListener('click', this.buttonClickHandler);
 
     // Inserir dropdown no container
     this.container.appendChild(dropdown);
@@ -137,8 +156,14 @@ export class KebabMenu {
     if (this.closeHandler) {
       document.removeEventListener('click', this.closeHandler);
     }
-    this.button?.remove();
+    if (this.button && this.buttonClickHandler) {
+      this.button.removeEventListener('click', this.buttonClickHandler);
+    }
     this.dropdown?.remove();
+    this.button = null;
+    this.dropdown = null;
+    this.closeHandler = null;
+    this.buttonClickHandler = null;
   }
 
   private escapeHtml(text: string): string {
