@@ -1,5 +1,8 @@
 # Project Concept - METTRI
 
+> **Versão:** 2.0.1 | **Última atualização:** Fevereiro 2026  
+> **Documento relacionado:** `project_context.md` (especificações técnicas detalhadas)
+
 --
 
 # Arquitetura Conceitual
@@ -83,11 +86,30 @@ Mensagem, imagem, momento e público
 ### enviar
 Módulo que trabalha com os contextos Reativar, Responder e Divulgar
 
-#### reativar
+#### retomar
 Identifica clientes inativos
 Escreve mensagens automáticas ou manuais
 Puxa conversas de forma ativa
 Sempre respeita histórico
+#####Listas:
+###### Nunca enviar
+###### Exclusivos
+###### Importa listas nativas do Whatsapp
+#####Envio automático, sugestoes da semana
+######Envia sozinho
+######Envio Assistido
+#####Métricas
+###### Resposta
+###### Silêncio
+###### Tempo Resposta
+###### Compra
+###### Melhor horário
+###### Melhor horário pessoa
+
+
+*** Precisa cuidar melhor pra entender quem só responde e quem compra, pq senão elas vão entrar todas num ciclo de 15 dias até pararem de responder...depois passam a não responder mas vão continuar recebendo até o fim! Tem que pensar tbm se quem responde no último volta pro comeco ou volta pra outro ciclo?
+
+
 
 #### responder
 Usado para responder em massa, msgs não lidas por afastamento, férias.
@@ -172,6 +194,17 @@ Mensagens e textos da interface
 Rollout gradual de novas features
 Extensão busca config ao iniciar e periodicamente
 Fallback para config local se servidor offline
+
+
+## comando-por-voz
+Usuário manda áudio no WhatsApp (para si mesmo)
+Só funciona com WA Web aberto
+Mettri detecta áudio (tipo ptt), baixa, transcreve
+IA interpreta e devolve JSON estruturado
+Camada de controle executa
+Ações: enviar, adicionar à lista, etc.
+Consultas: taxa de resposta, enviados hoje, etc.
+Abrangência futura: qualquer painel que exponha ações
 
 ## suporte
 Suporte escalável por IA

@@ -1,0 +1,156 @@
+/**
+ * Layout Styles
+ * Container, pages, header, sections
+ */
+
+/* Container */
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Pages */
+.page {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.page-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 16px;
+}
+
+.page-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.page-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.page-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* Header */
+.header {
+  padding: 16px 20px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--white);
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.header h1 svg {
+  color: var(--wa-green);
+}
+
+.header-spacer {
+  width: 32px;
+}
+
+/* Global back button - hidden on home page */
+#globalBackBtn {
+  display: none;
+}
+
+#globalBackBtn.visible {
+  display: flex;
+}
+
+/* Hide profile button on profile page */
+#globalProfileBtn.hidden {
+  visibility: hidden;
+}
+
+/* Sub-header */
+.sub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--gray-lighter);
+  border-bottom: 1px solid var(--border);
+}
+
+.sub-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.sub-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Section */
+.section {
+  padding: 16px 20px;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.section h2,
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 12px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* Footer */
+.footer {
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--gray-lighter);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--gray);
+  margin-top: auto;
+}
+
+.version {
+  font-weight: 500;
+}
+
+/* Actions Row */
+.actions {
+  padding: 14px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--white);
+}

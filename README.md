@@ -2,26 +2,33 @@
 
 > Plataforma de vendas conversacionais para WhatsApp Web
 
+---
+
+## 🎯 **Destaque: Veja a Evolução do Projeto**
+
+📖 **[📜 Histórico Simples](HISTORICO_SIMPLES.md)** - Uma linha por coisa feita. Veja como o Mettri evoluiu desde o nascimento até hoje, com as conquistas mais recentes no topo!
+
+---
+
 ⚠️ Este projeto segue regras obrigatórias definidas em `ENGINEERING_CONTRACT.md`.
 Qualquer mudança estrutural deve respeitá-las.
 
-
-![CI](https://github.com/ferrarijonas/Mettri/actions/workflows/ci.yml/badge.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green)
-![License](https://img.shields.io/badge/license-MIT-green)
+CI
+TypeScript
+Chrome Extension
+License
 
 ---
 
 ## Sobre
 
-Mettri transforma conversas em vendas. Uma extensao Chrome que se integra ao WhatsApp Web para:
+O Mettri é uma ferramenta de apoio à comunicação com clientes existentes.
+Ele transforma o WhatsApp em um sistema de continuidade, contexto e vendas responsáveis, sem automação agressiva e sem mensagens frias.
 
-- Capturar mensagens em tempo real
-- Manter historico persistente
-- Fornecer sugestoes de IA para respostas
-- Organizar contatos e tags
-- Reativar clientes inativos
+Como extensão do Chrome integrada ao WhatsApp Web, o Mettri ajuda negócios a decidir melhor quando, com quem e por que falar, mantendo ritmo humano e intenção real.
+
+
+O Mettri organiza conversas, estrutura ciclos de continuidade, sugere ações com IA e protege o usuário de excessos — para vender mais falando menos e melhor.
 
 ---
 
@@ -65,11 +72,13 @@ npm run build
 **IMPORTANTE:** O WhatsApp Web detecta quando o Chrome está sendo controlado por software de automação (MCP/Playwright) e bloqueia o carregamento completo.
 
 **Para testar a extensão:**
+
 - ✅ Use Chrome normal (aberto manualmente)
 - ❌ NÃO use MCP browser extension ou Playwright para testar WhatsApp
 - ❌ NÃO use Chrome em modo dev se for testar WhatsApp
 
 **Playwright/MCP:**
+
 - Podem ser usados para validar estrutura básica (manifest, arquivos)
 - NÃO funcionam para testar WhatsApp (detecção de automação)
 
@@ -81,16 +90,18 @@ Veja [TESTE-RAPIDO.md](TESTE-RAPIDO.md) para mais detalhes.
 
 ### Scripts disponiveis
 
-| Comando | Descricao |
-|---------|-----------|
-| `npm run dev` | Build com watch mode |
-| `npm run build` | Build de producao |
-| `npm run lint` | Verificar linting |
-| `npm run lint:fix` | Corrigir linting |
-| `npm run format` | Formatar codigo |
-| `npm run type-check` | Verificar tipos |
-| `npm run test:e2e` | Testes E2E |
-| `npm run test:e2e:headed` | Testes E2E visiveis |
+
+| Comando                   | Descricao            |
+| ------------------------- | -------------------- |
+| `npm run dev`             | Build com watch mode |
+| `npm run build`           | Build de producao    |
+| `npm run lint`            | Verificar linting    |
+| `npm run lint:fix`        | Corrigir linting     |
+| `npm run format`          | Formatar codigo      |
+| `npm run type-check`      | Verificar tipos      |
+| `npm run test:e2e`        | Testes E2E           |
+| `npm run test:e2e:headed` | Testes E2E visiveis  |
+
 
 ### Estrutura do Projeto
 
@@ -115,24 +126,26 @@ mettri/
 
 ## Documentacao
 
-| Documento | Descricao |
-|-----------|-----------|
-| [project_concept.md](project_concept.md) | Visao conceitual |
-| [project_context.md](project_context.md) | Especificacoes tecnicas |
-| [tech_stack.md](tech_stack.md) | Stack tecnologica |
-| [progress.md](progress.md) | Status do desenvolvimento |
+
+| Documento                                | Descricao                 |
+| ---------------------------------------- | ------------------------- |
+| [project_concept.md](project_concept.md) | Visao conceitual          |
+| [project_context.md](project_context.md) | Especificacoes tecnicas   |
+| [tech_stack.md](tech_stack.md)           | Stack tecnologica         |
+| [progress.md](progress.md)               | Status do desenvolvimento |
+
 
 ---
 
 ## Roadmap
 
-- [x] Setup TypeScript
-- [x] UI no WhatsApp Web
-- [x] Captura de mensagens
-- [x] Persistencia IndexedDB
-- [ ] Sugestoes de IA
-- [ ] Gestao de contatos
-- [ ] Reativacao de clientes
+- Setup TypeScript
+- UI no WhatsApp Web
+- Captura de mensagens
+- Persistencia IndexedDB
+- Sugestoes de IA
+- Gestao de contatos
+- Reativacao de clientes
 
 Veja [progress.md](progress.md) para detalhes.
 
@@ -158,4 +171,4 @@ MIT - veja [LICENSE](LICENSE) para detalhes.
 
 ## Autor
 
-Desenvolvido com TypeScript e muito cafe.
+Desenvolvido com TypeScript, Agentes de IA e muita paciência.

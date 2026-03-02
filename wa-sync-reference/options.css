@@ -1,0 +1,1033 @@
+/**
+ * Options Page Styles
+ */
+
+/* Import shared variable autocomplete styles */
+@import url('../popup/styles/variable-autocomplete.css');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --whatsapp-green: #25D366;
+  --whatsapp-green-dark: #1da851;
+  --whatsapp-green-light: #e8f5e9;
+  --black: #000000;
+  --gray-dark: #333333;
+  --gray: #666666;
+  --gray-light: #cccccc;
+  --gray-lighter: #f5f5f5;
+  --white: #ffffff;
+  --border: #e0e0e0;
+  --shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--white);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.loading-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--gray);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--gray-lighter);
+  border-top-color: var(--whatsapp-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-size: 14px;
+  color: var(--black);
+  background: var(--gray-lighter);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--white);
+  min-height: 100vh;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+}
+
+/* Fixed Header with Save Button */
+.header {
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--white);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header h1 svg {
+  color: var(--whatsapp-green);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-actions .save-status {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+/* Unsaved Changes Indicator */
+.unsaved-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+.unsaved-indicator svg {
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Save button with changes */
+.btn-primary.has-changes {
+  background: #ffc107;
+  color: #856404;
+  animation: btnPulse 1.5s infinite;
+}
+
+.btn-primary.has-changes:hover {
+  background: #e0a800;
+}
+
+@keyframes btnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 193, 7, 0); }
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  gap: 0;
+  overflow-x: auto;
+  position: sticky;
+  top: 58px;
+  z-index: 99;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: var(--black);
+  background: var(--gray-lighter);
+}
+
+.tab-btn.active {
+  color: var(--whatsapp-green);
+  border-bottom-color: var(--whatsapp-green);
+  background: var(--whatsapp-green-light);
+}
+
+.tab-btn svg {
+  flex-shrink: 0;
+}
+
+/* Tab Content */
+.tab-content {
+  padding: 32px;
+  min-height: calc(100vh - 120px);
+}
+
+.tab-panel {
+  display: none;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.content {
+  padding: 32px;
+}
+
+.section {
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--gray);
+  margin-bottom: 16px;
+  margin-top: -8px;
+}
+
+/* Form Rows */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-dark);
+  margin-bottom: 6px;
+}
+
+.form-group input[type="url"],
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--black);
+  background: var(--white);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group select {
+  cursor: pointer;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--whatsapp-green);
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+}
+
+.form-group input:read-only {
+  background: var(--gray-lighter);
+  color: var(--gray);
+}
+
+/* Input with button */
+.input-with-button {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+/* Webhook URL with method selector */
+.webhook-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* .webhook-url-row input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.method-select {
+  width: 100px;
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--gray-lighter);
+  color: var(--gray-dark);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.method-select:focus {
+  outline: none;
+  border-color: var(--whatsapp-green);
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+} */
+
+.help-text {
+  display: block;
+  font-size: 11px;
+  color: var(--gray);
+  margin-top: 4px;
+}
+
+/* Toggle Switch */
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--gray-lighter);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-text {
+  font-weight: 600;
+  color: var(--gray-dark);
+}
+
+.help-text-inline {
+  font-size: 11px;
+  color: var(--gray);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--gray-light);
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--whatsapp-green);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.2);
+}
+
+/* Button Group */
+.button-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  color: var(--gray-dark);
+}
+
+.checkbox-label:hover {
+  border-color: var(--whatsapp-green);
+  background: var(--whatsapp-green-light);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toggle-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+}
+
+.toggle-info {
+  flex: 1;
+}
+
+.toggle-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+  margin-bottom: 4px;
+}
+
+.toggle-desc {
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--gray-light);
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--white);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--whatsapp-green);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+}
+
+#customHeadersList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Custom Payload Template */
+#customPayloadTemplate {
+  width: 100%;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--white);
+  resize: vertical;
+  min-height: 200px;
+}
+
+#customPayloadTemplate:focus {
+  outline: none;
+  border-color: var(--whatsapp-green);
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.1);
+}
+
+.payload-actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.variable-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.variable-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.variable-list th,
+.variable-list td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.variable-list th {
+  background: var(--gray-lighter);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.variable-list tr:hover td {
+  background: var(--whatsapp-green-light);
+}
+
+.variable-list code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.variable-reference {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--gray-lighter);
+  border-radius: 6px;
+}
+
+.variable-reference summary {
+  user-select: none;
+  cursor: pointer;
+}
+
+.variable-reference summary:hover {
+  color: var(--whatsapp-green);
+}
+
+.variable-reference[open] summary {
+  margin-bottom: 12px;
+}
+
+.header-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.header-row input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* Query Parameter Rows */
+.query-param-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.query-param-row input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.param-value-wrapper {
+  position: relative;
+}
+
+.param-value-wrapper input {
+  width: 100%;
+}
+
+/* param-autocomplete-popover is legacy, keeping for compatibility */
+.param-autocomplete-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
+
+.param-autocomplete-popover.visible {
+  display: block;
+}
+
+.param-autocomplete-popover .autocomplete-group {
+  padding: 4px 0;
+}
+
+.param-autocomplete-popover .autocomplete-group-header {
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gray);
+  text-transform: uppercase;
+  background: var(--gray-lighter);
+}
+
+.param-autocomplete-popover .autocomplete-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.param-autocomplete-popover .autocomplete-item:hover,
+.param-autocomplete-popover .autocomplete-item.selected {
+  background: var(--whatsapp-green-light);
+}
+
+.param-autocomplete-popover .autocomplete-item-name {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 12px;
+  color: var(--gray-dark);
+}
+
+.param-autocomplete-popover .autocomplete-item-desc {
+  font-size: 11px;
+  color: var(--gray);
+}
+
+.param-autocomplete-popover .autocomplete-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--whatsapp-green);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: var(--whatsapp-green-dark);
+}
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--gray-dark);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--gray-lighter);
+}
+
+.btn-small {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: var(--white);
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.save-status {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  display: none;
+}
+
+.save-status.success {
+  display: inline-block;
+  background: var(--whatsapp-green-light);
+  color: var(--whatsapp-green-dark);
+  border: 1px solid var(--whatsapp-green);
+}
+
+.save-status.error {
+  display: inline-block;
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef5350;
+}
+
+.info-box {
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--whatsapp-green-light);
+  border: 1px solid var(--whatsapp-green);
+  font-size: 13px;
+  color: var(--gray-dark);
+  margin-top: 12px;
+}
+
+.info-box strong {
+  color: var(--black);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header-row {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Activation Section Styles */
+.activation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activation-status {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--whatsapp-green-light);
+  border: 1px solid var(--whatsapp-green);
+  border-radius: 8px;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.status-indicator.active {
+  background: var(--whatsapp-green);
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.2);
+}
+
+.status-indicator.inactive {
+  background: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+}
+
+.status-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 8px;
+}
+
+.status-details {
+  font-size: 13px;
+  color: var(--gray-dark);
+  line-height: 1.8;
+}
+
+.status-details code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 12px;
+}
+
+.status-details strong {
+  color: var(--black);
+}
+
+#deactivateBtn {
+  align-self: flex-start;
+}
+
+/* Autocomplete Popover Styles */
+.textarea-autocomplete-wrapper {
+  position: relative;
+}
+
+.autocomplete-popover {
+  position: absolute;
+  display: none;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 320px;
+  width: 380px;
+  overflow: hidden;
+}
+
+.autocomplete-popover.visible {
+  display: block;
+  animation: popoverFadeIn 0.15s ease-out;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.autocomplete-header {
+  padding: 8px 12px;
+  background: var(--gray-lighter);
+  border-bottom: 1px solid var(--border);
+}
+
+.autocomplete-hint {
+  font-size: 11px;
+  color: var(--gray);
+}
+
+.autocomplete-content {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.autocomplete-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.autocomplete-group:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-group-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray);
+  background: var(--gray-lighter);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.1s;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: var(--whatsapp-green-light);
+}
+
+.autocomplete-item.selected {
+  border-left: 3px solid var(--whatsapp-green);
+}
+
+.autocomplete-item-name {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  color: var(--black);
+}
+
+.autocomplete-item-desc {
+  font-size: 11px;
+  color: var(--gray);
+  margin-left: auto;
+}
+
+.autocomplete-empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 12px;
+}
+
+.autocomplete-match {
+  background: rgba(37, 211, 102, 0.3);
+  border-radius: 2px;
+}
+
+

@@ -444,6 +444,11 @@ export class HistoryPanel {
         </button>
       </div>
 
+      <!-- Stats do banco (clientes e mensagens) -->
+      <div class="text-[11px] text-muted-foreground" data-mettri-db-stats>
+        ${this.contacts.length} clientes · ${this.contacts.reduce((s, c) => s + c.messageCount, 0)} mensagens
+      </div>
+
       <!-- Contacts List -->
       <div class="space-y-0.5" id="mettri-history-contacts-list">
         ${this.renderContactsList(filteredContacts)}

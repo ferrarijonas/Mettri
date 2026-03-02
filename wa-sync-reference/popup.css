@@ -1,0 +1,26 @@
+/**
+ * Popup UI Styles
+ * Modular CSS imports for WhatsApp Sync Extension
+ */
+
+/* Base - Variables, Reset, Animations */
+@import url('./styles/base.css');
+
+/* Layout - Container, Pages, Header, Sections */
+@import url('./styles/layout.css');
+
+/* Components - Buttons, Inputs, Toggles, Badges */
+@import url('./styles/components.css');
+
+/* Variable Autocomplete Component */
+@import url('./styles/variable-autocomplete.css');
+
+/* Panels - Loading, Activation, Not WhatsApp */
+@import url('./styles/panels.css');
+
+/* Pages */
+@import url('./styles/home.css');
+@import url('./styles/custom-integration.css');
+@import url('./styles/sync-progress.css');
+@import url('./styles/statistics.css');
+@import url('./styles/profile.css');

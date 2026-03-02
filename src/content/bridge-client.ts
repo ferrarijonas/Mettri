@@ -3,7 +3,8 @@ type BridgeAction =
   | 'storage.get'
   | 'storage.set'
   | 'storage.remove'
-  | 'downloads.download';
+  | 'downloads.download'
+  | 'net.fetch';
 
 interface BridgeRequest {
   __mettriBridge: true;
@@ -95,6 +96,15 @@ export class MettriBridgeClient {
 
   async downloadsDownload(args: { url: string; filename: string; saveAs?: boolean }): Promise<{ downloadId: number }> {
     return await this.request('downloads.download', args);
+  }
+
+  async netFetch(args: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ ok: boolean; status: number; text: string; location?: string }> {
+    return await this.request('net.fetch', args);
   }
 }
 

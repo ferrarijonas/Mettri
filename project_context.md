@@ -1,5 +1,5 @@
 # Project Context — METTRI
-> **Versão:** 1.0.0 | **Última atualização:** Janeiro 2026  
+> **Versão:** 2.0.1 | **Última atualização:** Fevereiro 2026  
 > **Baseado em:** `project_concept.md` (visão conceitual)
 
 ---
@@ -1281,11 +1281,11 @@ interface WebhookConfig {
 | **ATENDIMENTO** | conversation.view | 🟡 Parcial | `src/ui/integrated-panel.js` |
 | | conversation.reply.manual | ✅ Funciona | `src/core/whatsapp-adapter.js` |
 | | conversation.reply.suggested | ✅ Funciona | `src/copilot/suggestion-engine.js` |
-| | conversation.log | ⚪ Não existe | `src/core/message-capturer.js` (vazio) |
+| | conversation.log | ✅ Funciona | `src/core/message-capturer.ts` |
 | **CLIENTES** | client.profile | ✅ Funciona | `src/crm/contacts.js` |
 | | client.tags | ✅ Funciona | `src/crm/tags.js` |
 | | client.history | ⚪ Não existe | - |
-| **HISTÓRICO** | history.messages.store | ⚪ Não existe | `src/storage/message-db.js` (vazio) |
+| **HISTÓRICO** | history.messages.store | ✅ Funciona | `src/storage/message-db.ts` |
 | **RECOMENDAÇÃO** | recommendation.messages | ✅ Funciona | `src/copilot/ai-service.js` |
 | **PRODUTOS** | * | ⚪ Não existe | - |
 | **VITRINE** | * | ⚪ Não existe | - |
@@ -1294,9 +1294,10 @@ interface WebhookConfig {
 | **FINANCEIRO** | * | ⚪ Não existe | - |
 | **MARKETING** | reactivation.* | ⚪ Não existe | - |
 | | persona.* | ⚪ Não existe | - |
-| **INFRAESTRUTURA** | selectors.fallback_chain | ⚪ Não existe | - |
-| | selectors.remote_fetch | ⚪ Não existe | - |
-| | config.remote_fetch | ⚪ Não existe | - |
+| **INFRAESTRUTURA** | interceptação.webpack | ✅ Funciona | `src/infrastructure/interceptors-core.ts` |
+| | selectors.fallback_chain | ✅ Funciona | `src/infrastructure/selector-manager.ts` |
+| | selectors.remote_fetch | 🟡 Parcial | `src/infrastructure/config-updater.ts` |
+| | config.remote_fetch | 🟡 Parcial | `src/infrastructure/config-updater.ts` |
 | | config.feature_flags | ⚪ Não existe | - |
 | **SUPORTE** | docs.error_solutions | ⚪ Não existe | - |
 | | bot.knowledge_base | ⚪ Não existe | - |
@@ -1313,7 +1314,7 @@ interface WebhookConfig {
 - 🟡 Parcial: Código existe, funciona parcialmente
 - ⚪ Não existe: Precisa ser implementado
 
-### 4.2 Versão Atual: v1.2.0
+### 4.2 Versão Atual: v2.0.1
 
 **O que funciona hoje:**
 - Chrome Extension carrega no WhatsApp Web
@@ -1321,11 +1322,13 @@ interface WebhookConfig {
 - Sugestões de IA via OpenAI/Claude
 - Auto-responder básico com regras
 - Gestão de contatos e tags
+- Captura de mensagens via webpack (MessageCapturer implementado)
+- Persistência em IndexedDB (MessageDB implementado)
+- Sistema de seletores com fallback chain (SelectorManager)
+- Interceptação webpack para acesso direto aos módulos do WhatsApp
 
 **O que NÃO funciona:**
-- Captura de mensagens (arquivo vazio)
-- Persistência em IndexedDB (arquivo vazio)
-- Histórico completo de cliente
+- Histórico completo de cliente (visualização no painel)
 - Qualquer coisa de Produtos, Pedidos, Entrega, Financeiro, Marketing
 
 ---

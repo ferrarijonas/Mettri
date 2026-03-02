@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ativar GitHub Pages e Deploy</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.25rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    a { color: #0969da; }
+    a.big { display: inline-block; margin: 8px 0; font-weight: 600; }
+    ol { margin: 8px 0; padding-left: 20px; }
+    li { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <h1>Ativar GitHub Pages e rodar o deploy</h1>
+  <p>Abra os links abaixo (você precisa estar logado no GitHub).</p>
+
+  <div class="card">
+    <strong>1. Ativar GitHub Pages</strong>
+    <br><a class="big" href="https://github.com/ferrarijonas/Mettri/settings/pages" target="_blank">Abrir Settings → Pages</a>
+    <ol>
+      <li>Em <strong>Source</strong>, escolha <strong>Deploy from a branch</strong>.</li>
+      <li>Branch: <strong>gh-pages</strong>. Folder: <strong>/ (root)</strong>.</li>
+      <li>Clique em <strong>Save</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <strong>2. Rodar o deploy (criar branch gh-pages)</strong>
+    <br><a class="big" href="https://github.com/ferrarijonas/Mettri/actions/workflows/deploy-modules.yml" target="_blank">Abrir workflow Deploy modules</a>
+    <p><small>Se não aparecer o botão "Run workflow", tire o filtro da busca (apague <code>event:push</code>) ou use o link acima sem nada depois do .yml</small></p>
+    <ol>
+      <li>Clique em <strong>Run workflow</strong> (canto direito).</li>
+      <li>No menu <strong>Branch</strong>, selecione <strong>fix-ui-shadow-dom-isolation</strong>.</li>
+      <li>Clique no botão verde <strong>Run workflow</strong>.</li>
+      <li>Aguarde ~1 min. Depois teste: <a href="https://ferrarijonas.github.io/Mettri/manifest.json" target="_blank">ferrarijonas.github.io/Mettri/manifest.json</a></li>
+    </ol>
+  </div>
+</body>
+</html>

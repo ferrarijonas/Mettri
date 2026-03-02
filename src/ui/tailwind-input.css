@@ -52,6 +52,25 @@
   --glass-bg: oklch(1 0 0 / 0.65) !important;
   --glass-border: oklch(1 0 0 / 0.3) !important;
   --glass-shadow: oklch(0 0 0 / 0.08) !important;
+
+  /* Cores fixas para tags/labels (padrão WhatsApp) */
+  --tag-color-1: oklch(0.72 0.17 155) !important; /* Verde padrão */
+  --tag-color-2: oklch(0.65 0.12 180) !important; /* Azul */
+  --tag-color-3: oklch(0.58 0.08 200) !important; /* Roxo */
+  --tag-color-4: oklch(0.78 0.14 90) !important;  /* Amarelo */
+  --tag-color-5: oklch(0.7 0.18 30) !important;   /* Laranja */
+  --tag-color-6: oklch(0.55 0.22 25) !important;  /* Vermelho */
+  --tag-color-7: oklch(0.5 0.1 250) !important;   /* Índigo */
+  --tag-color-8: oklch(0.6 0.15 140) !important;  /* Verde-água */
+
+  /* Cores de texto para tags (contraste adequado) */
+  --tag-text-light: oklch(1 0 0) !important;      /* Texto claro */
+  --tag-text-dark: oklch(0.15 0.01 155) !important; /* Texto escuro */
+
+  /* Progress bar colors */
+  --progress-bg: oklch(0.94 0.01 155) !important;
+  --progress-fill: oklch(0.72 0.17 155) !important;
+  --progress-text: oklch(0.45 0.02 155) !important;
 }
 
 #mettri-panel.dark,
@@ -94,6 +113,11 @@
   --glass-bg: oklch(0.16 0.015 155 / 0.75) !important;
   --glass-border: oklch(0.35 0.02 155 / 0.4) !important;
   --glass-shadow: oklch(0 0 0 / 0.3) !important;
+
+  /* Progress bar colors - dark mode */
+  --progress-bg: oklch(0.25 0.015 155) !important;
+  --progress-fill: oklch(0.72 0.17 155) !important;
+  --progress-text: oklch(0.65 0.02 155) !important;
 }
 
 @theme inline {
@@ -186,6 +210,15 @@
   box-shadow: 0 0 20px oklch(0.72 0.17 155 / 0.4), 0 0 40px oklch(0.72 0.17 155 / 0.2);
 }
 
+/* Pontinho de destaque reutilizável (ex.: campanhas/ciclos) */
+#mettri-panel .mettri-dot-accent {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
 /* Smooth scrollbar */
 #mettri-panel *::-webkit-scrollbar,
 #mettri-navbar *::-webkit-scrollbar {
@@ -206,4 +239,399 @@
 #mettri-panel *::-webkit-scrollbar-thumb:hover,
 #mettri-navbar *::-webkit-scrollbar-thumb:hover {
   background: oklch(0.72 0.17 155 / 0.5);
+}
+
+/* Seção Etiquetas - botão Nova lista (itens usam classes inline como as pills) */
+#mettri-panel .mettri-etiquetas-add-row {
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+}
+
+/* Atendimento > Retomar support (namespace semântico para desacoplamento visual) */
+#mettri-panel .mettri-atendimento-retomar-support {
+  border: 1px solid var(--border);
+}
+#mettri-panel .mettri-atendimento-etiquetas-header {
+  min-height: 1.75rem;
+}
+#mettri-panel .mettri-atendimento-etiqueta-chip {
+  border-color: var(--border);
+}
+#mettri-panel .mettri-atendimento-etiqueta-chip-active {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+#mettri-panel .mettri-atendimento-etiqueta-menu {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+/* Fluxo unificado: permitir que dropdowns (ex.: tipo de relação) não sejam cortados */
+#mettri-panel .mettri-retomar-unified-flow {
+  overflow: visible;
+}
+
+/* Tipo de relação (dropdown) – wrapper com overflow visible para o dropdown não ser cortado */
+#mettri-panel .mettri-relation-type {
+  margin-bottom: 0.75rem;
+  position: relative;
+  overflow: visible;
+}
+#mettri-panel .mettri-relation-type-trigger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+#mettri-panel .mettri-relation-type-trigger:hover {
+  border-color: var(--border);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.06);
+}
+#mettri-panel .mettri-relation-type-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  width: 100%;
+  display: block;
+}
+#mettri-panel .mettri-relation-type-value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem 0.5rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+#mettri-panel .mettri-relation-type-selected-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+#mettri-panel .mettri-relation-type-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+#mettri-panel .mettri-relation-type-range {
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: var(--primary);
+}
+#mettri-panel .mettri-relation-type-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  color: var(--muted-foreground);
+}
+#mettri-panel .mettri-relation-type-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  z-index: 9999;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: 0 4px 12px var(--glass-shadow);
+  padding: 0.25rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  display: block;
+}
+#mettri-panel .mettri-relation-type-dropdown.hidden {
+  display: none !important;
+}
+
+/* Baseado em (fonte de atividade) – dropdown customizado, mesmo estilo do Tipo de relação */
+#mettri-panel .mettri-activity-source-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: baseline;
+}
+#mettri-panel .mettri-activity-source-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: auto;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+#mettri-panel .mettri-activity-source-trigger .mettri-relation-type-chevron {
+  margin-left: 0;
+}
+#mettri-panel .mettri-activity-source-trigger .mettri-relation-type-value {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+#mettri-panel .mettri-relation-type-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 0.5rem;
+}
+#mettri-panel .mettri-relation-type-option:hover {
+  background: var(--accent);
+}
+#mettri-panel .mettri-relation-type-option-selected {
+  background: var(--accent);
+}
+#mettri-panel .mettri-relation-type-option-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+  flex-shrink: 0;
+}
+#mettri-panel .mettri-relation-type-option-range {
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: var(--primary);
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Conteúdo extra do modo Tipo de relação = Personalizado */
+#mettri-panel .mettri-relation-type-custom {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+#mettri-panel .mettri-relation-type-custom-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-bottom: 0.25rem;
+}
+#mettri-panel .mettri-relation-type-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+#mettri-panel .mettri-relation-type-custom-label,
+#mettri-panel .mettri-relation-type-custom-suffix {
+  font-size: 0.8125rem;
+  color: var(--foreground);
+}
+#mettri-panel .mettri-relation-type-custom-input {
+  width: 3.5rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: calc(var(--radius) - 6px);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.8125rem;
+}
+#mettri-panel .mettri-relation-type-custom-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--ring);
+}
+#mettri-panel .mettri-relation-type-custom-hint {
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+#mettri-panel .mettri-relation-type-custom-advanced-toggle {
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: calc(var(--radius) - 6px);
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+#mettri-panel .mettri-relation-type-custom-advanced-toggle:hover {
+  text-decoration: underline;
+}
+#mettri-panel .mettri-relation-type-custom-advanced {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+#mettri-panel .mettri-relation-type-custom-advanced-empty {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+#mettri-panel .mettri-chamadas-config-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--foreground);
+  margin-bottom: 0.15rem;
+}
+#mettri-panel .mettri-chamadas-config-label {
+  font-weight: 500;
+}
+#mettri-panel .mettri-chamadas-config-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+#mettri-panel .mettri-relation-type-custom-preview {
+  margin-top: 0.3rem;
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+#mettri-panel .mettri-relation-type-custom-preview-label {
+  font-weight: 500;
+}
+#mettri-panel .mettri-relation-type-custom-preview-value {
+  margin-left: 0.25rem;
+}
+
+/* Popover/configuração da régua em Ciclos de contato (engrenagem) */
+#mettri-panel .mettri-chamadas-config-popover {
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 4px 10px var(--glass-shadow);
+}
+#mettri-panel .mettri-chamadas-config-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.35rem;
+}
+#mettri-panel .mettri-chamadas-config-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+#mettri-panel .mettri-chamadas-config-subtitle {
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+
+
+/* Bloco Ciclos de contato (lista vertical Primeira/Segunda/Terceira/Última tentativa) */
+#mettri-panel .mettri-chamadas-content {
+  padding-top: 0.35rem; /* ~30% menos que o pt-2 original (0.5rem) */
+}
+#mettri-panel .mettri-chamadas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#mettri-panel .mettri-chamadas-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.8125rem;
+  color: var(--foreground);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  position: relative;
+}
+#mettri-panel .mettri-chamadas-row::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  width: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  opacity: 0.6;
+}
+#mettri-panel .mettri-chamadas-row:first-child::before {
+  top: 50%;
+}
+#mettri-panel .mettri-chamadas-row:last-child::before {
+  bottom: 50%;
+}
+#mettri-panel .mettri-chamadas-row:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+#mettri-panel .mettri-chamadas-row-selected {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+#mettri-panel .mettri-chamadas-row-label {
+  font-weight: 500;
+  color: var(--foreground);
+}
+#mettri-panel .mettri-chamadas-selected-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+#mettri-panel .mettri-chamadas-selected-dot.is-active {
+  background: var(--primary);
+}
+#mettri-panel .mettri-chamadas-selected-dot.is-inactive {
+  background: transparent;
+}
+#mettri-panel .mettri-chamadas-row-count {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+/* Pill pequeno “campanha ativa” dentro da linha de ciclo (mesmo estilo dos pills de Campanhas ativas) */
+#mettri-panel .mettri-chamadas-campaign-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  width: 100%;
+  max-width: fit-content;
+}
+#mettri-panel .mettri-chamadas-campaign-pill .mettri-campanhas-card-dot {
+  width: 5px;
+  height: 5px;
+}
+#mettri-panel .mettri-chamadas-campaign-pill-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#mettri-panel .mettri-chamadas-row-campaign {
+  width: 100%;
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
 }

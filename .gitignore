@@ -36,3 +36,17 @@ legacy/
 # Chrome extension unpacked
 *.crx
 *.pem
+
+# Dev tools / AI assistants
+.cursor/
+.specify/memory/
+
+# Temporary uploads
+.tmp.driveupload/
+
+# Windows Explorer metadata
+desktop.ini
+
+# Local data files (do not commit customer lists)
+Lista-Clientes*.xlsx
+wa-sync-found-files.txt

@@ -2,20 +2,32 @@
  * RetomarPanel
  *
  * Painel de retomada de clientes inativos (Marketing > Retomar).
- * - Régua de cadência (dias inativos: 21, 35, 56, 84).
+ * - Régua de cadência (dias por tipo; ex. Frequente: 21, 42, 73, 116).
  * - Modo dia: clientes elegíveis por dia; modo etiqueta: membros de Bloqueados/CNPJ ou listas customizadas.
  * - Etiquetas: adicionar/remover/mover clientes; listas padrão (Bloqueados, CNPJ) editáveis.
  * - Geração de mensagens, Simular envio e envio em massa.
  */
 
 import { messageDB } from '../../../storage/message-db';
+import { purchaseDB } from '../../../storage/purchase-db';
 import { clientDB, digitsOnly, normalizePhoneDigitsWithAliases } from '../../../storage/client-db';
-import { daysBetweenByCalendar } from './inactive-days';
+import {
+  getRangesForType,
+  getMinDistanceForType,
+  isInRange,
+  type RelationType,
+} from './inactive-days';
 import { classifyNameCandidate } from '../../clientes/name-likelihood';
 import { MettriBridgeClient } from '../../../content/bridge-client';
 import { sendMessageService } from '../../../infrastructure/services';
 import { RateLimiter } from './rate-limiter';
 import { RetomarListsManager, type RetomarList } from './retomar-lists';
+import * as retomarContador from './retomar-contador';
+import { computeEligibleContacts, type LastActivityEntry } from './eligible-contacts-engine';
+import { splitAB } from './ab-split';
+import { suggestText } from './ai-suggestion';
+import type { RetomarMeta } from '../../../types/schemas';
+import type { CapturedMessage } from '../../../types';
 
 interface InactiveClient {
   chatId: string;
@@ -42,15 +54,41 @@ interface LogEntry {
 const ETIQUETA_DISPLAY_NAMES: Record<string, string> = {
   'never-send': 'Bloqueados',
   'exclusivos': 'CNPJ',
+  'inativos': 'Inativos',
 };
+
+/** Opções do dropdown Tipo de relação. label = nome; shortRange = texto explicativo. */
+const RELATION_TYPES = [
+  { id: 'frequente', label: 'Frequente', shortRange: 'Quinzenal ou mensal' },
+  { id: 'pontual', label: 'Pontual', shortRange: 'Mensal ou bimestral' },
+  { id: 'sazonal', label: 'Sazonal', shortRange: 'Trimestral' },
+  { id: 'personalizado', label: 'Personalizado', shortRange: 'Você define' },
+] as const;
+
+type ActivitySource = 'last-message' | 'last-purchase';
+
+const ACTIVITY_SOURCE_OPTIONS = [
+  { id: 'last-message', label: 'Última mensagem' },
+  { id: 'last-purchase', label: 'Última compra' },
+] as const;
+
+/** Configuração dos ciclos da régua (Primeira, Segunda, Terceira, Última tentativa). Última sempre usa o último dia. */
+const CHAMADAS_CONFIG = [
+  { id: 'primeira', label: 'Primeira tentativa', campaignLabel: null },
+  { id: 'segunda', label: 'Segunda tentativa', campaignLabel: null },
+  { id: 'terceira', label: 'Terceira tentativa', campaignLabel: 'Desconto 25%' },
+  { id: 'ultima', label: 'Última tentativa', campaignLabel: null },
+] as const;
 
 export class RetomarPanel {
   private container: HTMLElement | null = null;
-  private cadenceDays: number[] = [21, 35, 56, 84];
+  private cadenceDays: number[] = [21, 42, 73, 116];
   private eligibleClients: InactiveClient[] = [];
   /** Cache de clientes por chatId para preservar nomes entre modos (evita alteração ao alternar). */
   private clientsCache: Map<string, InactiveClient> = new Map();
   private selectedClients: Set<string> = new Set();
+  /** Índice da faixa selecionada nos ciclos (0–3). */
+  private selectedRangeIndex: number | null = null;
   private selectedInactiveDay: number | null = null;
   private logs: LogEntry[] = [];
   private stats = {
@@ -75,12 +113,31 @@ export class RetomarPanel {
   private messageText: string = "";
   private closeMenusHandler: ((e: MouseEvent) => void) | null = null;
   private closeDropdownHandler: ((e: MouseEvent) => void) | null = null;
+  private closeRelationDropdownHandler: ((e: MouseEvent) => void) | null = null;
+  private closeActivitySourceDropdownHandler: ((e: MouseEvent) => void) | null = null;
   private repositionDropdownHandler: (() => void) | null = null;
+  /** Intervalo customizado em dias (modo Tipo de relação = Personalizado). Apenas UI. */
+  private customRelationIntervalDays: number | null = null;
+  /** Expansão do painel avançado de dias da régua no modo Personalizado. */
+  private isCustomCadenceExpanded: boolean = false;
+  /** Popover de configuração da régua em Ciclos de contato (engrenagem). */
+  private isChamadasConfigOpen: boolean = false;
+
+  /** Tipo de relação selecionado (dropdown). */
+  private selectedRelationType: RelationType = 'frequente';
+  /** Dropdown "Baseado em" (fonte de atividade) aberto ou fechado. */
+  private activitySourceDropdownOpen: boolean = false;
+  /** Fonte da data de referência para afastamento. */
+  private selectedActivitySource: ActivitySource = 'last-message';
+  private relationTypeDropdownOpen: boolean = false;
 
   private testContact: { phone: string; name: string } | null = null;
   private testModeEnabled: boolean = false;
   private bridge = new MettriBridgeClient(2500);
   private sendButtonClickHandler: ((e: MouseEvent) => void) | null = null;
+
+  /** Índice da chamada (0–3) da fila atual; usado após envio para setContador. */
+  private pendingChamadaIndex: number | null = null;
 
   // Rate limiting e controle de envio
   private rateLimiter = new RateLimiter();
@@ -90,6 +147,32 @@ export class RetomarPanel {
   private backgroundIntervalId: number | null = null;
   private readonly STORAGE_KEY_QUEUE = 'retomarSendingQueue';
   private readonly STORAGE_KEY_PAUSED = 'retomarIsPaused';
+
+  /** accountId para contador e listas (definido em loadConfig). */
+  private accountId: string = 'default';
+
+  /** Textos A/B por ciclo (rangeIndex 0–3) para a UI expandida de Ciclos de contato. */
+  private cycleMessages: { textA: string; textB: string | null }[] = [
+    { textA: '', textB: null },
+    { textA: '', textB: null },
+    { textA: '', textB: null },
+    { textA: '', textB: null },
+  ];
+
+  /** Painel do ciclo: lista de pessoas expandida ou só resumo. */
+  private cyclePeopleExpanded: boolean = false;
+  /** Painel do ciclo: bloco Métricas (este ciclo) expandido. */
+  private cycleMetricsExpanded: boolean = false;
+  /** Modo de envio no painel do ciclo: Só A, Só B ou A/B (50%–50%). */
+  private cycleSendMode: 'A' | 'B' | 'AB' = 'A';
+
+  /** Payload A/B por chatId — preenchido no modo A/B para que processQueue saiba o texto e variant de cada contato. */
+  private sendingPayloadByChatId: Map<string, { text: string; variant: 'A' | 'B' }> = new Map();
+
+  /** Período selecionado nas métricas do ciclo (em dias). */
+  private cycleMetricsPeriodDays: number = 7;
+  /** Cache dos dados de métricas para o ciclo selecionado. */
+  private cycleMetricsData: { sendsA: number; sendsB: number; total: number } | null = null;
 
   // Sistema de listas
   private listsManager: RetomarListsManager | null = null;
@@ -131,6 +214,15 @@ export class RetomarPanel {
     this.labelModeClients = [];
     this.openMenuId = null;
     this.listMenuOpenId = null;
+    this.cycleMessages = [
+      { textA: '', textB: null },
+      { textA: '', textB: null },
+      { textA: '', textB: null },
+      { textA: '', textB: null },
+    ];
+    this.cyclePeopleExpanded = false;
+    this.cycleMetricsExpanded = false;
+    this.cycleSendMode = 'A';
 
     try {
       await this.loadConfig();
@@ -184,6 +276,7 @@ export class RetomarPanel {
         'retomarCadence',
         'retomarTestContact',
         'retomarTestModeEnabled',
+        'retomarActivitySource',
       ]);
 
       if (result.retomarCadence && Array.isArray(result.retomarCadence)) {
@@ -201,9 +294,16 @@ export class RetomarPanel {
         this.testModeEnabled = result.retomarTestModeEnabled;
       }
 
+      if (
+        result.retomarActivitySource === 'last-message' ||
+        result.retomarActivitySource === 'last-purchase'
+      ) {
+        this.selectedActivitySource = result.retomarActivitySource;
+      }
+
       // Inicializar gerenciador de listas
-      const accountId = await this.getAccountId();
-      this.listsManager = new RetomarListsManager(accountId);
+      this.accountId = await this.getAccountId();
+      this.listsManager = new RetomarListsManager(this.accountId);
       await this.listsManager.initialize();
       this.lists = this.listsManager.getLists();
 
@@ -217,8 +317,9 @@ export class RetomarPanel {
         this.sendingQueue = queueResult[this.STORAGE_KEY_QUEUE] as string[];
       }
 
-      if (typeof queueResult[this.STORAGE_KEY_PAUSED] === 'boolean') {
-        this.isPaused = queueResult[this.STORAGE_KEY_PAUSED];
+      const pausedState = queueResult[this.STORAGE_KEY_PAUSED];
+      if (typeof pausedState === 'boolean') {
+        this.isPaused = pausedState;
       }
 
       // Se há fila pendente, iniciar processamento em background
@@ -240,6 +341,7 @@ export class RetomarPanel {
         retomarCadence: this.cadenceDays,
         retomarTestContact: this.testContact,
         retomarTestModeEnabled: this.testModeEnabled,
+        retomarActivitySource: this.selectedActivitySource,
       });
       if (this.container) {
         this.addLog('success', 'Configuração salva com sucesso');
@@ -255,69 +357,56 @@ export class RetomarPanel {
   /**
    * Carrega clientes inativos (REAL via IndexedDB).
    *
-   * Regra atual (simples):
-   * - última atividade = última mensagem RECEBIDA (incoming)
-   * - elegível quando daysInactive é exatamente um valor da régua (21/35/56/84)
+   * Nova regra:
+   * - última atividade é plugável (última mensagem ou última compra)
+   * - elegível quando daysInactive cai em alguma faixa da régua (por tipo de relação)
+   * - distância mínima entre nossas mensagens respeitada (última mensagem ENVIADA)
    * - clientes em etiquetas são filtrados (não aparecem no modo dia)
    * - cache de clientes preserva nomes originais para evitar alteração ao alternar modos
    */
   private async loadInactiveClients(): Promise<void> {
     const now = new Date();
+    const lastActivityByChat = await this.buildLastActivityByChat(this.selectedActivitySource);
+    const lastOutgoingByContact = await messageDB.getLastOutgoingByContact();
+    const contadorByChat = await retomarContador.getContadorMap(this.accountId);
+    const chatIdsInLists = this.getChatIdsInListsSet();
 
-    const lastIncomingByContact = await messageDB.getLastIncomingByContact();
+    // Determinar réguas e distância mínima a partir do tipo de relação
+    const relationType = this.selectedRelationType ?? 'frequente';
+    const ranges = getRangesForType(relationType, this.customRelationIntervalDays);
+    const minDistance = getMinDistanceForType(relationType, this.customRelationIntervalDays);
 
-    // Métrica simples (contatos que têm ao menos 1 mensagem recebida)
-    this.totalContacts = lastIncomingByContact.size;
+    // Manter cadenceDays existente, mas agora derivado dos mínimos das faixas (compatibilidade UI antiga)
+    this.cadenceDays = ranges.map(r => r.min);
+
+    // Métrica simples (contatos com data de referência disponível na fonte escolhida)
+    this.totalContacts = lastActivityByChat.size;
 
     let clients: InactiveClient[] = [];
 
-    // Resolver nome via ClientDB (fonte forte) + fallback WhatsApp com “peneira”
-    for (const value of lastIncomingByContact.values()) {
-      const daysInactive = daysBetweenByCalendar(now, value.lastIncomingAt);
-      if (!this.cadenceDays.includes(daysInactive)) continue;
+    const eligibleFromEngine = computeEligibleContacts({
+      now,
+      lastActivityByChat,
+      lastOutgoingByContact,
+      contadorByChat,
+      ranges,
+      minDistance,
+      chatIdsInLists,
+    });
 
+    // Resolver nome via ClientDB (fonte forte) + fallback WhatsApp com “peneira”
+    for (const value of eligibleFromEngine) {
       const rawBeforeAt = value.chatId.split('@')[0] || '';
       const phone = rawBeforeAt.replace(/\D+/g, '');
-      let firstName = '';
-
-      // 1) Fonte forte: cadastro
-      try {
-        // Tentar bater com/sem 55 e com/sem 9.
-        const normalized = normalizePhoneDigitsWithAliases(phone);
-        const candidates = Array.from(new Set([normalized.phoneDigits, ...normalized.aliasesDigits].filter(Boolean)));
-
-        let record = null as any;
-        for (const d of candidates) {
-          record = (await clientDB.getByPhoneDigits(d)) || (await clientDB.getByKey(d));
-          if (record) break;
-        }
-
-        const candidate = (record?.firstName || record?.fullName || record?.nickname || '').trim();
-        if (candidate) {
-          const classified = classifyNameCandidate(candidate);
-          firstName = classified.kind === 'person' ? this.extractFirstName(classified.firstName) : '';
-        }
-      } catch {
-        // ignore
-      }
-
-      // 2) Fonte fraca: WhatsApp (com peneira)
-      if (!firstName) {
-        const classified = classifyNameCandidate(value.chatName);
-        if (classified.kind === 'person') {
-          firstName = this.extractFirstName(classified.firstName);
-        } else {
-          firstName = ''; // empresa/ruído -> não usar nome
-        }
-      }
+      const firstName = await this.resolveFirstName(phone, value.chatName);
 
       const client: InactiveClient = {
         chatId: value.chatId,
         chatName: value.chatName,
         phone,
-        lastMessageTime: value.lastIncomingAt,
-        daysInactive,
-        cadenceDay: daysInactive, // semântica: dia exato
+        lastMessageTime: lastActivityByChat.get(value.chatId)?.date ?? now,
+        daysInactive: value.daysInactive,
+        cadenceDay: value.rangeIndex,
         status: 'pending',
         firstName,
       };
@@ -326,27 +415,120 @@ export class RetomarPanel {
       this.clientsCache.set(value.chatId, { ...client });
     }
 
-    // Filtrar clientes que estão em listas
-    clients = this.filterClientsInLists(clients);
-
     // Ordenar por mais “frios” primeiro (opcional, mas útil)
     clients.sort((a, b) => b.daysInactive - a.daysInactive);
 
     this.eligibleClients = clients;
 
-    // Default de seleção de dia
+    // Ciclos de contato: nenhum ciclo "aberto" por padrão; o container expandido só aparece ao clicar numa linha.
+    // (selectedRangeIndex permanece null até o usuário clicar em um ciclo.)
+
+    // Também manter selectedInactiveDay para compatibilidade com partes antigas da UI.
     if (!this.selectedInactiveDay) {
-      this.selectedInactiveDay = this.cadenceDays[0] || 21;
+      const selectedRange = ranges[this.selectedRangeIndex ?? 0] ?? ranges[0];
+      this.selectedInactiveDay = selectedRange?.min ?? this.cadenceDays[0] ?? 21;
     }
 
     this.eligibleCount = this.eligibleClients.filter(c => c.status === 'pending' && !c.isSpecialList).length;
     this.calculatePeriodFilters();
-    // Por padrão já vêm selecionados: todos do dia ativo entram no envio
-    const day = this.selectedInactiveDay ?? this.cadenceDays[0] ?? 21;
-    this.eligibleClients
-      .filter(c => c.daysInactive === day && c.status === 'pending' && !c.isSpecialList)
-      .forEach(c => this.selectedClients.add(c.chatId));
+    // Resetar seleção para evitar acúmulo de IDs antigos entre recargas.
+    this.selectedClients.clear();
+    // Só pré-selecionar clientes quando um ciclo estiver aberto (clicado); senão lista fica vazia.
+    if (this.selectedRangeIndex != null) {
+      const activeRange = ranges[this.selectedRangeIndex];
+      if (activeRange) {
+        this.eligibleClients
+          .filter(c =>
+            isInRange(c.daysInactive, activeRange) &&
+            c.status === 'pending' &&
+            !c.isSpecialList
+          )
+          .forEach(c => this.selectedClients.add(c.chatId));
+      }
+    }
     this.updateStats();
+  }
+
+  private async buildLastActivityByChat(source: ActivitySource): Promise<Map<string, LastActivityEntry>> {
+    if (source === 'last-purchase') {
+      const [lastPurchaseByContact, lastIncomingByContact] = await Promise.all([
+        purchaseDB.getLastActiveByContact(),
+        messageDB.getLastIncomingByContact(),
+      ]);
+
+      const map = new Map<string, LastActivityEntry>();
+      for (const purchase of lastPurchaseByContact.values()) {
+        const fallbackName = purchase.chatId.split('@')[0] || purchase.chatId;
+        map.set(purchase.chatId, {
+          chatId: purchase.chatId,
+          chatName: lastIncomingByContact.get(purchase.chatId)?.chatName || fallbackName,
+          date: purchase.purchaseDate,
+        });
+      }
+      return map;
+    }
+
+    const lastIncomingByContact = await messageDB.getLastIncomingByContact();
+    const map = new Map<string, LastActivityEntry>();
+    for (const value of lastIncomingByContact.values()) {
+      map.set(value.chatId, {
+        chatId: value.chatId,
+        chatName: value.chatName,
+        date: value.lastIncomingAt,
+      });
+    }
+    return map;
+  }
+
+  private getChatIdsInListsSet(): Set<string> {
+    const clientsInLists = new Set<string>();
+    if (!this.listsManager) return clientsInLists;
+    for (const list of this.lists) {
+      const members = this.listsManager.getMembers(list.id);
+      members.forEach(chatId => clientsInLists.add(chatId));
+    }
+    return clientsInLists;
+  }
+
+  private async resolveFirstName(phone: string, fallbackChatName: string): Promise<string> {
+    let firstName = '';
+
+    // 1) Fonte forte: cadastro
+    try {
+      // Tentar bater com/sem 55 e com/sem 9.
+      const normalized = normalizePhoneDigitsWithAliases(phone);
+      const candidates = Array.from(new Set([normalized.phoneDigits, ...normalized.aliasesDigits].filter(Boolean)));
+
+      let record: {
+        firstName?: string;
+        fullName?: string;
+        nickname?: string;
+      } | null = null;
+      for (const d of candidates) {
+        record = (await clientDB.getByPhoneDigits(d)) || (await clientDB.getByKey(d));
+        if (record) break;
+      }
+
+      const candidate = (record?.firstName || record?.fullName || record?.nickname || '').trim();
+      if (candidate) {
+        const classified = classifyNameCandidate(candidate);
+        firstName = classified.kind === 'person' ? this.extractFirstName(classified.firstName) : '';
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2) Fonte fraca: WhatsApp (com peneira)
+    if (!firstName) {
+      const classified = classifyNameCandidate(fallbackChatName);
+      if (classified.kind === 'person') {
+        firstName = this.extractFirstName(classified.firstName);
+      } else {
+        firstName = ''; // empresa/ruído -> não usar nome
+      }
+    }
+
+    return firstName;
   }
 
   /**
@@ -405,38 +587,6 @@ export class RetomarPanel {
       this.clientsCache.set(chatId, { ...client });
     }
     return result;
-  }
-
-  /**
-   * Filtra clientes que estão em listas (modo dia).
-   * Regra: clientes em qualquer etiqueta não aparecem no modo dia, apenas quando a etiqueta é selecionada.
-   * Adiciona listIds a cada cliente para referência futura.
-   */
-  private filterClientsInLists(clients: InactiveClient[]): InactiveClient[] {
-    if (!this.listsManager) return clients;
-
-    const clientsInLists = new Set<string>();
-    for (const list of this.lists) {
-      const members = this.listsManager.getMembers(list.id);
-      members.forEach(chatId => clientsInLists.add(chatId));
-    }
-
-    // Aplicar filtro: se cliente está em lista, não aparece no modo dia
-    const filtered = clients.filter(client => {
-      if (clientsInLists.has(client.chatId)) {
-        // Cliente em lista: não aparece nos filtros de dias (só aparece quando etiqueta é selecionada)
-        return false;
-      }
-      // Cliente não está em lista: aplica filtro de dias normalmente
-      return true;
-    });
-
-    // Adicionar listIds a cada cliente para exibição (mesmo que filtrado, mantém referência)
-    filtered.forEach(client => {
-      client.listIds = this.listsManager!.getListsForClient(client.chatId);
-    });
-
-    return filtered;
   }
 
   /**
@@ -561,6 +711,8 @@ export class RetomarPanel {
    * Configura listeners do fluxo unificado completo.
    */
   private setupUnifiedFlowListeners(): void {
+    this.setupRelationTypeListeners();
+    this.setupActivitySourceListeners();
     this.setupPeriodFiltersListeners();
     this.setupContactsListeners();
     this.setupMessageInputListeners();
@@ -568,6 +720,144 @@ export class RetomarPanel {
     this.setupTestSectionListeners();
     this.setupSendButtonListener();
     this.setupListsListeners();
+  }
+
+  /**
+   * Listeners do bloco Tipo de relação (abrir/fechar dropdown, fechar ao clicar fora, selecionar opção).
+   */
+  private setupRelationTypeListeners(): void {
+    const wrapper = this.container?.querySelector('[data-relation-type-wrapper]');
+    const trigger = this.container?.querySelector('[data-relation-trigger]');
+    const dropdown = this.container?.querySelector('#retomar-relation-type-dropdown');
+
+    trigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.relationTypeDropdownOpen = !this.relationTypeDropdownOpen;
+      this.updateUnifiedFlow();
+    });
+
+    if (this.relationTypeDropdownOpen && dropdown && trigger) {
+      if (this.closeRelationDropdownHandler) {
+        document.removeEventListener('click', this.closeRelationDropdownHandler);
+        this.closeRelationDropdownHandler = null;
+      }
+      const closeRelation = (e: MouseEvent) => {
+        if (!dropdown.contains(e.target as Node) && !trigger.contains(e.target as Node)) {
+          this.relationTypeDropdownOpen = false;
+          this.updateUnifiedFlow();
+          document.removeEventListener('click', closeRelation);
+          this.closeRelationDropdownHandler = null;
+        }
+      };
+      this.closeRelationDropdownHandler = closeRelation;
+      document.addEventListener('click', closeRelation);
+    }
+
+    this.container?.querySelectorAll('[data-relation-id]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (e.currentTarget as HTMLElement).dataset.relationId;
+        if (id) {
+          this.selectedRelationType = id as RelationType;
+          // Atualizar UI auxiliar do modo Personalizado (sem alterar cadenceDays).
+          if (id === 'personalizado') {
+            this.customRelationIntervalDays = this.getDefaultCustomIntervalDays();
+          } else {
+            this.customRelationIntervalDays = null;
+            this.isCustomCadenceExpanded = false;
+          }
+          // Ao mudar o tipo de relação, recarregar clientes e resetar faixa selecionada.
+          this.selectedRangeIndex = 0;
+          this.relationTypeDropdownOpen = false;
+          this.loadInactiveClients().then(() => {
+            this.updateUnifiedFlow();
+          }).catch(error => {
+            console.error('[RETOMAR] Erro ao recarregar clientes ao mudar tipo de relação:', error);
+            this.updateUnifiedFlow();
+          });
+        }
+      });
+    });
+
+    // Listener do campo "Falar a cada X dias" (modo Personalizado).
+    const customIntervalInput = this.container?.querySelector<HTMLInputElement>('#retomar-custom-interval');
+    if (customIntervalInput) {
+      customIntervalInput.addEventListener('input', () => {
+        const value = parseInt(customIntervalInput.value, 10);
+        if (Number.isFinite(value) && value > 0) {
+          this.customRelationIntervalDays = value;
+          // Recarregar clientes ao alterar intervalo personalizado.
+          this.selectedRangeIndex = 0;
+          this.loadInactiveClients().then(() => {
+            this.updateUnifiedFlow();
+          }).catch(error => {
+            console.error('[RETOMAR] Erro ao recarregar clientes ao alterar intervalo personalizado:', error);
+            this.updateUnifiedFlow();
+          });
+        } else {
+          this.customRelationIntervalDays = null;
+        }
+      });
+    }
+
+    // Toggle do painel avançado "Ajustar dias da régua".
+    const customCadenceToggle = this.container?.querySelector<HTMLButtonElement>('#retomar-custom-cadence-toggle');
+    if (customCadenceToggle) {
+      customCadenceToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.isCustomCadenceExpanded = !this.isCustomCadenceExpanded;
+        this.updateUnifiedFlow();
+      });
+    }
+  }
+
+  private setupActivitySourceListeners(): void {
+    const trigger = this.container?.querySelector('[data-activity-source-trigger]');
+    const dropdown = this.container?.querySelector('[data-activity-source-dropdown]');
+    const wrapper = this.container?.querySelector('[data-activity-source-wrapper]');
+
+    trigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.activitySourceDropdownOpen = !this.activitySourceDropdownOpen;
+      this.updateUnifiedFlow();
+    });
+
+    if (this.activitySourceDropdownOpen && dropdown && trigger && wrapper) {
+      if (this.closeActivitySourceDropdownHandler) {
+        document.removeEventListener('click', this.closeActivitySourceDropdownHandler);
+        this.closeActivitySourceDropdownHandler = null;
+      }
+      const closeActivity = (e: MouseEvent) => {
+        if (!wrapper.contains(e.target as Node)) {
+          this.activitySourceDropdownOpen = false;
+          this.updateUnifiedFlow();
+          document.removeEventListener('click', closeActivity);
+          this.closeActivitySourceDropdownHandler = null;
+        }
+      };
+      this.closeActivitySourceDropdownHandler = closeActivity;
+      document.addEventListener('click', closeActivity);
+    }
+
+    this.container?.querySelectorAll('[data-activity-source-option]').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = (e.currentTarget as HTMLElement).dataset.activitySourceId;
+        if (id !== 'last-message' && id !== 'last-purchase') return;
+
+        this.selectedActivitySource = id;
+        this.activitySourceDropdownOpen = false;
+        this.selectedRangeIndex = 0;
+        this.saveConfig();
+
+        try {
+          await this.loadInactiveClients();
+        } catch (error) {
+          console.error('[RETOMAR] Erro ao recarregar clientes ao mudar fonte de atividade:', error);
+        }
+        this.updateUnifiedFlow();
+      });
+    });
   }
 
   /**
@@ -687,6 +977,12 @@ export class RetomarPanel {
       const listId = (e.currentTarget as HTMLElement).dataset.listId;
       if (listId) {
         const list = this.lists.find(l => l.id === listId);
+        if (list?.isDefault) {
+          alert('Etiqueta padrão não pode ser renomeada.');
+          this.listMenuOpenId = null;
+          this.updateUnifiedFlow();
+          return;
+        }
         const newName = prompt('Novo nome da lista:', list?.name || '');
         if (newName && newName.trim() && this.listsManager) {
           try {
@@ -710,6 +1006,12 @@ export class RetomarPanel {
       if (listId && this.listsManager) {
         const list = this.lists.find(l => l.id === listId);
         if (!list) return;
+        if (list.isDefault) {
+          alert('Etiqueta padrão não pode ser excluída.');
+          this.listMenuOpenId = null;
+          this.updateUnifiedFlow();
+          return;
+        }
         
         const memberCount = list.memberCount || 0;
         const memberText = memberCount === 1 ? '1 pessoa' : `${memberCount} pessoas`;
@@ -823,16 +1125,221 @@ export class RetomarPanel {
   }
 
   /**
-   * Configura listeners dos filtros de período (Última interação há…).
+   * Configura listeners do bloco Ciclos de contato (linhas selecionáveis por faixa).
    */
   private setupPeriodFiltersListeners(): void {
-    const periodButtons = this.container?.querySelectorAll('[data-period-range]');
-    periodButtons?.forEach(btn => {
+    const chamadaRows = this.container?.querySelectorAll('[data-chamada-range-index]');
+    chamadaRows?.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const range = (e.currentTarget as HTMLElement).dataset.periodRange;
-        if (range) {
-          this.togglePeriodFilter(range);
+        const rangeIndexStr = (e.currentTarget as HTMLElement).dataset.chamadaRangeIndex;
+        if (rangeIndexStr) {
+          const rangeIndex = parseInt(rangeIndexStr, 10);
+          if (Number.isFinite(rangeIndex)) {
+            this.togglePeriodFilter(rangeIndex);
+          }
+        }
+      });
+    });
+
+    // Engrenagem de configuração da régua em Ciclos de contato.
+    const chamadasConfigButton = this.container?.querySelector<HTMLButtonElement>('#retomar-filters-kebab');
+    if (chamadasConfigButton) {
+      chamadasConfigButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.isChamadasConfigOpen = !this.isChamadasConfigOpen;
+        this.updateUnifiedFlow();
+      });
+    }
+
+    // Textareas e botões do painel expandido do ciclo selecionado
+    const textAreaA = this.container?.querySelector<HTMLTextAreaElement>('#retomar-cycle-text-a');
+    if (textAreaA) {
+      textAreaA.addEventListener('input', (e) => {
+        if (this.selectedRangeIndex == null) return;
+        const value = (e.target as HTMLTextAreaElement).value;
+        this.ensureCycleMessagesSize();
+        this.cycleMessages[this.selectedRangeIndex] = {
+          ...(this.cycleMessages[this.selectedRangeIndex] ?? { textA: '', textB: null }),
+          textA: value,
+        };
+        // Mantém compatibilidade: Texto A do ciclo também alimenta o campo de mensagem principal.
+        this.messageText = value;
+        this.updateUnifiedFlow();
+      });
+    }
+
+    const textAreaB = this.container?.querySelector<HTMLTextAreaElement>('#retomar-cycle-text-b');
+    if (textAreaB) {
+      textAreaB.addEventListener('input', (e) => {
+        if (this.selectedRangeIndex == null) return;
+        const value = (e.target as HTMLTextAreaElement).value;
+        this.ensureCycleMessagesSize();
+        this.cycleMessages[this.selectedRangeIndex] = {
+          ...(this.cycleMessages[this.selectedRangeIndex] ?? { textA: '', textB: null }),
+          textB: value,
+        };
+      });
+    }
+
+    const aiButton = this.container?.querySelector<HTMLButtonElement>('#retomar-cycle-ai');
+    if (aiButton) {
+      aiButton.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (this.selectedRangeIndex == null) return;
+        this.ensureCycleMessagesSize();
+        const current = this.cycleMessages[this.selectedRangeIndex] ?? { textA: '', textB: null };
+        const chamadas = this.getChamadasWithCounts();
+        const chamada = chamadas[this.selectedRangeIndex];
+        const suggestion = await this.suggestMessageByAI({
+          textA: current.textA ?? '',
+          campaignLabel: chamada?.campaignLabel ?? null,
+          relationType: this.selectedRelationType,
+        });
+        if (!suggestion) return;
+        this.cycleMessages[this.selectedRangeIndex] = {
+          ...current,
+          textB: suggestion,
+        };
+        this.updateUnifiedFlow();
+      });
+    }
+
+    const sendCycleBtn = this.container?.querySelector<HTMLButtonElement>('#retomar-cycle-send');
+    if (sendCycleBtn) {
+      sendCycleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (sendCycleBtn.hasAttribute('disabled')) return;
+        if (this.selectedRangeIndex == null) return;
+        this.ensureCycleMessagesSize();
+        const current = this.cycleMessages[this.selectedRangeIndex] ?? { textA: '', textB: null };
+        const textA = (current.textA ?? '').trim();
+        const textB = (current.textB ?? '').trim();
+        let messageToSend = textA;
+        this.sendingPayloadByChatId.clear();
+        if (this.cycleSendMode === 'B') {
+          if (!textB) {
+            this.addLog('warning', 'Preencha o Texto B ou escolha outro modo de envio.');
+            return;
+          }
+          messageToSend = textB;
+        } else if (this.cycleSendMode === 'AB') {
+          if (!textB) {
+            this.addLog('warning', 'Preencha o Texto B para usar o modo A/B.');
+            return;
+          }
+        }
+        const cycleChatIds = this.getCycleClients().filter(c => this.selectedClients.has(c.chatId)).map(c => c.chatId);
+        if (cycleChatIds.length === 0) {
+          this.addLog('warning', 'Nenhum contato selecionado neste ciclo.');
+          return;
+        }
+        if (this.cycleSendMode === 'AB') {
+          const items = splitAB(cycleChatIds, textA, textB);
+          for (const item of items) {
+            this.sendingPayloadByChatId.set(item.chatId, { text: item.text, variant: item.variant });
+          }
+          this.messageText = textA;
+        } else {
+          const fixedVariant: 'A' | 'B' = this.cycleSendMode === 'B' ? 'B' : 'A';
+          for (const id of cycleChatIds) {
+            this.sendingPayloadByChatId.set(id, { text: messageToSend, variant: fixedVariant });
+          }
+          this.messageText = messageToSend;
+        }
+        this.sendingQueue = cycleChatIds.slice();
+        cycleChatIds.forEach(id => this.selectedClients.delete(id));
+        this.pendingChamadaIndex = this.selectedRangeIndex;
+        await this.saveQueueState();
+        this.sendingProgress = { total: this.sendingQueue.length, sent: 0, skipped: 0, errors: 0, current: null, startTime: Date.now() };
+        this.isSending = true;
+        this.addLog('info', `Iniciando envio para ${this.sendingQueue.length} cliente(s)...`);
+        this.updateUnifiedFlow();
+        await this.processQueue();
+      });
+    }
+
+    const simulateCycleBtn = this.container?.querySelector<HTMLButtonElement>('#retomar-cycle-simulate');
+    if (simulateCycleBtn) {
+      simulateCycleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (simulateCycleBtn.hasAttribute('disabled')) return;
+        if (this.selectedRangeIndex == null) return;
+        if (!this.testModeEnabled || !this.testContact?.phone) {
+          this.addLog('warning', 'Marque "Simular envio" e informe o número de teste para simular.');
+          return;
+        }
+        this.ensureCycleMessagesSize();
+        const current = this.cycleMessages[this.selectedRangeIndex] ?? { textA: '', textB: null };
+        const textA = (current.textA ?? '').trim();
+        const textB = (current.textB ?? '').trim();
+        const msg = this.cycleSendMode === 'B' ? textB : textA;
+        if (!msg) {
+          this.addLog('warning', 'Preencha o texto do ciclo para simular.');
+          return;
+        }
+        // Reutiliza a lógica de envio de teste já existente (spec: "chamar a lógica de envio de teste já existente, usando o texto do ciclo").
+        this.messageText = msg;
+        await this.sendSelectedClients();
+      });
+    }
+
+    const cyclePeopleToggle = this.container?.querySelector('[data-cycle-people-toggle]');
+    cyclePeopleToggle?.addEventListener('click', () => {
+      this.cyclePeopleExpanded = !this.cyclePeopleExpanded;
+      this.updateUnifiedFlow();
+    });
+
+    const cycleMetricsToggle = this.container?.querySelector('[data-cycle-metrics-toggle]');
+    cycleMetricsToggle?.addEventListener('click', async () => {
+      this.cycleMetricsExpanded = !this.cycleMetricsExpanded;
+      if (this.cycleMetricsExpanded) {
+        await this.loadCycleMetrics();
+      }
+      this.updateUnifiedFlow();
+    });
+
+    const metricsPeriodSelect = this.container?.querySelector<HTMLSelectElement>('#retomar-cycle-metrics-period');
+    metricsPeriodSelect?.addEventListener('change', async () => {
+      this.cycleMetricsPeriodDays = parseInt(metricsPeriodSelect.value, 10) || 7;
+      await this.loadCycleMetrics();
+      this.updateUnifiedFlow();
+    });
+
+    this.container?.querySelectorAll<HTMLInputElement>('input[name="retomar-cycle-send-mode"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const v = radio.value as 'A' | 'B' | 'AB';
+        if (v === 'A' || v === 'B' || v === 'AB') {
+          this.cycleSendMode = v;
+          this.updateUnifiedFlow();
+        }
+      });
+    });
+
+    // Checkboxes da lista de pessoas do ciclo (dentro do painel do ciclo)
+    const detailPanel = this.container?.querySelector('[data-chamada-detail]');
+    detailPanel?.querySelectorAll<HTMLInputElement>('.mettri-cycle-people-list input[type="checkbox"][data-chat-id], .retomar-cycle-contact input[type="checkbox"][data-chat-id]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const chatId = cb.dataset.chatId;
+        if (!chatId) return;
+        if (cb.checked) this.selectedClients.add(chatId);
+        else this.selectedClients.delete(chatId);
+        this.calculatePeriodFilters();
+        this.updateUnifiedFlow();
+      });
+    });
+    detailPanel?.querySelectorAll('.retomar-cycle-contact[data-chat-id], .mettri-cycle-people-list [data-chat-id]').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('label')) return;
+        const chatId = (row as HTMLElement).dataset.chatId;
+        if (!chatId) return;
+        const checkbox = row.querySelector<HTMLInputElement>('input[type="checkbox"][data-chat-id]');
+        if (checkbox) {
+          checkbox.checked = !checkbox.checked;
+          if (checkbox.checked) this.selectedClients.add(chatId);
+          else this.selectedClients.delete(chatId);
+          this.calculatePeriodFilters();
+          this.updateUnifiedFlow();
         }
       });
     });
@@ -840,21 +1347,37 @@ export class RetomarPanel {
 
   /**
    * Alterna seleção de um período (Última interação há…).
-   * Limpa modo etiqueta e faz toggle: se todos do dia estão selecionados, desmarca todos; senão, marca todos.
+   * Limpa modo etiqueta e faz toggle: se todos da faixa estão selecionados, desmarca todos; senão, marca todos.
    * Não chama loadInactiveClients() aqui para não alterar selectedClients e quebrar o toggle.
    */
-  private togglePeriodFilter(range: string): void {
-    const day = parseInt(range, 10);
-    if (!Number.isFinite(day)) return;
+  private togglePeriodFilter(rangeIndex: number): void {
+    if (!Number.isFinite(rangeIndex) || rangeIndex < 0) return;
+
+    // Fechar detalhe ao clicar na mesma linha
+    if (this.selectedRangeIndex === rangeIndex) {
+      this.selectedRangeIndex = null;
+      this.updateUnifiedFlow();
+      return;
+    }
+
+    // Atualizar índice de faixa selecionado (ciclos)
+    this.selectedRangeIndex = rangeIndex;
+
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    const range = ranges[rangeIndex];
+    if (!range) return;
+
+    // Manter compatibilidade com partes antigas da UI baseadas em selectedInactiveDay,
+    // usando o mínimo da faixa atual.
+    this.selectedInactiveDay = range.min;
 
     // Modo dia: limpar seleção de etiqueta
     this.selectedListId = null;
     this.labelModeClients = [];
-    this.selectedInactiveDay = day;
 
-    // Encontrar clientes exatamente nesse dia
+    // Encontrar clientes dentro da faixa
     const clientsInRange = this.eligibleClients.filter(c =>
-      c.daysInactive === day &&
+      isInRange(c.daysInactive, range) &&
       c.status === 'pending' &&
       !c.isSpecialList
     );
@@ -873,7 +1396,8 @@ export class RetomarPanel {
 
     this.calculatePeriodFilters();
     this.updateUnifiedFlow();
-    this.addLog('info', `${allSelected ? 'Deselecionados' : 'Selecionados'} ${clientsInRange.length} cliente(s) do dia ${day}`);
+    const chamadaLabel = this.getChamadaLabelByRangeIndex(rangeIndex);
+    this.addLog('info', `${allSelected ? 'Deselecionados' : 'Selecionados'} ${clientsInRange.length} cliente(s) da ${chamadaLabel}`);
   }
 
   /**
@@ -1413,6 +1937,66 @@ export class RetomarPanel {
   }
 
   /**
+   * Bloco Tipo de relação (dropdown).
+   */
+  private renderRelationTypeBlock(): string {
+    const current = RELATION_TYPES.find(r => r.id === this.selectedRelationType) ?? RELATION_TYPES[0];
+    const dropdownHidden = this.relationTypeDropdownOpen ? '' : ' hidden';
+    return `
+      <div class="mettri-relation-type" data-relation-type-wrapper>
+        <button type="button" id="retomar-relation-type-toggle" data-relation-trigger class="mettri-relation-type-trigger w-full text-left" aria-expanded="${this.relationTypeDropdownOpen}" aria-haspopup="listbox" aria-controls="retomar-relation-type-dropdown">
+          <span class="mettri-relation-type-label">Tipo de relação</span>
+          <span class="mettri-relation-type-value-row">
+            <span class="mettri-relation-type-selected-dot" aria-hidden="true"></span>
+            <span class="mettri-relation-type-value">${this.escapeHtml(current.label)}</span>
+            <span class="mettri-relation-type-range">${this.escapeHtml(current.shortRange)}</span>
+          </span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="mettri-relation-type-chevron ${this.relationTypeDropdownOpen ? 'rotate-180' : ''}" aria-hidden="true">
+            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="retomar-relation-type-dropdown" class="mettri-relation-type-dropdown${dropdownHidden}" role="listbox" aria-hidden="${!this.relationTypeDropdownOpen}">
+          ${RELATION_TYPES.map(r => `
+            <button type="button" data-relation-id="${r.id}" role="option" class="mettri-relation-type-option ${r.id === this.selectedRelationType ? 'mettri-relation-type-option-selected' : ''}" ${r.id === this.selectedRelationType ? 'aria-selected="true"' : ''}>
+              <span class="mettri-relation-type-option-label">${this.escapeHtml(r.label)}</span>
+              <span class="mettri-relation-type-option-range">${this.escapeHtml(r.shortRange)}</span>
+            </button>
+          `).join('')}
+        </div>
+        ${current.id === 'personalizado' ? `
+          <div class="mettri-relation-type-custom">
+            <div class="mettri-relation-type-custom-title">Ritmo de contato</div>
+            <div class="mettri-relation-type-custom-row">
+              <span class="mettri-relation-type-custom-label">Falar a cada</span>
+              <input 
+                type="number" 
+                min="1" 
+                step="1" 
+                id="retomar-custom-interval" 
+                class="mettri-relation-type-custom-input" 
+                value="${this.customRelationIntervalDays ?? ''}"
+              />
+              <span class="mettri-relation-type-custom-suffix">dias</span>
+            </div>
+            <p class="mettri-relation-type-custom-hint">
+              O Mettri usa esse ritmo para distribuir até 4 ciclos na régua.
+            </p>
+            <button 
+              type="button" 
+              id="retomar-custom-cadence-toggle" 
+              class="mettri-relation-type-custom-advanced-toggle"
+            >
+              Ajustar dias da régua
+              <span class="mettri-relation-type-custom-advanced-chevron">${this.isCustomCadenceExpanded ? '▴' : '▾'}</span>
+            </button>
+            ${this.isCustomCadenceExpanded ? this.renderCustomCadenceAdvanced() : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  /**
    * Renderiza fluxo unificado completo com novo design.
    */
   private renderUnifiedFlow(): string {
@@ -1428,14 +2012,34 @@ export class RetomarPanel {
     );
 
     return `
+      ${this.renderRelationTypeBlock()}
+
       <!-- Bloco único: Retomar conversas (objetivo + estado + métricas) -->
       <div class="glass rounded-2xl p-4 border border-border/50 shadow-sm">
         <div class="text-sm font-medium text-foreground tracking-tight">Retomar conversas</div>
         <div class="mt-2 text-sm text-muted-foreground">
           <span class="tabular-nums font-semibold text-foreground">${this.eligibleCount}</span>
-          <span class="ml-1">oportunidades no momento</span>
+          <span class="ml-1">aguardando ação</span>
         </div>
-        <div class="mt-3 pt-3 border-t border-border/50 flex items-baseline flex-wrap gap-x-3 gap-y-0 text-xs">
+        <div class="mt-2 text-sm text-muted-foreground flex items-baseline flex-nowrap gap-2">
+          <span class="shrink-0">Baseado em</span>
+          <div class="mettri-activity-source-dropdown-wrap shrink-0" data-activity-source-wrapper>
+            <button type="button" data-activity-source-trigger class="mettri-relation-type-trigger mettri-activity-source-trigger" aria-expanded="${this.activitySourceDropdownOpen}" aria-haspopup="listbox" aria-controls="retomar-activity-source-dropdown">
+              <span class="mettri-relation-type-value">${this.escapeHtml(ACTIVITY_SOURCE_OPTIONS.find(o => o.id === this.selectedActivitySource)?.label ?? 'Última mensagem')}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="mettri-relation-type-chevron ${this.activitySourceDropdownOpen ? 'rotate-180' : ''}" aria-hidden="true">
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div id="retomar-activity-source-dropdown" class="mettri-relation-type-dropdown${this.activitySourceDropdownOpen ? '' : ' hidden'}" role="listbox" aria-hidden="${!this.activitySourceDropdownOpen}" data-activity-source-dropdown>
+              ${ACTIVITY_SOURCE_OPTIONS.map(opt => `
+                <button type="button" data-activity-source-option data-activity-source-id="${opt.id}" role="option" class="mettri-relation-type-option ${opt.id === this.selectedActivitySource ? 'mettri-relation-type-option-selected' : ''}" ${opt.id === this.selectedActivitySource ? 'aria-selected="true"' : ''}>
+                  <span class="mettri-relation-type-option-label">${this.escapeHtml(opt.label)}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-border/50 flex items-baseline flex-wrap gap-x-3 gap-y-0 text-xs mettri-retomar-metrics">
           <span class="text-muted-foreground">Abertura</span>
           <span class="font-medium text-foreground tabular-nums">78%</span>
           <span class="text-muted-foreground"> · </span>
@@ -1449,15 +2053,15 @@ export class RetomarPanel {
         </div>
       </div>
 
-      <!-- SEÇÃO DE FILTROS (Colapsável) -->
-      <div class="space-y-2 mb-0">
+      <!-- SEÇÃO CICLOS DE CONTATO (Colapsável) -->
+      <div class="mettri-chamadas-section-wrap space-y-1 mb-0">
         <div class="flex items-center justify-between py-2.5 border-b border-border/50 min-w-0">
           <button 
             class="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors"
             id="retomar-filters-toggle"
             type="button"
           >
-            Última Interação há
+            Ciclos de contato
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="transition-transform shrink-0 ${this.isFiltersExpanded ? 'rotate-180' : ''}" id="retomar-filters-chevron">
               <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -1467,16 +2071,16 @@ export class RetomarPanel {
             id="retomar-filters-kebab"
             type="button"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="3.5" r="1.5" fill="currentColor" class="text-muted-foreground"/>
-              <circle cx="7" cy="7" r="1.5" fill="currentColor" class="text-muted-foreground"/>
-              <circle cx="7" cy="10.5" r="1.5" fill="currentColor" class="text-muted-foreground"/>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 2.25L7.7 3.7C7.83 3.96 8.09 4.13 8.38 4.13H9.95L10.3 5.9H8.98C8.67 5.9 8.4 6.08 8.29 6.36L7.75 7.75L8.7 8.7C8.92 8.92 8.96 9.26 8.8 9.53L7.9 11.03L6.4 10.13C6.14 9.98 5.83 9.99 5.58 10.15L4.25 11L3.2 9.5L4.3 8.7C4.56 8.51 4.68 8.18 4.6 7.87L4.25 6.5L3 6.1L3.35 4.3L4.78 4.6C5.1 4.67 5.42 4.54 5.62 4.28L6.5 3.1L7 2.25Z" stroke="currentColor" stroke-width="0.8" fill="none" class="text-muted-foreground"/>
+              <circle cx="7" cy="7" r="1.3" fill="currentColor" class="text-muted-foreground"/>
             </svg>
           </button>
         </div>
+        ${this.isChamadasConfigOpen ? this.renderChamadasConfigPopover() : ''}
         ${this.isFiltersExpanded ? `
-          <div id="retomar-period-filters" class="pt-2">
-            ${this.renderPeriodFilters()}
+          <div id="retomar-period-filters" class="mettri-chamadas-content">
+            ${this.renderChamadas()}
           </div>
         ` : ''}
       </div>
@@ -1655,6 +2259,243 @@ export class RetomarPanel {
   }
 
   /**
+   * Renderiza lista vertical de ciclos (Primeira, Segunda, Terceira, Última tentativa) com contagem e opcional campanha.
+   */
+  /**
+   * Renderiza lista vertical de ciclos em estilo acordeão: ao clicar num ciclo,
+   * o painel de detalhes (Texto A/B, IA, Enviar) é inserido logo abaixo da linha,
+   * empurrando as linhas seguintes para baixo.
+   */
+  private renderChamadas(): string {
+    const chamadas = this.getChamadasWithCounts();
+    if (chamadas.length === 0) return '<div class="mettri-chamadas-list text-sm text-muted-foreground">Nenhum dia na régua.</div>';
+    return `
+      <div class="mettri-chamadas-list mettri-chamadas-accordion" role="list">
+        ${chamadas.map(c => `
+          <div class="mettri-chamadas-accordion-item" data-range-index="${c.rangeIndex}">
+            <button
+              type="button"
+              class="mettri-chamadas-row ${c.selected ? 'mettri-chamadas-row-selected' : ''}"
+              data-chamada-id="${this.escapeHtml(c.id)}"
+              data-chamada-range-index="${c.rangeIndex}"
+              role="listitem"
+            >
+              <span class="mettri-chamadas-selected-dot ${c.selected ? 'is-active' : 'is-inactive'}" aria-hidden="true"></span>
+              <span class="mettri-chamadas-row-label">${this.escapeHtml(c.label)}</span>
+              <span class="mettri-chamadas-row-count">${c.count} pessoa${c.count !== 1 ? 's' : ''}</span>
+              ${c.campaignLabel ? `
+              <span class="mettri-chamadas-campaign-pill" title="Campanha ativa">
+                <span class="mettri-dot-accent" aria-hidden="true"></span>
+                <span class="mettri-chamadas-campaign-pill-title">${this.escapeHtml(c.campaignLabel)}</span>
+              </span>` : ''}
+            </button>
+            ${c.selected ? this.renderSelectedChamadaPanel() : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  /**
+   * Clientes elegíveis do ciclo atualmente selecionado (mesmo critério de getChamadasWithCounts).
+   */
+  private getCycleClients(): InactiveClient[] {
+    if (this.selectedRangeIndex == null) return [];
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    const range = ranges[this.selectedRangeIndex];
+    if (!range) return [];
+    return this.eligibleClients.filter(c =>
+      isInRange(c.daysInactive, range) &&
+      c.status === 'pending' &&
+      !c.isSpecialList
+    );
+  }
+
+  /**
+   * Painel expandido do ciclo selecionado: cabeçalho, modo/ quando, texto A/B, pessoas, ações, métricas.
+   */
+  private renderSelectedChamadaPanel(): string {
+    if (this.selectedRangeIndex == null) return '';
+
+    const chamadas = this.getChamadasWithCounts();
+    const current = chamadas[this.selectedRangeIndex];
+    if (!current) return '';
+
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    const range = ranges[this.selectedRangeIndex];
+    if (!range) return '';
+
+    const min = range.min;
+    const max = range.max;
+    const hasOpenRange = !Number.isFinite(max);
+    const maxLabel = hasOpenRange ? '∞' : String(max);
+
+    const messages = this.cycleMessages[this.selectedRangeIndex] ?? { textA: '', textB: null };
+    const textA = messages.textA ?? '';
+    const textB = messages.textB ?? '';
+    const hasTextA = textA.trim().length > 0;
+    const hasTextB = (textB ?? '').trim().length > 0;
+
+    const cycleClients = this.getCycleClients();
+    const N = cycleClients.length;
+    const M = cycleClients.filter(c => this.selectedClients.has(c.chatId)).length;
+    const hasContacts = N > 0;
+    const sendDisabledByText =
+      this.cycleSendMode === 'A'
+        ? !hasTextA
+        : this.cycleSendMode === 'B'
+          ? !hasTextB
+          : !hasTextA; // A/B: mínimo texto A por enquanto
+    const sendDisabled = !hasContacts || M === 0 || sendDisabledByText;
+
+    const peopleResumo = `${N} pessoa${N !== 1 ? 's' : ''} neste ciclo (${M} selecionado${M !== 1 ? 's' : ''})`;
+    const cyclePeopleListHtml = this.cyclePeopleExpanded && N > 0
+      ? cycleClients.map(client => {
+          const isSelected = this.selectedClients.has(client.chatId);
+          const displayLabel = (client.firstName || client.phone || 'Sem nome');
+          return `
+        <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/30 transition-colors retomar-cycle-contact" data-chat-id="${client.chatId}">
+          <label class="cursor-pointer flex items-center">
+            <input type="checkbox" class="sr-only" ${isSelected ? 'checked' : ''} data-chat-id="${client.chatId}">
+            <div class="w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'border-primary bg-primary' : 'border-border bg-background'}">
+              ${isSelected ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M10 3L4.5 8.5L2 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+            </div>
+          </label>
+          <span class="text-xs font-medium text-foreground flex-1">${this.escapeHtml(displayLabel)}</span>
+          <span class="text-[11px] text-muted-foreground">${client.daysInactive}d</span>
+        </div>`;
+        }).join('')
+      : '';
+
+    const metricsPeriodOptions = [
+      { value: '7', label: '7 dias' },
+      { value: '30', label: '30 dias' },
+    ];
+    const md = this.cycleMetricsData;
+    const metricsContent = this.cycleMetricsExpanded ? `
+      <div class="mt-2 space-y-2 pl-0">
+        <select class="text-xs rounded border border-border bg-background px-2 py-1" id="retomar-cycle-metrics-period">
+          ${metricsPeriodOptions.map(o => `<option value="${o.value}" ${o.value === String(this.cycleMetricsPeriodDays) ? 'selected' : ''}>${o.label}</option>`).join('')}
+        </select>
+        ${md ? `
+        <div class="text-[11px] space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-muted-foreground">Envios totais:</span>
+            <span class="font-medium text-foreground tabular-nums">${md.total}</span>
+          </div>
+          ${this.cycleSendMode === 'AB' || md.sendsB > 0 ? `
+          <div class="flex items-center gap-2">
+            <span class="text-muted-foreground">Variante A:</span>
+            <span class="font-medium text-foreground tabular-nums">${md.sendsA} envios</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-muted-foreground">Variante B:</span>
+            <span class="font-medium text-foreground tabular-nums">${md.sendsB} envios</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-muted-foreground">Melhor:</span>
+            <span class="font-medium text-foreground">${md.sendsA >= md.sendsB ? 'A' : 'B'} (mais envios)</span>
+          </div>
+          ` : `
+          <div class="flex items-center gap-2">
+            <span class="text-muted-foreground">Variante A:</span>
+            <span class="font-medium text-foreground tabular-nums">${md.sendsA} envios</span>
+          </div>
+          `}
+          <div class="text-[10px] text-muted-foreground/60">Respostas e compras — em breve</div>
+        </div>
+        ` : `
+        <div class="text-[11px] text-muted-foreground">Carregando...</div>
+        `}
+      </div>
+    ` : '';
+
+    return `
+      <div class="mt-2 mb-2 rounded-xl border border-border/60 bg-background/60 p-3 space-y-3 mettri-chamadas-accordion-body" data-chamada-detail>
+        <!-- 1. Cabeçalho -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex flex-col gap-0.5 min-w-0">
+            <div class="text-sm font-medium text-foreground truncate">${this.escapeHtml(current.label)}</div>
+            <div class="text-[11px] text-muted-foreground truncate">
+              ${hasOpenRange ? `${min}+ dias desde a última compra/mensagem` : `${min}–${maxLabel} dias desde a última compra/mensagem`}
+            </div>
+          </div>
+          ${current.campaignLabel ? `
+            <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-[11px] text-emerald-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span class="truncate">${this.escapeHtml(current.campaignLabel)}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 2. Modo de envio -->
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-xs font-medium text-muted-foreground">Enviar:</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="retomar-cycle-send-mode" value="A" ${this.cycleSendMode === 'A' ? 'checked' : ''} class="rounded-full border-border">
+            <span class="text-xs">Só A</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="retomar-cycle-send-mode" value="B" ${this.cycleSendMode === 'B' ? 'checked' : ''} class="rounded-full border-border">
+            <span class="text-xs">Só B</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="retomar-cycle-send-mode" value="AB" ${this.cycleSendMode === 'AB' ? 'checked' : ''} class="rounded-full border-border">
+            <span class="text-xs">A/B (50%–50%)</span>
+          </label>
+        </div>
+
+        <!-- 3. Texto A e Texto B + Sugerir com IA -->
+        <div class="space-y-2">
+          <div class="space-y-1">
+            <label for="retomar-cycle-text-a" class="text-xs font-medium text-muted-foreground">Texto A (principal)</label>
+            <textarea id="retomar-cycle-text-a" rows="3" class="w-full rounded-lg border border-border bg-background text-sm px-2.5 py-2 outline-none resize-none placeholder:text-muted-foreground" placeholder="Escreva aqui o Texto A...">${this.escapeHtml(textA)}</textarea>
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <label for="retomar-cycle-text-b" class="text-xs font-medium text-muted-foreground">Texto B (sugestão da IA)</label>
+              <button type="button" id="retomar-cycle-ai" class="text-[11px] px-2 py-1 rounded-md border border-primary/40 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${!hasTextA ? 'disabled' : ''} title="Gerar sugestão a partir do Texto A">Sugerir com IA</button>
+            </div>
+            <textarea id="retomar-cycle-text-b" rows="3" class="w-full rounded-lg border border-dashed border-border/70 bg-background text-sm px-2.5 py-2 outline-none resize-none placeholder:text-muted-foreground" placeholder="Texto B sugerido pela IA...">${this.escapeHtml(textB)}</textarea>
+          </div>
+        </div>
+
+        <!-- 4. Pessoas do ciclo: resumo clicável e lista expandível -->
+        <div class="space-y-1">
+          ${N === 0
+            ? `<p class="text-xs text-muted-foreground">Nenhum contato elegível neste ciclo no momento.</p>`
+            : `
+          <button type="button" class="flex items-center gap-1.5 w-full text-left text-[11px] text-muted-foreground hover:text-foreground transition-colors" data-cycle-people-toggle>
+            <span>${peopleResumo}</span>
+            <span class="text-[10px]">${this.cyclePeopleExpanded ? '▴' : '▾'}</span>
+          </button>
+          <div class="mettri-cycle-people-list ${this.cyclePeopleExpanded ? '' : 'hidden'}">${cyclePeopleListHtml}</div>
+          `}
+        </div>
+
+        <!-- 5. Ações: Enviar e Simular -->
+        <div class="flex flex-wrap gap-2">
+          <button type="button" id="retomar-cycle-send" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${sendDisabled ? 'disabled' : ''}>
+            Enviar para ${M} pessoa${M !== 1 ? 's' : ''}
+          </button>
+          <button type="button" id="retomar-cycle-simulate" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${(!hasTextA && this.cycleSendMode !== 'B') || (this.cycleSendMode === 'B' && !hasTextB) ? 'disabled' : ''}>
+            Simular
+          </button>
+        </div>
+
+        <!-- 6. Métricas (este ciclo) -->
+        <div class="border-t border-border/50 pt-2">
+          <button type="button" class="flex items-center gap-1.5 w-full text-left text-xs font-medium text-muted-foreground hover:text-foreground transition-colors" data-cycle-metrics-toggle>
+            <span>Métricas (este ciclo)</span>
+            <span class="text-[10px]">${this.cycleMetricsExpanded ? '▴' : '▾'}</span>
+          </button>
+          ${metricsContent}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Contato de teste como InactiveClient para aparecer na lista de Pessoas (Simular envio).
    * Não aparece se estiver em alguma etiqueta (só aparece em modo dia, não em modo etiqueta).
    */
@@ -1768,7 +2609,7 @@ export class RetomarPanel {
    * Renderiza menu kebab dropdown para um contato (modo dia). Mostra todas as etiquetas disponíveis.
    */
   private renderKebabMenu(chatId: string): string {
-    const allLists = this.lists.filter(l => l.id === 'never-send' || l.id === 'exclusivos' || l.type === 'custom');
+    const allLists = this.lists.filter(l => l.id === 'never-send' || l.id === 'exclusivos' || l.id === 'inativos' || l.type === 'custom');
     const etiquetaButtons = allLists.map(list => {
       const displayName = ETIQUETA_DISPLAY_NAMES[list.id] ?? list.name;
       return `
@@ -1798,7 +2639,7 @@ export class RetomarPanel {
    * Renderiza menu kebab no modo etiqueta: remover da etiqueta ou mover para outra.
    */
   private renderKebabMenuLabelMode(chatId: string, currentListId: string): string {
-    const allLists = this.lists.filter(l => l.id !== currentListId && (l.id === 'never-send' || l.id === 'exclusivos' || l.type === 'custom'));
+    const allLists = this.lists.filter(l => l.id !== currentListId && (l.id === 'never-send' || l.id === 'exclusivos' || l.id === 'inativos' || l.type === 'custom'));
     const moveButtons = allLists.map(list => {
       const displayName = ETIQUETA_DISPLAY_NAMES[list.id] ?? list.name;
       return `
@@ -1852,7 +2693,7 @@ export class RetomarPanel {
     return `
               <div class="glass-subtle rounded-xl p-3 text-center space-y-1">
                 <p class="text-[11px] text-muted-foreground">Selecione clientes usando os botões acima.</p>
-                <p class="text-[11px] text-primary font-medium">${eligibleClients.length} disponível${eligibleClients.length !== 1 ? 'eis' : ''} para ${this.selectedInactiveDay || this.cadenceDays[0]}d</p>
+                <p class="text-[11px] text-primary font-medium">${eligibleClients.length} disponível${eligibleClients.length !== 1 ? 'eis' : ''} para ${this.getChamadaLabelByRangeIndex(this.selectedRangeIndex ?? 0) || 'este período'}</p>
               </div>
     `;
   }
@@ -1865,20 +2706,251 @@ export class RetomarPanel {
   }
 
   /**
-   * Calcula filtros por dia exato (21, 35, 56, 84) com contagens e estado.
+   * Retorna lista de ciclos com contagem e seleção (para o bloco Ciclos de contato).
+   * Ciclo i (i < n-1) usa cadenceDays[i]; última linha sempre "Última tentativa" com último dia.
+   */
+  private getChamadasWithCounts(): Array<{
+    id: string;
+    label: string;
+    day: number;
+    count: number;
+    selected: boolean;
+    campaignLabel: string | null;
+    rangeIndex: number;
+  }> {
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    const n = Math.min(ranges.length, CHAMADAS_CONFIG.length);
+    if (n === 0) return [];
+
+    const result: Array<{
+      id: string;
+      label: string;
+      day: number;
+      count: number;
+      selected: boolean;
+      campaignLabel: string | null;
+      rangeIndex: number;
+    }> = [];
+
+    for (let i = 0; i < n; i++) {
+      const range = ranges[i];
+      const config = i < CHAMADAS_CONFIG.length - 1 ? CHAMADAS_CONFIG[i] : CHAMADAS_CONFIG[CHAMADAS_CONFIG.length - 1];
+
+      const count = this.eligibleClients.filter(c =>
+        isInRange(c.daysInactive, range) &&
+        c.status === 'pending' &&
+        !c.isSpecialList
+      ).length;
+
+      // Destaque da linha = ciclo "aberto" (expandido), não quantidade de clientes selecionados.
+      const isOpen = this.selectedRangeIndex === i;
+
+      result.push({
+        id: config.id,
+        // Mantém o label visual original (Primeira, Segunda, Terceira, Última tentativa)
+        label: config.label,
+        day: range.min,
+        count,
+        selected: isOpen,
+        campaignLabel: config.campaignLabel,
+        rangeIndex: i,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Garante que o array de mensagens por ciclo tenha pelo menos 4 posições.
+   */
+  private ensureCycleMessagesSize(): void {
+    if (this.cycleMessages.length >= 4) return;
+    while (this.cycleMessages.length < 4) {
+      this.cycleMessages.push({ textA: '', textB: null });
+    }
+  }
+
+  /**
+   * Carrega métricas reais de envios Retomar para o ciclo selecionado.
+   */
+  private async loadCycleMetrics(): Promise<void> {
+    if (this.selectedRangeIndex == null) {
+      this.cycleMetricsData = null;
+      return;
+    }
+    try {
+      const cycleIndex = (this.selectedRangeIndex + 1) as 1 | 2 | 3 | 4;
+      const since = new Date(Date.now() - this.cycleMetricsPeriodDays * 24 * 60 * 60 * 1000);
+      const until = new Date();
+      const entries = await messageDB.getRetomarSends(this.accountId, { cycleIndex, since, until });
+      let sendsA = 0;
+      let sendsB = 0;
+      for (const e of entries) {
+        if (e.retomarMeta?.variant === 'A') sendsA++;
+        else if (e.retomarMeta?.variant === 'B') sendsB++;
+      }
+      this.cycleMetricsData = { sendsA, sendsB, total: entries.length };
+    } catch (err) {
+      console.warn('[RETOMAR] Falha ao carregar métricas:', err);
+      this.cycleMetricsData = null;
+    }
+  }
+
+  /**
+   * Gera variação (Texto B) via IA a partir do Texto A, campanha e tipo de relação.
+   * Delega ao módulo ai-suggestion; em caso de falha, loga e retorna fallback.
+   */
+  private async suggestMessageByAI(params: {
+    textA: string;
+    campaignLabel: string | null;
+    relationType: RelationType;
+  }): Promise<string> {
+    const base = (params.textA || '').trim();
+    if (!base) return '';
+
+    try {
+      return await suggestText(this.bridge, {
+        text: base,
+        campaign: params.campaignLabel ?? undefined,
+        relationType: params.relationType,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.addLog('warning', `IA: ${msg}`);
+      return `${base}\n\n(Variação sugerida automaticamente)`;
+    }
+  }
+
+  /** Retorna o label do ciclo para uma faixa (ex.: "21–41"). */
+  private getChamadaLabelByRangeIndex(rangeIndex: number): string {
+    const chamadas = this.getChamadasWithCounts();
+    const chamada = chamadas[rangeIndex];
+    return chamada?.label ?? '';
+  }
+
+  /**
+   * Bloco avançado com dias da régua (modo Personalizado) – apenas visual.
+   */
+  private renderCustomCadenceAdvanced(): string {
+    if (this.cadenceDays.length === 0) {
+      return `
+        <div class="mettri-relation-type-custom-advanced">
+          <p class="mettri-relation-type-custom-advanced-empty">Nenhum dia configurado na régua.</p>
+        </div>
+      `;
+    }
+
+    const days = [...this.cadenceDays].sort((a, b) => a - b);
+    const first = days[0];
+    const second = days[1];
+    const third = days[2];
+    const last = days[days.length - 1];
+
+    const rows: string[] = [];
+    if (first !== undefined) {
+      rows.push(`
+        <div class="mettri-chamadas-config-row">
+          <span class="mettri-chamadas-config-label">Primeira tentativa</span>
+          <span class="mettri-chamadas-config-value">${first} dias</span>
+        </div>
+      `);
+    }
+    if (second !== undefined && days.length >= 2) {
+      rows.push(`
+        <div class="mettri-chamadas-config-row">
+          <span class="mettri-chamadas-config-label">Segunda tentativa</span>
+          <span class="mettri-chamadas-config-value">${second} dias</span>
+        </div>
+      `);
+    }
+    if (third !== undefined && days.length >= 3) {
+      rows.push(`
+        <div class="mettri-chamadas-config-row">
+          <span class="mettri-chamadas-config-label">Terceira tentativa</span>
+          <span class="mettri-chamadas-config-value">${third} dias</span>
+        </div>
+      `);
+    }
+    if (last !== undefined) {
+      rows.push(`
+        <div class="mettri-chamadas-config-row">
+          <span class="mettri-chamadas-config-label">Última tentativa</span>
+          <span class="mettri-chamadas-config-value">${last} dias</span>
+        </div>
+      `);
+    }
+
+    // Pré-visualização das faixas "Último contato".
+    const previewParts: string[] = [];
+    for (let i = 0; i < days.length; i++) {
+      const start = days[i];
+      const end = days[i + 1] !== undefined ? days[i + 1] - 1 : null;
+      if (end !== null) {
+        previewParts.push(`${start}–${end} dias`);
+      } else {
+        previewParts.push(`${start}+ dias`);
+      }
+    }
+
+    return `
+      <div class="mettri-relation-type-custom-advanced">
+        ${rows.join('')}
+        <div class="mettri-relation-type-custom-preview">
+          <span class="mettri-relation-type-custom-preview-label">Último contato:</span>
+          <span class="mettri-relation-type-custom-preview-value">${previewParts.join(' · ')}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Popover/cartão de configuração da régua acionado pela engrenagem em Ciclos de contato.
+   * Apenas visual: espelha os dias atuais da régua.
+   */
+  private renderChamadasConfigPopover(): string {
+    return `
+      <div class="mettri-chamadas-config-popover">
+        <div class="mettri-chamadas-config-header">
+          <span class="mettri-chamadas-config-title">Configuração da régua</span>
+          <span class="mettri-chamadas-config-subtitle">Ciclos usam estes dias</span>
+        </div>
+        ${this.renderCustomCadenceAdvanced()}
+      </div>
+    `;
+  }
+
+  /**
+   * Intervalo padrão em dias para o modo Personalizado (apenas UI).
+   * Usa a média entre os degraus da régua atual ou o primeiro dia como fallback.
+   */
+  private getDefaultCustomIntervalDays(): number {
+    if (this.cadenceDays.length === 0) return 21;
+    if (this.cadenceDays.length === 1) return this.cadenceDays[0];
+    let totalDiff = 0;
+    for (let i = 1; i < this.cadenceDays.length; i++) {
+      totalDiff += Math.max(this.cadenceDays[i] - this.cadenceDays[i - 1], 0);
+    }
+    const avg = totalDiff / (this.cadenceDays.length - 1);
+    return Math.max(1, Math.round(avg || this.cadenceDays[0]));
+  }
+
+  /**
+   * Calcula filtros por dia da régua (ex.: 21, 42, 73, 116 para Frequente) com contagens e estado.
    */
   private calculatePeriodFilters(): void {
-    this.periodFilters = this.cadenceDays.map((day) => {
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    this.periodFilters = ranges.map((range) => {
       const count = this.eligibleClients.filter(c =>
-        c.daysInactive === day &&
+        isInRange(c.daysInactive, range) &&
         c.status === 'pending' &&
         !c.isSpecialList
       ).length;
       const selected = this.eligibleClients.some(c =>
-        c.daysInactive === day && this.selectedClients.has(c.chatId)
+        isInRange(c.daysInactive, range) && this.selectedClients.has(c.chatId)
       );
+      const label = Number.isFinite(range.max) ? `${range.min}–${range.max}` : `${range.min}+`;
       return {
-        range: String(day),
+        range: label,
         count,
         selected,
         variant: selected ? 'filled' : 'outline',
@@ -1891,8 +2963,12 @@ export class RetomarPanel {
    */
   private getCadenceCounts(): Record<number, number> {
     const counts: Record<number, number> = {};
-    this.cadenceDays.forEach(day => {
-      counts[day] = this.eligibleClients.filter(c => c.cadenceDay === day).length;
+    this.cadenceDays.forEach((day, index) => {
+      const next = this.cadenceDays[index + 1] ?? Infinity;
+      counts[day] = this.eligibleClients.filter(c =>
+        c.daysInactive >= day &&
+        c.daysInactive < next
+      ).length;
     });
     return counts;
   }
@@ -1982,7 +3058,7 @@ export class RetomarPanel {
    * Mostra diálogo para editar régua.
    */
   private async showEditCadenceDialog(): Promise<void> {
-    const input = prompt('Digite os dias da régua separados por vírgula (ex: 21,35,56,84):', this.cadenceDays.join(','));
+    const input = prompt('Digite os dias da régua separados por vírgula (ex: 21,42,73,116):', this.cadenceDays.join(','));
     if (input) {
       const days = input.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d) && d > 0);
       if (days.length > 0) {
@@ -2076,9 +3152,17 @@ export class RetomarPanel {
       return;
     }
 
-    // Adicionar à fila
     this.sendingQueue = Array.from(this.selectedClients);
+    this.pendingChamadaIndex = this.selectedRangeIndex ?? 0;
     this.selectedClients.clear();
+
+    // Popular payload com variant fixa 'A' (envio principal sem A/B)
+    this.sendingPayloadByChatId.clear();
+    const msg = this.messageText.trim() || 'Olá! Sentimos sua falta por aqui.';
+    for (const id of this.sendingQueue) {
+      this.sendingPayloadByChatId.set(id, { text: msg, variant: 'A' });
+    }
+
     await this.saveQueueState();
 
     // Inicializar progresso
@@ -2272,6 +3356,7 @@ export class RetomarPanel {
 
   /**
    * Envia mensagem para um cliente específico.
+   * Se houver payload A/B, usa texto e variant do payload; senão, usa messageText.
    */
   private async sendToClient(chatId: string): Promise<void> {
     const client = this.eligibleClients.find(c => c.chatId === chatId);
@@ -2280,13 +3365,46 @@ export class RetomarPanel {
       throw new Error(`Cliente não encontrado: ${chatId}`);
     }
 
+    const payload = this.sendingPayloadByChatId.get(chatId);
+    const message = payload?.text?.trim() || this.messageText.trim() || 'Olá! Sentimos sua falta por aqui.';
+    const variant: 'A' | 'B' = payload?.variant ?? 'A';
+
     try {
-      const message = this.messageText.trim() || 'Olá! Sentimos sua falta por aqui.';
       await this.sendRawToChatId(chatId, message);
 
       client.status = 'sent';
       client.generatedMessage = message;
-      this.addLog('success', `${client.firstName || client.phone || 'Sem nome'} - Enviado`);
+
+      if (!this.testModeEnabled && this.pendingChamadaIndex != null) {
+        const chamada = (this.pendingChamadaIndex + 1) as 1 | 2 | 3 | 4;
+        await retomarContador.setContador(this.accountId, chatId, chamada);
+        if (chamada === 4 && this.listsManager) {
+          await this.listsManager.addMember('inativos', chatId);
+        }
+
+        const captured: CapturedMessage = {
+          id: `retomar-${chatId}-${Date.now()}`,
+          chatId,
+          chatName: client.chatName || client.phone || chatId,
+          sender: 'retomar',
+          text: message,
+          timestamp: new Date(),
+          isOutgoing: true,
+          type: 'text',
+        };
+        const chamadas = this.getChamadasWithCounts();
+        const meta: RetomarMeta = {
+          cycleIndex: chamada,
+          variant,
+          campaignLabel: chamadas[this.pendingChamadaIndex]?.campaignLabel ?? null,
+          accountId: this.accountId,
+        };
+        messageDB.saveMessageWithRetomarMeta(captured, meta).catch(err => {
+          console.warn('[RETOMAR] Falha ao gravar envio no messageDB:', err);
+        });
+      }
+
+      this.addLog('success', `${client.firstName || client.phone || 'Sem nome'} - Enviado (${variant})`);
       this.updateUnifiedFlow();
     } catch (error) {
       this.addLog('error', `${client.firstName || client.phone || 'Sem nome'} - Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -2302,6 +3420,7 @@ export class RetomarPanel {
     const defaultIds: Array<{ id: string; color: string }> = [
       { id: 'never-send', color: '--tag-color-6' },
       { id: 'exclusivos', color: '--tag-color-2' },
+      { id: 'inativos', color: '--tag-color-5' },
     ];
     
     const defaultLists = defaultIds.map(({ id, color }) => {
@@ -2401,7 +3520,7 @@ export class RetomarPanel {
           >
             <span class="text-[11px]">⋯</span>
           </button>
-          ${isMenuOpen ? this.renderListMenu(list.id) : ''}
+          ${isMenuOpen ? this.renderListMenu(list) : ''}
         </div>
       </div>
     `;
@@ -2410,28 +3529,32 @@ export class RetomarPanel {
   /**
    * Renderiza menu de uma lista customizada.
    */
-  private renderListMenu(listId: string): string {
+  private renderListMenu(list: RetomarList): string {
+    const blockedClass = list.isDefault ? 'opacity-60' : '';
+    const blockedData = list.isDefault ? 'true' : 'false';
     return `
-      <div class="w-48 rounded-xl glass border border-border shadow-xl z-[9999]" data-list-menu-dropdown="${listId}">
+      <div class="w-48 rounded-xl glass border border-border shadow-xl z-[9999]" data-list-menu-dropdown="${list.id}">
         <button 
           class="w-full rounded-lg cursor-pointer gap-2.5 text-xs flex items-center px-2 py-1.5 focus:bg-accent transition-colors"
           data-list-action="view-members"
-          data-list-id="${listId}"
+          data-list-id="${list.id}"
         >
           <span>Ver membros</span>
         </button>
         <button 
-          class="w-full rounded-lg cursor-pointer gap-2.5 text-xs flex items-center px-2 py-1.5 focus:bg-accent transition-colors"
+          class="w-full rounded-lg cursor-pointer gap-2.5 text-xs flex items-center px-2 py-1.5 focus:bg-accent transition-colors ${blockedClass}"
           data-list-action="rename"
-          data-list-id="${listId}"
+          data-list-id="${list.id}"
+          data-list-default="${blockedData}"
         >
           <span>Renomear</span>
         </button>
         <div class="bg-border/30 my-1 h-px"></div>
         <button 
-          class="w-full rounded-lg cursor-pointer gap-2.5 text-xs flex items-center px-2 py-1.5 text-destructive focus:bg-destructive/10 focus:text-destructive transition-colors"
+          class="w-full rounded-lg cursor-pointer gap-2.5 text-xs flex items-center px-2 py-1.5 text-destructive focus:bg-destructive/10 focus:text-destructive transition-colors ${blockedClass}"
           data-list-action="delete"
-          data-list-id="${listId}"
+          data-list-id="${list.id}"
+          data-list-default="${blockedData}"
         >
           <span>Excluir</span>
         </button>
@@ -2553,6 +3676,10 @@ export class RetomarPanel {
     if (this.closeDropdownHandler) {
       document.removeEventListener('click', this.closeDropdownHandler);
       this.closeDropdownHandler = null;
+    }
+    if (this.closeRelationDropdownHandler) {
+      document.removeEventListener('click', this.closeRelationDropdownHandler);
+      this.closeRelationDropdownHandler = null;
     }
     if (this.repositionDropdownHandler) {
       window.removeEventListener('scroll', this.repositionDropdownHandler, true);

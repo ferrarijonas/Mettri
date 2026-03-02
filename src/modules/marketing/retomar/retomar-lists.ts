@@ -2,7 +2,8 @@
  * RetomarListsManager
  *
  * Gerencia etiquetas (listas) de clientes do módulo Retomar.
- * - Listas padrão: Bloqueados (never-send), CNPJ (exclusivos); podem ser renomeadas/excluídas.
+ * - Listas padrão: Bloqueados (never-send), CNPJ (exclusivos), Inativos (inativos);
+ *   listas padrão não podem ser excluídas (isDefault: true).
  * - Listas customizadas via "Nova lista"; persistência em chrome.storage por conta.
  * - Cliente em qualquer lista não aparece no modo dia (só na etiqueta correspondente).
  */
@@ -49,12 +50,16 @@ export class RetomarListsManager {
     // Criar listas padrão se não existirem
     const hasNeverSend = this.lists.some(l => l.id === 'never-send');
     const hasExclusivos = this.lists.some(l => l.id === 'exclusivos');
+    const hasInativos = this.lists.some(l => l.id === 'inativos');
 
     if (!hasNeverSend) {
       await this.createDefaultList('never-send', 'Bloqueados', '--tag-color-6');
     }
     if (!hasExclusivos) {
       await this.createDefaultList('exclusivos', 'CNPJ', '--tag-color-2');
+    }
+    if (!hasInativos) {
+      await this.createDefaultList('inativos', 'Inativos', '--tag-color-5');
     }
   }
 
@@ -177,12 +182,15 @@ export class RetomarListsManager {
   }
 
   /**
-   * Remove uma lista. Todas as listas podem ser excluídas (incluindo Bloqueados e CNPJ).
+   * Remove uma lista. Listas padrão (never-send, exclusivos, inativos) não podem ser excluídas.
    */
   async deleteList(listId: string): Promise<void> {
     const list = this.lists.find(l => l.id === listId);
     if (!list) {
       throw new Error('Lista não encontrada');
+    }
+    if (list.isDefault) {
+      throw new Error('Lista padrão não pode ser excluída');
     }
 
     this.lists = this.lists.filter(l => l.id !== listId);
@@ -192,7 +200,7 @@ export class RetomarListsManager {
   }
 
   /**
-   * Renomeia uma lista. Todas as listas podem ser renomeadas (incluindo Bloqueados e CNPJ).
+   * Renomeia uma lista. Listas padrão (never-send, exclusivos, inativos) não podem ser renomeadas.
    */
   async renameList(listId: string, newName: string): Promise<void> {
     if (!newName.trim()) {
@@ -202,6 +210,9 @@ export class RetomarListsManager {
     const list = this.lists.find(l => l.id === listId);
     if (!list) {
       throw new Error('Lista não encontrada');
+    }
+    if (list.isDefault) {
+      throw new Error('Lista padrão não pode ser renomeada');
     }
 
     list.name = newName.trim();

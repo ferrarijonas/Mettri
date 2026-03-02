@@ -255,36 +255,6 @@ export class ReactivationPanel {
   }
 
   /**
-   * Converte telefone para chatId (formato WhatsApp: 5511999999999@c.us).
-   */
-  private phoneToChatId2(phone: string): string {
-    const safeName = String(name || '').trim();
-    const safePhone = typeof phone === 'string' ? String(phone).trim() : '';
-    let result: string;
-
-    // Se não temos nome confiável, não deixar “Olá !”.
-    if (!safeName) {
-      // 1) remover saudações comuns que dependem do {{name}}
-      const withoutNameGreeting = template
-        .replace(/Olá\s*{{\s*name\s*}}\s*!/gi, 'Olá!')
-        .replace(/Oi\s*{{\s*name\s*}}\s*!/gi, 'Oi!')
-        .replace(/Olá\s*{{\s*name\s*}}\s*/gi, 'Olá ')
-        .replace(/Oi\s*{{\s*name\s*}}\s*/gi, 'Oi ')
-        .replace(/{{\s*name\s*}}/g, '');
-
-      // 2) limpeza de espaços duplicados
-      result = withoutNameGreeting.replace(/\s{2,}/g, ' ').replace(/\s+([!?.,])/g, '$1').trim();
-    } else {
-      result = template.replace(/{{\s*name\s*}}/g, safeName);
-    }
-
-    if (safePhone) {
-      result = result.replace(/{{\s*phone\s*}}/g, safePhone);
-    }
-    return result;
-  }
-
-  /**
    * Atualiza estatísticas e visão geral.
    */
   private updateStats(): void {

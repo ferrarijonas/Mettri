@@ -72,13 +72,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const payload = message?.payload as { url?: unknown; method?: unknown; headers?: unknown; body?: unknown };
     const url = typeof payload?.url === 'string' ? payload.url : null;
     const method = typeof payload?.method === 'string' ? payload.method : 'GET';
-    const headers = payload?.headers && typeof payload.headers === 'object' ? (payload.headers as Record<string, string>) : undefined;
+    const rawHeaders = payload?.headers && typeof payload.headers === 'object' ? (payload.headers as Record<string, string>) : undefined;
     const body = typeof payload?.body === 'string' ? payload.body : undefined;
 
     if (!url) {
       sendResponse({ ok: false, status: 0, text: 'Missing url' });
       return false;
     }
+
+    // Fetch em WorkerGlobalScope exige headers em ISO-8859-1; remover code points > 255
+    const headers = rawHeaders
+      ? Object.fromEntries(
+          Object.entries(rawHeaders).map(([k, v]) => [
+            k,
+            typeof v === 'string' ? [...v].filter((c) => (c.codePointAt(0) ?? 0) <= 255).join('') : '',
+          ])
+        )
+      : undefined;
 
     (async () => {
       try {

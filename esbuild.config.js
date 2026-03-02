@@ -22,6 +22,9 @@ for (const file of staticFiles) {
     copyFileSync(file, `dist/${file}`);
   }
 }
+if (existsSync('src/dev/rag-test.html')) {
+  copyFileSync('src/dev/rag-test.html', 'dist/rag-test.html');
+}
 
 // Copy icons
 if (existsSync('assets/icons')) {
@@ -107,6 +110,100 @@ const backgroundBuild = {
   outfile: 'dist/background.js',
 };
 
+// Página de teste RAG fonte (IndexedDB real no navegador)
+const ragFonteTestBuild = {
+  ...buildOptions,
+  entryPoints: ['src/dev/rag-fonte-test.ts'],
+  outfile: 'dist/rag-fonte-test.js',
+  format: 'esm',
+};
+
+// Build modules individually for remote updates
+async function buildModules() {
+  if (!existsSync('dist/modules')) {
+    mkdirSync('dist/modules', { recursive: true });
+  }
+
+  // Lista de módulos para compilar (apenas os que podem ser atualizados remotamente)
+  const modulesToBuild = [
+    { id: 'marketing.reactivation', entry: 'src/modules/marketing/reactivation/reactivation-module.ts' },
+    { id: 'marketing.retomar', entry: 'src/modules/marketing/retomar/retomar-module.ts' },
+    { id: 'marketing.enviar', entry: 'src/modules/marketing/enviar/enviar-module.ts' },
+    { id: 'marketing.enviar.retomar', entry: 'src/modules/marketing/enviar/retomar/retomar-module.ts' },
+    { id: 'marketing.enviar.responder', entry: 'src/modules/marketing/enviar/responder/responder-module.ts' },
+    { id: 'marketing.enviar.divulgar', entry: 'src/modules/marketing/enviar/divulgar/divulgar-module.ts' },
+    { id: 'clientes.history', entry: 'src/modules/clientes/history/history-module.ts' },
+    { id: 'clientes.directory', entry: 'src/modules/clientes/directory/directory-module.ts' },
+    { id: 'atendimento.dashboard', entry: 'src/modules/atendimento/dashboard/dashboard-module.ts' },
+    { id: 'infrastructure.tests', entry: 'src/modules/infrastructure/tests/tests-module.ts' },
+  ];
+
+  const builds = modulesToBuild.map(module => {
+    const globalVarName = `MettriModule_${module.id.replace(/\./g, '_')}`;
+    return esbuild.build({
+      ...buildOptions,
+      entryPoints: [module.entry],
+      outfile: `dist/modules/${module.id}.js`,
+      format: 'iife',
+      globalName: globalVarName,
+      // Incluir dependências necessárias
+      bundle: true,
+      minify: true,
+      // Garantir que exports sejam acessíveis
+      banner: {
+        js: `// Module: ${module.id}\n`,
+      },
+      footer: {
+        js: `
+// Auto-register module if register function is available in global scope
+(function() {
+  try {
+    // Try to find register function from parent scope (passed as parameter)
+    if (typeof register === 'function') {
+      // Find module definition (could be named differently per module)
+      var moduleDef = null;
+      var moduleNames = ['ReactivationModule', 'RetomarModule', 'EnviarModule', 'HistoryModule', 'DirectoryModule', 'DashboardModule', 'TestsModule', 'MarketingModule', 'AtendimentoModule', 'ClientesModule', 'InfrastructureModule', 'EnviarRetomarModule', 'EnviarResponderModule', 'EnviarDivulgarModule'];
+      for (var i = 0; i < moduleNames.length; i++) {
+        if (typeof window[moduleNames[i]] !== 'undefined') {
+          moduleDef = window[moduleNames[i]];
+          break;
+        }
+      }
+      // Also check global variable
+      if (!moduleDef && typeof ${globalVarName} !== 'undefined') {
+        if (${globalVarName}.module) {
+          moduleDef = ${globalVarName}.module;
+        } else if (${globalVarName}.id) {
+          moduleDef = ${globalVarName};
+        }
+      }
+      if (moduleDef && moduleDef.id) {
+        register(moduleDef);
+      }
+    }
+    // Export to global for fallback access
+    if (typeof window !== 'undefined') {
+      window.${globalVarName} = typeof ${globalVarName} !== 'undefined' ? ${globalVarName} : null;
+    }
+  } catch (e) {
+    console.warn('[ModuleLoader] Error auto-registering module:', e);
+  }
+})();
+`,
+      },
+    });
+  });
+
+  try {
+    await Promise.all(builds);
+    console.log(`✓ Compiled ${modulesToBuild.length} modules`);
+    return modulesToBuild.map(m => ({ id: m.id, path: `dist/modules/${m.id}.js` }));
+  } catch (error) {
+    console.error('Error building modules:', error);
+    throw error;
+  }
+}
+
 async function build() {
   try {
     // Process CSS first (before building JS)
@@ -116,19 +213,27 @@ async function build() {
       copyFileSync('src/ui/panel.css', 'dist/panel.css');
     }
 
+    // Se flag --modules-only, compilar apenas módulos
+    if (process.argv.includes('--modules-only')) {
+      await buildModules();
+      return;
+    }
+
     if (isWatch) {
       const contentCtx = await esbuild.context(contentBuild);
       const bridgeCtx = await esbuild.context(bridgeBuild);
       const backgroundCtx = await esbuild.context(backgroundBuild);
+      const ragTestCtx = await esbuild.context(ragFonteTestBuild);
 
-      await Promise.all([contentCtx.watch(), bridgeCtx.watch(), backgroundCtx.watch()]);
+      await Promise.all([contentCtx.watch(), bridgeCtx.watch(), backgroundCtx.watch(), ragTestCtx.watch()]);
 
       console.log('Watching for changes...');
     } else {
       await Promise.all([
         esbuild.build(contentBuild),
         esbuild.build(bridgeBuild),
-        esbuild.build(backgroundBuild)
+        esbuild.build(backgroundBuild),
+        esbuild.build(ragFonteTestBuild),
       ]);
 
       console.log('Build completed successfully!');
@@ -137,6 +242,11 @@ async function build() {
     console.error('Build failed:', error);
     process.exit(1);
   }
+}
+
+// Exportar função para uso em scripts
+if (typeof module !== 'undefined') {
+  module.exports = { buildModules };
 }
 
 build();

@@ -2,7 +2,7 @@ interface BridgeRequest {
   __mettriBridge: true;
   direction: 'request';
   requestId: string;
-  action: 'ping' | 'storage.get' | 'storage.set' | 'storage.remove' | 'downloads.download';
+  action: 'ping' | 'storage.get' | 'storage.set' | 'storage.remove' | 'downloads.download' | 'net.fetch';
   payload?: unknown;
 }
 
@@ -60,6 +60,59 @@ function removeStorage(keys: string[]): Promise<void> {
   });
 }
 
+async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number; text: string }> {
+  const p = payload as { url?: unknown; method?: unknown; headers?: unknown; body?: unknown };
+  const url = typeof p?.url === 'string' ? p.url : null;
+  if (!url) throw new Error('Missing url');
+
+  const method = typeof p?.method === 'string' ? p.method : 'GET';
+  const headers = p?.headers && typeof p.headers === 'object' ? (p.headers as Record<string, string>) : undefined;
+  const body = typeof p?.body === 'string' ? p.body : undefined;
+
+  // Preferir buscar via service worker (mais robusto que fetch do content script).
+  try {
+    const result = await new Promise<{ ok: boolean; status: number; text: string }>((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          type: 'NET_FETCH',
+          payload: { url, method, headers, body },
+        },
+        (resp: unknown) => {
+          const err = chrome.runtime.lastError;
+          if (err) return reject(err);
+          resolve(resp as { ok: boolean; status: number; text: string });
+        }
+      );
+    });
+    return result;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : 'NET_FETCH failed';
+
+    // Importante: NÃO cair no fetch do content script para URLs externas,
+    // porque isso vira "CORS" do WhatsApp e confunde o diagnóstico.
+    // Só fazemos fallback quando a URL é do mesmo origin da página.
+    try {
+      const isSameOrigin = new URL(url).origin === window.location.origin;
+      if (!isSameOrigin) {
+        return { ok: false, status: 0, text: `NET_FETCH (service worker) falhou: ${msg}` };
+      }
+    } catch {
+      // Se a URL for inválida, só devolve erro.
+      return { ok: false, status: 0, text: `NET_FETCH (service worker) falhou: ${msg}` };
+    }
+
+    const res = await fetch(url, {
+      method,
+      headers,
+      body,
+      credentials: 'omit',
+      redirect: 'follow',
+    });
+    const text = await res.text();
+    return { ok: res.ok, status: res.status, text };
+  }
+}
+
 async function handleRequest(request: BridgeRequest): Promise<unknown> {
   switch (request.action) {
     case 'ping': {
@@ -115,6 +168,9 @@ async function handleRequest(request: BridgeRequest): Promise<unknown> {
       });
 
       return { downloadId };
+    }
+    case 'net.fetch': {
+      return await netFetch(request.payload);
     }
   }
 }

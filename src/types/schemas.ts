@@ -68,6 +68,19 @@ export const SelectorsConfigSchema = z.object({
 export type SelectorsConfig = z.infer<typeof SelectorsConfigSchema>;
 
 /**
+ * Metadados de envio Retomar, gravados junto com a mensagem no IndexedDB.
+ * Permite consultar métricas por ciclo/variante e alimentar a máquina A/B.
+ */
+export const RetomarMetaSchema = z.object({
+  cycleIndex: z.number().int().min(1).max(4),
+  variant: z.enum(['A', 'B']),
+  campaignLabel: z.string().nullable(),
+  accountId: z.string().min(1),
+});
+
+export type RetomarMeta = z.infer<typeof RetomarMetaSchema>;
+
+/**
  * Schema para entrada no IndexedDB.
  * Timestamp é armazenado como string ISO (não Date) para compatibilidade com IndexedDB.
  */
@@ -82,6 +95,7 @@ export const MessageDBEntrySchema = z.object({
   type: z.enum(['text', 'image', 'audio', 'video', 'document', 'sticker'], {
     errorMap: () => ({ message: 'Tipo de mensagem inválido' }),
   }),
+  retomarMeta: RetomarMetaSchema.optional(),
 });
 
 /**

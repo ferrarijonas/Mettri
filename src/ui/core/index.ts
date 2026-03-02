@@ -5,3 +5,4 @@
 export { EventBus, type EventHandler } from './event-bus';
 export { ModuleRegistry, type ModuleDefinition, type PanelInstance, type PanelFactory } from './module-registry';
 export { PanelShell, type PanelShellConfig } from './panel-shell';
+export { PANEL_NAVIGATE_EVENT, type PanelNavigatePayload, emitPanelNavigate, onPanelNavigate } from './panel-navigation';

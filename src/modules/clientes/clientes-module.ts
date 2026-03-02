@@ -17,6 +17,7 @@ export const ClientesModule: ModuleDefinition = {
   // Sem parent (é módulo de nível superior)
   icon: '👥',
   dependencies: [],
+  defaultSubModuleId: 'clientes.directory',
   // Módulo container não tem UI própria
   panelFactory: () => {
     throw new Error('ClientesModule é apenas um container, não tem UI própria');
