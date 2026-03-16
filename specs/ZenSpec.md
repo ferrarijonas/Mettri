@@ -70,6 +70,20 @@ Alterações no sistema exigem alteração prévia na spec.
 
 - **Dados antes de dependências.** Nos contratos, parâmetros de dados vêm primeiro; dependências externas (bridge, banco, índices) aparecem depois e agrupadas em um único parâmetro.
 
+- **Panorama completo.** Na tabela do pipeline, marcar opcional em Recebe (`campo?` ou "(opcional)"); precondição em uma linha quando o programa depender de estado anterior. O contrato é a fonte da verdade; o panorama não omite o que o contrato explicita.
+
+- **Edge cases.** Lista "Se X → Y", uma linha por caso, após as regras do programa; não duplicar o que já está nas regras.
+
+- **Escopo fora.** Uma seção ou lista curta com o que a spec não cobre.
+
+- **Config, tipo, dependência.** Uma linha quando existir: config fixa do programa; tipo complexo → referenciar fonte (arquivo/schema); dependência abstraída → operações em uma linha (implementação de referência opcional).
+
+- **Critérios de aceitação.** Regras + edge cases = critérios; se insuficiente, uma frase por programa.
+
+- **Falha explícita.** Em I/O ou chamada externa: falhar explícito, sem sucesso parcial silencioso.
+
+- **Idempotência e efeito.** Quando relevante: uma linha (ex. reexecutar = mesmo resultado; só leitura; não persiste).
+
 ---
 
 ## Formato Zen
@@ -97,6 +111,8 @@ origem  →  etapa1  →  etapa2  →  destino
 | Programa | Recebe  | Faz       | Manda para   |
 | -------- | ------- | --------- | ------------ |
 | `nome`   | entrada | o que faz | próximo ou — |
+
+Na coluna Recebe: marcar opcional com `?` ou "(opcional)" quando fizer diferença. Se o programa depender de estado anterior (ex. banco aberto), uma linha de precondição na seção do programa ou abaixo da tabela. Panorama não deixa furo; contrato abaixo é a fonte da verdade.
 
 **3. Ao detalhar a Lógica de um programa**, repetir a linha do fluxo só para ele:
 
@@ -133,6 +149,10 @@ Erros:
 Nenhum comportamento pode existir fora do contrato declarado.
 
 - **Assinatura única.** A ordem e o nome dos parâmetros definidos na spec devem ser iguais à assinatura das funções no código e nos testes.
+
+### Edge cases
+
+Lista "Se X → Y" (uma linha por caso), logo após as Regras do programa. Só o que for exceção ou limite; não repetir o que já está nas regras. Ex.: `MessageDB vazio → [].` / `Erro ao acessar → falha explícita.`
 
 ### Nomes de programas
 
@@ -192,6 +212,8 @@ Se o comportamento não pode ser determinado → perguntar. Se pode ser especifi
 
 - O escopo fora da spec está explicitado?
 
-- qualquer pessoa que não participou das discussões consegue derivar um caso de teste para cada regra sem fazer perguntas.
+- Para cada programa, edge cases (lista Se X → Y) e critérios de aceitação estão explícitos onde necessário?
+
+- Qualquer pessoa que não participou das discussões consegue derivar um caso de teste para cada regra sem fazer perguntas.
 
 - Para cada programa do pipeline, existe teste chamando a função com a mesma assinatura (parâmetros e ordem) descrita na spec?

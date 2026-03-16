@@ -18,7 +18,7 @@ export {
 export { embed_consulta } from './embed_consulta';
 export { cosineSimilarity } from './similarity';
 export type { VectorIndex, VectorIndexQueryResult } from './vectorIndex';
-export { VectorIndexMemory, vectorIndexMemory } from './vectorIndexMemory';
+export { VectorIndexIDB, vectorIndexIDB } from './vectorIndexIDB';
 export { guardar } from './guardar';
 export { buscar } from './buscar';
 export { generateRagSuggestion, buildRagPrompt } from './prompt_gpt';

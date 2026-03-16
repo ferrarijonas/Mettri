@@ -16,7 +16,7 @@ import { MettriBridgeClient } from '../../../content/bridge-client';
 import {
   orquestrador_consulta_rag,
   orquestrador_indexacao_rag,
-  vectorIndexMemory,
+  vectorIndexIDB,
 } from '../../../modules/rag';
 import { sendMessageService } from '../../../infrastructure/services';
 import {
@@ -260,7 +260,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 
             await orquestrador_indexacao_rag({
               bridge,
-              index: vectorIndexMemory,
+              index: vectorIndexIDB,
               maxMessages: 10_000,
             });
 
@@ -283,7 +283,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
             messages,
             k: 5,
             bridge,
-            index: vectorIndexMemory,
+            index: vectorIndexIDB,
           });
 
           console.log('[Atendimento] RAG chunks usados:', chunks.length);

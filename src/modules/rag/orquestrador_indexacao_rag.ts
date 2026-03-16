@@ -58,7 +58,7 @@ export async function orquestrador_indexacao_rag(
   }
 
   // Caso 2: indexar todos os chats disponíveis
-  const messages = await fonte({ maxMessages, db });
+  const messages = await fonte({ chatId: undefined, maxMessages, db });
 
   if (!messages.length) {
     // MessageDB vazio → nada para indexar, conclui com sucesso.
