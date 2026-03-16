@@ -1,9 +1,19 @@
 Histórico Simples - Mettri
 
 ´´´´
-Atual: Criar caixa de mensanges em cada um das etapas do ciclo
-Relacionadas/dependentes: 
-Próximas: Implementar teste A/B no envio das msgs... 
+Agora, vamos
+
+1. Avaliação de respostas  
+   Implementar o avaliador após a sugestão RAG (LLM-as-judge ou heurísticas). Score no debug, primeiro experimento RAG ON vs OFF.
+
+2. Memória de sessão  
+   Short-term da conversa atual (último pedido, preferências, resumo) e injetar no contexto do prompt junto do RAG.
+
+3. Tool use  
+   Fluxo chamando 1–2 ferramentas reais (ex.: API de cardápio/preço) e usando o retorno na resposta.
+
+4. Orquestração  
+   Supervisor + intent + agentes especializados (vendas, suporte, etc.) quando RAG + avaliação + tools estiverem estáveis.
 
 ```typescript
 Design:
@@ -13,7 +23,27 @@ Design:
     Ontológico
 ```
 
-## 
+## 02MAR (2026)
+
+- README reescrito: estrutura inspirada no Spec Kit, escopo atual (m�dulos, RAG, marketing, specs), sem se��o de screenshots.
+- .gitignore atualizado: .cursor/, .specify/memory/, .tmp.driveupload/, desktop.ini, Lista-Clientes*.xlsx, wa-sync-found-files.txt.
+- Commit e push no branch fix-ui-shadow-dom-isolation (feat + docs).
+- README novo levado para a branch main para aparecer na p�gina padr�o do reposit�rio no GitHub.
+- Verifica��o de chaves de API no reposit�rio: nenhuma chave real encontrada (apenas placeholders e test-key).
+- Esclarecimento sobre specs e c�digo: branch fix-ui-shadow-dom-isolation restaurada; c�digo fonte e specs continuam na m�quina e no branch fix-ui.
+- # 14MAR
+
+- Muita água rolou! Entendi e evoluí mto nas últimas semanas
+
+- Decidi encaminhar o Mettri para questões práticas de Engenharia de Ia
+
+- Implementei RAG, numa versão simples que sugere respostas
+
+- Agora vou melhorar esse RAG, deixar ele passar por avaliacão
+
+- Pra comecar, trocar o banco vetorial que estava em memóeria, agora vai persistir.
+
+- 
 
 ## 20FEV
 
