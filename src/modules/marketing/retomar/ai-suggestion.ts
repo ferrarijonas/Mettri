@@ -9,6 +9,10 @@
  */
 
 import { MettriBridgeClient } from '../../../content/bridge-client';
+import {
+  buildAgenteRetomarMessages,
+  type AgenteRetomarPromptFill,
+} from './agente-retomar-prompt';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
@@ -61,8 +65,63 @@ export async function suggestText(
       { role: 'system', content: systemParts.join(' ') },
       { role: 'user', content: userParts.join('') },
     ],
-    temperature: 0.8,
+    temperature: 1.1,
+    top_p: 0.95,
     max_tokens: 300,
+  };
+
+  const result = await bridge.netFetch({
+    url: OPENAI_URL,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!result.ok) {
+    throw new Error(`OpenAI ${result.status}: ${result.text}`);
+  }
+
+  const data = JSON.parse(result.text) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error('OpenAI respondeu sem conteúdo');
+
+  return content;
+}
+
+/** Parâmetros do prompt em `prompts/agente_retomar.md`. */
+export type { AgenteRetomarPromptFill };
+
+/**
+ * Gera texto de retomada com o prompt baseline (`prompts/agente_retomar.md`).
+ */
+export async function suggestRedacaoRetomar(
+  bridge: MettriBridgeClient,
+  params: AgenteRetomarPromptFill,
+): Promise<string> {
+  const incoming = (params.lastIncomingFromClient || '').trim();
+  if (!incoming) return '';
+
+  const apiKey = await getApiKey(bridge);
+  if (!apiKey) {
+    throw new Error('Chave API OpenAI não configurada. Acesse Cadastro > Mapear compras para salvar sua chave.');
+  }
+
+  const { system, user } = buildAgenteRetomarMessages(params);
+
+  const body = {
+    model: MODEL,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    temperature: 1.1,
+    top_p: 0.95,
+    max_tokens: 120,
   };
 
   const result = await bridge.netFetch({

@@ -4,6 +4,7 @@ import type {
   ConversationChunk,
   VectorIndex,
   OrquestradorConsultaOptions,
+  AvaliacaoResult,
 } from '../../../src/modules/rag';
 import type { MettriBridgeClient } from '../../../src/content/bridge-client';
 import { orquestrador_consulta_rag } from '../../../src/modules/rag';
@@ -20,6 +21,10 @@ class FakeVectorIndex implements VectorIndex {
   async query(queryVector: number[], k: number) {
     this.lastQueryArgs = { queryVector, k };
     return this.resultsToReturn;
+  }
+
+  async isEmpty(): Promise<boolean> {
+    return true;
   }
 }
 
@@ -38,6 +43,15 @@ function createMessage(overrides: Partial<CapturedMessage>): CapturedMessage {
   };
 }
 
+const fakeEvaluation: AvaliacaoResult = {
+  scoreRelevance: 0.8,
+  scoreFaithfulness: 0.7,
+  scoreStyle: 0.9,
+  mode: 'llm',
+};
+
+const fakeAvaliarFn = async (): Promise<AvaliacaoResult> => fakeEvaluation;
+
 function createBaseOptions(
   overrides: Partial<OrquestradorConsultaOptions> = {},
 ): OrquestradorConsultaOptions {
@@ -51,6 +65,7 @@ function createBaseOptions(
     embedConsultaFn: overrides.embedConsultaFn,
     buscarFn: overrides.buscarFn,
     promptFn: overrides.promptFn,
+    avaliarFn: overrides.avaliarFn ?? fakeAvaliarFn,
   };
 }
 
@@ -115,14 +130,14 @@ describe('orquestrador_consulta_rag (RAG)', () => {
     index.resultsToReturn = [{ chunk: chunkFromIndex, score: 0.9 }];
 
     let capturedCurrentConversation: string | null = null;
-    let capturedChunks: ConversationChunk[] | null = null;
+    const allPromptCalls: { conv: string; chunks: ConversationChunk[] }[] = [];
 
     const promptFn = async (
       currentConversation: string,
       chunks: ConversationChunk[],
     ): Promise<string> => {
       capturedCurrentConversation = currentConversation;
-      capturedChunks = chunks;
+      allPromptCalls.push({ conv: currentConversation, chunks });
       return 'sugestão fake';
     };
 
@@ -154,9 +169,16 @@ describe('orquestrador_consulta_rag (RAG)', () => {
     expect(index.lastQueryArgs?.queryVector).toEqual(fakeVector);
     expect(index.lastQueryArgs?.k).toBe(3);
 
-    expect(capturedChunks).toEqual([chunkFromIndex]);
+    expect(allPromptCalls[0].chunks).toEqual([chunkFromIndex]);
     expect(result.chunks).toEqual([chunkFromIndex]);
     expect(result.suggestion).toBe('sugestão fake');
+
+    expect(allPromptCalls[1].chunks).toEqual([]);
+
+    expect(result.debugInfo.evaluation).toEqual(fakeEvaluation);
+    expect(result.debugInfo.baselineNoRag).toBeDefined();
+    expect(result.debugInfo.baselineNoRag!.suggestion).toBe('sugestão fake');
+    expect(result.debugInfo.baselineNoRag!.evaluation).toEqual(fakeEvaluation);
   });
 
   it('chama promptFn mesmo quando buscar retorna lista vazia de resultados', async () => {
@@ -317,5 +339,93 @@ describe('orquestrador_consulta_rag (RAG)', () => {
 
     expect(buscarChamado).toBe(true);
   });
-}
+
+  it('propaga erro de avaliarFn sem mascarar', async () => {
+    const messages: CapturedMessage[] = [
+      createMessage({ id: 'c1', text: 'Oi', isOutgoing: false }),
+    ];
+
+    const index = new FakeVectorIndex();
+    index.resultsToReturn = [];
+
+    await expect(
+      orquestrador_consulta_rag(
+        createBaseOptions({
+          messages,
+          index,
+          embedConsultaFn: async () => [0.1],
+          buscarFn: async (queryVector, k, idx) => idx.query(queryVector, k),
+          promptFn: async () => 'sugestão ok',
+          avaliarFn: async () => {
+            throw new Error('erro no juiz LLM');
+          },
+        }),
+      ),
+    ).rejects.toThrow(/erro no juiz LLM/);
+  });
+
+  it('baseline usa promptFn com chunks vazio e avaliarFn recebe a suggestion do baseline', async () => {
+    const messages: CapturedMessage[] = [
+      createMessage({ id: 'c1', text: 'Quero pão', isOutgoing: false }),
+    ];
+
+    const index = new FakeVectorIndex();
+    index.resultsToReturn = [
+      {
+        chunk: {
+          id: 'chunk-hist',
+          schemaVersion: '1.0',
+          content: 'Cliente: pão?\nAtendente: temos sim',
+          chatId: 'chat-2',
+          timestamp: '2026-01-01T08:00:00.000Z',
+          messageIds: ['old-1'],
+          turnSize: { client: 1, agent: 1 },
+        },
+        score: 0.85,
+      },
+    ];
+
+    const promptCalls: { chunks: ConversationChunk[] }[] = [];
+
+    const promptFn = async (
+      _conv: string,
+      chunks: ConversationChunk[],
+    ): Promise<string> => {
+      promptCalls.push({ chunks });
+      return chunks.length === 0 ? 'baseline response' : 'rag response';
+    };
+
+    const avaliarCalls: { suggestion: string; chunks: ConversationChunk[] }[] = [];
+
+    const avaliarFn = async (
+      _conv: string,
+      chunks: ConversationChunk[],
+      suggestion: string,
+    ): Promise<AvaliacaoResult> => {
+      avaliarCalls.push({ suggestion, chunks });
+      return fakeEvaluation;
+    };
+
+    const result = await orquestrador_consulta_rag(
+      createBaseOptions({
+        messages,
+        index,
+        embedConsultaFn: async () => [0.1],
+        buscarFn: async (queryVector, k, idx) => idx.query(queryVector, k),
+        promptFn,
+        avaliarFn,
+      }),
+    );
+
+    expect(promptCalls).toHaveLength(2);
+    expect(promptCalls[1].chunks).toEqual([]);
+
+    expect(avaliarCalls).toHaveLength(2);
+    expect(avaliarCalls[0].suggestion).toBe('rag response');
+    expect(avaliarCalls[1].suggestion).toBe('baseline response');
+    expect(avaliarCalls[1].chunks).toEqual([]);
+
+    expect(result.debugInfo.baselineNoRag!.suggestion).toBe('baseline response');
+  });
+});
 

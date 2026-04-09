@@ -141,7 +141,7 @@ Cada item:
 ```typescript
 {
   min: integer,
-  max: integer | Infinity
+  max: integer
 }
 ```
 
@@ -149,7 +149,14 @@ Cada item:
 
 - Ordenado crescente.
 - Não sobreposto.
-- `ranges[3].max` pode ser `Infinity` (faixa aberta).
+- As quatro faixas têm **teto finito** na implementação canónica: a 4.ª faixa termina em **8× o tempo base** da régua (mesma família de multiplicadores 1×, 2×, 3,5×, 5,5×). Constante de implementação: `RETOMAR_LAST_BAND_END_MULTIPLIER = 8` em `inactive-days.ts`.
+- Valores de referência (tipo de relação → última faixa):
+  - **Frequente** (base 21): … **[116, 168]** dias.
+  - **Pontual** (base 44): … **[242, 352]** dias.
+  - **Sazonal** (base 74): … **[407, 592]** dias.
+  - **Personalizado** (intervalo `X`): 4.ª faixa até **`floor(8 × X)`** dias.
+
+**Acima do teto da 4.ª faixa:** nenhuma faixa contém `daysInactive` → contato **EXCLUÍDO** do motor (fim orgânico do funil; campanhas para ultra-inativos, se existirem, são outro fluxo).
 
 **Nota:** Compatível com a estrutura `ReguaRange` de `inactive-days.ts`.
 
@@ -215,7 +222,7 @@ Se:
 
 ```
 daysInactive >= range[i].min
-E (range[i].max === Infinity OU daysInactive <= range[i].max)
+E daysInactive <= range[i].max
 ```
 
 Então:
@@ -224,19 +231,23 @@ Então:
 rangeIndex = i
 ```
 
-Se nenhuma faixa corresponder → EXCLUIR.
+Se nenhuma faixa corresponder (incl. inatividade **acima do teto** da 4.ª faixa) → EXCLUIR.
 
 #### 6.4 Regra de Progressão por Contador
 
-Se:
+- Se `contadorAtual = 4` → EXCLUIR (já coberto em 6.1; desistente).
 
-```
-rangeIndex ≠ contadorAtual
-```
+**Primeiro contacto Retomar no chat (`contadorAtual = 0`):**
 
-Então EXCLUIR.
+- Não exigir `rangeIndex = 0`. O contato é elegível em **qualquer** `rangeIndex` válido (0–3) calculado em 6.3.
+- **Motivo:** importação de listas ou primeira entrada na régua com compra/atividade antiga: a inatividade pode cair logo na 2.ª, 3.ª ou 4.ª faixa; ainda assim a **primeira** mensagem Retomar deve usar o **ciclo/copy correspondente a essa faixa** (coluna “Primeira/Segunda/…” na UI = faixa de dias, não “tentativa número N” isolada do tempo).
 
-**Nota:** O contador marca a última chamada enviada (0 = nenhuma, 1-3 = última chamada, 4 = desistente). O motor só retorna contatos cujo `rangeIndex` corresponda ao contador atual.
+**Já houve pelo menos um envio Retomar (`contadorAtual ∈ {1,2,3}`):**
+
+- Se `rangeIndex ≠ contadorAtual` → EXCLUIR.
+- **Motivo:** a progressão na régua exige que a faixa de dias atual **coincida** com o último ciclo já enviado antes de oferecer o próximo envio alinhado a essa etapa.
+
+**Resumo:** `contadorAtual = 0` → qualquer faixa válida; `contadorAtual ∈ {1,2,3}` → obrigatório `rangeIndex = contadorAtual`.
 
 #### 6.5 Distância Mínima Entre Mensagens
 
@@ -279,6 +290,10 @@ Então EXCLUIR.
 **Caso 4 — contador > 4**
 
 - Se contador inválido → erro explícito.
+
+**Caso 4b — inatividade acima do teto da 4.ª faixa**
+
+- Se `daysInactive` for maior que `ranges[3].max` → EXCLUIR (sem `rangeIndex`).
 
 **Caso 5 — minDistance ≤ 0**
 
@@ -358,15 +373,28 @@ Então:
 
 → fluxo reinicia normalmente
 
+**Cenário 7 — Primeiro Retomar com inatividade já na 3.ª ou 4.ª faixa**
+
+Dado:
+
+- contador = 0
+- daysInactive dentro de `range[2]` ou `range[3]` (ex.: lista importada com “Último Pedido” antigo)
+
+Então:
+
+→ contato **retornado** com o `rangeIndex` correspondente (2 ou 3), desde que respeitadas 6.1, 6.5 e demais regras.
+
 ### 10. Notas de implementação
 
 **Fonte da data de referência (plugável):**
 
-- O painel expõe um **seletor** para o usuário escolher: "Última mensagem" ou "Última compra". O adaptador monta `lastActivityByChat` conforme a opção escolhida.
+- O painel expõe um **seletor** para o usuário escolher: "Última mensagem", "Última compra" ou **"Última compra (importar arquivo)"**. O adaptador monta `lastActivityByChat` conforme a opção escolhida.
 - Por **última mensagem:** o mapa é montado a partir de MessageDB (ex.: `getLastIncomingByContact()` → usar `lastIncomingAt` como `date`).
 - Por **última compra:** o mapa é montado a partir de PurchaseDB (última compra ACTIVE por chat → usar `purchaseDate` como `date`). Contatos sem compra não entram no mapa e portanto não entram no Retomar.
+- Por **última compra (importar arquivo):** o mapa é montado a partir do **último ficheiro importado e persistido** para a conta (`accountId`). Enquanto esta opção estiver selecionada, esse snapshot é a **fonte de verdade** para a `referenceDate` de cada contato no Retomar: **não** atualiza sozinho com novas mensagens ou novas compras no app até o utilizador **importar outro ficheiro** (substitui o snapshot). Persistência mínima do snapshot na bridge/storage: **7 dias** (evita reimportar diariamente).
+- **Formato do export analisado** (ex.: `Lista_ClientesInativos_*.xlsx`, `Clientes Inativos.xlsx`, folha única): colunas `Nome`, `Telefone`, `Último Pedido` (datetime); colunas extra (ex.: `Cód.`, `Qtd. Pedidos`, `Valor Pedidos`, `Unidade`, `Ticket Médio`) são **ignoradas** pelo motor. **Cabeçalho:** a primeira linha da folha pode ser um **título** (ex.: “Clientes Inativos”); o parser **procura nas primeiras ~40 linhas** a linha cujo cabeçalho contém uma coluna de telefone reconhecível (`Telefone`, `Tel`, `Celular`, `WhatsApp`, etc.) e usa essa linha como cabeçalho. **Identificação:** extrair só dígitos de `Telefone` e resolver `chatId` (ex. `...@c.us`) via **aliases BR** alinhados a `normalizePhoneDigitsWithAliases` / contactos conhecidos no MessageDB (ou cadastro). **Duplicados:** várias linhas com o mesmo telefone → uma entrada por telefone com **`Último Pedido` = data mais recente**; linha com data vazia em grupo duplicado participa só se for a única ou perder para datas válidas. Linhas **sem** `Último Pedido` válido **não** entram no mapa de atividade (nem em “com chat”). **Sem match** de `chatId` → ignorar linha e acumular **avisos** (contagem e exemplos). Script de análise: `scripts/analyze_lista_clientes_inativos_xlsx.py`.
 
-**Afastamento:** dias desde a data de referência da fonte escolhida (mensagem ou compra).
+**Afastamento:** dias desde a data de referência da fonte escolhida (mensagem, compra no PurchaseDB ou compra no snapshot importado).
 
 **Reset e adaptação:** Quando nova compra é detectada ou média entre compras é calculada, o sistema externo deve atualizar `contadorByChat` e `minDistance` antes de invocar o motor. O motor apenas utiliza os valores recebidos (não calcula média nem reseta contador internamente). O motor assume consistência da entrada.
 
@@ -384,8 +412,8 @@ A régua é construída assim:
 - Terceira mensagem: três vezes e meia esse tempo  
 - Quarta mensagem: cinco vezes e meia esse tempo mais o tempo mínimo  
 
-Cada chamada é uma faixa de dias: do marco da chamada até o marco da próxima menos 1 dia.  
-(Ex.: tempo mínimo 14 → 1ª faixa: 14 a 27 dias; 2ª faixa: 28 a 48 dias; 3ª faixa: 49 a 76 dias; 4ª faixa: de 77 até 91 dias)
+Cada chamada é uma faixa de dias: do marco da chamada até o marco da próxima menos 1 dia; a **última** faixa tem **teto** em **8×** o tempo base (não é aberta até infinito).  
+(Ex.: tempo mínimo 14 → 1ª: 14–27; 2ª: 28–48; 3ª: 49–76; 4ª: **77–112** dias; acima de 112 → fora da régua automática.)
 
 E o sistema nunca envia uma nova mensagem antes de respeitar novamente o mesmo tempo mínimo desde a última mensagem enviada.
 
@@ -395,21 +423,24 @@ E o sistema nunca envia uma nova mensagem antes de respeitar novamente o mesmo t
 
 ## Conceito
 
-**Ciclos de contato** são as quatro tentativas de retomada por contato: 1ª, 2ª, 3ª e 4ª (última). Cada ciclo corresponde a uma faixa da régua (rangeIndex 0, 1, 2, 3). O sistema controla por chat qual foi o último ciclo já enviado e só oferece para envio contatos cuja faixa de dias coincida com o próximo ciclo desse contato.
+**Ciclos de contato** são as quatro tentativas de retomada por contato: 1ª, 2ª, 3ª e 4ª (última). Cada uma **alinha-se a uma faixa de dias** na régua (rangeIndex 0, 1, 2, 3). O painel mostra contagens por faixa (rótulos “Primeira …”, “Segunda …”, etc.).
 
 ## Lógica
 
 ### Contador por chat
 
-- **0** = nenhuma mensagem de retomar enviada (próxima é a 1ª).
+- **0** = nenhuma mensagem de retomar enviada (próxima é a 1ª **neste fluxo**).
 - **1, 2 ou 3** = último ciclo enviado foi a 1ª, 2ª ou 3ª (próxima é a seguinte).
 - **4** = quarto ciclo já enviado sem compra (desistente; contato sai do fluxo até nova compra).
 
-O motor de elegibilidade recebe o mapa **contadorByChat** como entrada e só retorna contatos em que a faixa atual (rangeIndex) é igual ao contador do chat. Assim, quem está na 1ª faixa de dias e com contador 0 aparece na “Primeira tentativa”; quem está na 2ª faixa e com contador 1 aparece na “Segunda tentativa”, e assim por diante.
+**Motor + contador:**
+
+- Com **contador 0**, o motor aceita **qualquer** `rangeIndex` válido: o contato aparece na **linha do ciclo que corresponde à sua faixa de dias** (ex.: importação com compra há ~130 dias em régua **Frequente** → cai na 4.ª faixa e aparece em “Última tentativa”; acima do **teto** da 4.ª faixa → fora do motor).
+- Com **contador 1, 2 ou 3**, o motor **só** inclui o contato se `rangeIndex === contador` (progressão: já recebeu a chamada alinhada à faixa anterior e a inatividade atual está na faixa “esperada” para o próximo passo).
 
 ### Quem lê o contador
 
-- **Motor:** usa `contadorByChat` para filtrar (regra de progressão: rangeIndex = contador).
+- **Motor:** usa `contadorByChat` com a regra 6.4 (contador 0 = qualquer faixa; contador 1–3 = `rangeIndex` obrigatoriamente igual ao contador).
 - **Painel Retomar:** obtém o mapa e monta a lista por ciclo (Primeira, Segunda, Terceira, Última), com contagens e seleção.
 - **Atendimento:** exibe “Ciclo atual” (1ª, 2ª, 3ª ou 4ª) para o chat aberto, quando aplicável.
 
@@ -422,9 +453,9 @@ O motor não persiste nem altera o contador; apenas consome o valor recebido.
 
 ### Ciclo de vida
 
-- Início: contador = 0 → elegível para 1º ciclo quando entrar na 1ª faixa.
-- Após enviar 1ª: contador = 1 → elegível para 2ª quando entrar na 2ª faixa.
-- Idem para 2ª → 3ª e 3ª → 4ª.
+- Início: contador = 0 → elegível na **faixa onde `daysInactive` cair** (1.ª a 4.ª), respeitando teto da 4.ª faixa e demais regras do motor.
+- Após enviar 1ª: contador = 1 → elegível para envio da 2.ª **quando** `rangeIndex = 1` (e regras de distância mínima).
+- Idem para 2ª → 3ª e 3ª → 4ª (`rangeIndex` alinhado ao contador).
 - Após enviar 4ª: contador = 4 → desistente; não aparece mais na saída do motor até reset.
 - Nova compra: contador = 0; data de referência atualizada; fluxo reinicia.
 
@@ -525,6 +556,58 @@ Cada envio de mensagem do Retomar (por ciclo, com texto A ou B) deve ser registr
 
 **Nota:** Assim, métricas "Métricas (este ciclo)" e análises A/B podem ser calculadas a partir do messageDB (filtrar por período, ciclo e variante), sem store separado de envios.
 
+### Métricas de resposta (este ciclo de produto)
+
+**Objetivo no painel:** mostrar, por ciclo (e por variante A/B quando o modo existir na UI), quantos envios Retomar houve, quantos geraram resposta do cliente, a taxa de resposta e o tempo médio até a primeira resposta.
+
+**Janela padrão:** últimos **7 dias**, contados pelo **timestamp do envio** da mensagem Retomar (metadado `retomarMeta` + hora gravada no messageDB).
+
+**Métricas ativas neste ciclo:** `sentCount`, `respondedCount`, `responseRate`, `avgResponseTimeMinutes`.  
+**Regra de resposta (negócio):** conta como respondido um envio que tenha **pelo menos uma mensagem recebida do cliente (incoming)** **depois** desse envio **no mesmo `chatId`**; usa-se **só a primeira** dessas mensagens para o tempo.  
+**Regra de tempo:** para cada envio respondido, delta = instante da primeira resposta menos instante do envio; `avgResponseTimeMinutes` é a média desses deltas **em minutos**, apenas sobre envios respondidos.
+
+**Contrato técnico (entradas, saídas, erros, edge cases, critérios de aceitação):** ZenSpec filha  
+`ZenSpecKit/Mettri/Specs/retomar/calcular-metricas-retomar.zenspec.md` — programa `retomarMetricsResolver`.  
+A spec mãe não duplica assinatura nem regras determinísticas desse programa.
+
+**Exibição quando não há média:** se não houver nenhum envio respondido na janela (`respondedCount === 0`), o painel exibe o tempo médio como **vazio** (rótulo "—" / ausência de número); o valor canônico no contrato é **`null`** para `avgResponseTimeMinutes` nesse caso — **não** usar `0`, para não confundir com "respondeu na hora".
+
+**Desativado neste ciclo (não calcular nem exibir):** taxa de **abertura** (leitura), **engajamento** agregado genérico, **conversão** por compra, e colunas de **compras** nas métricas do bloco — até nova spec.
+
+**Decisão de produto (reações):** métricas por **reação** (emoji, etc.) entram quando o modelo de mensagem passar a **capturar** reação de forma confiável no messageDB; até lá ficam fora do escopo.
+
+### Catálogo de respostas e export diário local (JSONL)
+
+Esta feature existe para não perder o aprendizado do Retomar quando o banco local for limpo/corrompido e para alimentar IA/relatórios com dados estruturados.
+
+**Conceito (negócio):**
+
+- Sempre que houver um envio Retomar que recebeu resposta, gerar um **evento de outcome** (par envio-resposta).
+- Persistir esse outcome localmente e exportar para **arquivo JSONL local**, um arquivo por conta.
+- O arquivo é append-only (vai crescendo) para manter histórico contínuo.
+
+**Escopo deste ciclo (MVP):**
+
+- Exportar somente outcomes **respondidos** (não exportar envios sem resposta neste ciclo).
+- Incluir dados úteis para IA e análise: ids, tempos, ciclo, variante, campanha, conta, `chatId`/número quando disponível e textos com truncagem.
+- Formato obrigatório: **JSONL** (1 linha = 1 outcome).
+- Um arquivo por conta (`accountId`).
+- Agenda automática: dias úteis, na primeira abertura do WhatsApp após 10:00 (hora local), com app ativo.
+
+**Comportamento desejado:**
+
+- Fonte operacional continua no `messageDB` (envios com `retomarMeta` + incoming capturado).
+- Export diário escreve no arquivo local os outcomes novos desde o último export.
+- Em falha de escrita, não perder o estado no banco operacional; reprocessar no próximo ciclo automático.
+
+**Objetivo de produto:**
+
+- Base “IA friendly” para o agente aprender padrões que funcionam (RAG/few-shot).
+- Base pronta para relatório (Excel/BI) sem depender de leitura crua de todo o histórico.
+
+**Contrato técnico (programa):** ZenSpec filha  
+`ZenSpecKit/Mettri/Specs/retomar/exportar-outcomes-retomar.zenspec.md` — programa `retomarOutcomeExporter`.
+
 ### Máquina A/B
 
 A **máquina A/B** é um módulo de responsabilidade única: receber a lista de `chatId` selecionados e os textos A e B, e devolver uma lista pronta para o **serviço de envio já existente**.
@@ -582,7 +665,7 @@ Cada linha pode ter uma linha secundária extra (ex.: campanhas ativas).
 - **Pessoas do ciclo:** linha de resumo clicável no formato "N pessoas neste ciclo (M selecionados)" com seta (expandir/recolher). Ao expandir, mostra lista de contatos do ciclo com checkbox por linha (mesmo padrão da seção Pessoas); seleção controla quem entra no envio. Clicar de novo recolhe e volta a mostrar só o resumo.
 - **Estado vazio:** se N = 0, mostrar "Nenhum contato elegível neste ciclo no momento." e não exibir lista; botão Enviar desativado.
 - **Ações:** botões "Enviar para M pessoas" e "Simular"; Enviar desativado se Texto A vazio ou nenhum selecionado.
-- **Métricas (este ciclo):** bloco expandível dentro do detalhe. Conteúdo: seletor de período (ex. 7 dias); quando modo A/B, linhas separadas para variante A e B (envios, respostas, compras e taxas); linha "Melhor: texto/horário". Recolher/expandir por clique no título do bloco.
+- **Métricas (este ciclo):** bloco expandível dentro do detalhe. Seletor de período com **padrão 7 dias** (alinhado à janela definida em **Métricas de resposta**). Conteúdo mínimo: `sentCount`, `respondedCount`, `responseRate`, `avgResponseTimeMinutes` conforme `retomarMetricsResolver` (`calcular-metricas-retomar.zenspec.md`). Quando o modo A/B estiver ativo na UI, repetir as **mesmas** quatro métricas **por variante** (A e B). **Não** incluir neste ciclo: compras, conversão, abertura, engajamento agregado, "melhor texto/horário" — até spec futura. Tempo médio sem respostas na janela: exibir vazio (—), valor `null` no contrato. Recolher/expandir por clique no título do bloco.
 
 ### Estados visuais
 
@@ -595,6 +678,61 @@ Cada linha pode ter uma linha secundária extra (ex.: campanhas ativas).
 - Título da seção em evidência.
 - Cada ciclo = uma linha clicável; ao clicar, a linha fica em destaque e o detalhe (Texto A/B, IA, Enviar) é inserido logo abaixo dessa linha, empurrando as demais para baixo.
 - Engrenagem só para esta seção (ciclos), separada do restante do painel.
+
+### Container Respostas Agênticas
+
+Esta feature existe para que o utilizador **gere e envie** mensagens de retomada **por contato** (baseline LLM + contexto do histórico) **sem** usar o painel legado Texto A/B do mesmo ciclo, mantendo **independência** do acordeão **Ciclos de contato**.
+
+#### Conceito (negócio)
+
+Segundo bloco colapsável no Retomar: mesma **réua de quatro ciclos** e mesmas **contagens** que o legado, mas o detalhe expandido é só **UI agêntica** (checkbox, textarea, gerar, enviar). O **tom e as regras de copy** do baseline vivem no ficheiro editorial `prompts/agente_retomar.md`; o contrato técnico de geração está na ZenSpec filha `gerar-mensagem-baseline.zenspec.md`.
+
+#### Lógica (pipeline)
+
+```
+motor de elegíveis  →  retomarContextResolver  →  suggestRedacaoRetomar (baseline)  →  textarea
+                              ↑                           ↑
+                        messageDB                  prompts/agente_retomar.md
+```
+
+| Programa                                                 | Recebe                                     | Faz                            | Manda para                                |
+| -------------------------------------------------------- | ------------------------------------------ | ------------------------------ | ----------------------------------------- |
+| `retomarContextResolver`                                 | `chatIds`, `accountId`, `messageDB`        | `clientText`, `attendantText?` | ver `retomar-context-resolver.zenspec.md` |
+| `suggestRedacaoRetomar` (+ `buildAgenteRetomarMessages`) | fill derivado do resolver + painel + `.md` | Chama LLM; devolve string      | textarea do painel                        |
+
+**ZenSpecs filhas:** `retomar-context-resolver.zenspec.md` (contexto); `gerar-mensagem-baseline.zenspec.md` (baseline + prompt).
+
+**Regras adicionais (alinhadas ao código):**
+
+- **Ciclo numérico para a LLM:** `cycleIndex` **1–4** = índice da linha aberta no bloco agêntico (0–3) **+ 1**, alinhado ao contador/`retomarMeta.cycleIndex` no envio.
+- **Envio agêntico:** variante **A** fixa (sem A/B neste bloco). Mesma fila / `retomarMeta` / contador / 4ª → Inativos que o envio Retomar já descrito no módulo.
+- **Simular envio** (modo teste global do painel): **não** dispara envio em massa pelas Respostas Agênticas; UI mostra aviso e **Enviar** fica desativado nesse modo (evita colisão com o fluxo de teste do legado).
+- **Remover da vista (Ocultar):** só sessão atual; não altera motor, contador nem MessageDB; o contacto deixa de aparecer na lista **e** o rascunho em memória desse contacto é descartado na implementação atual.
+- **Regenerar:** por linha; pode ser usado com o contacto marcado; falha LLM → log/erro explícito, textarea preservada.
+- **Contraste dos textareas:** no painel sobre páginas escuras (ex. WhatsApp), os campos de rascunho usam **cores explícitas** no CSS do painel para leitura — detalhe de implementação em `tailwind-input.css` / classes do painel, não altera regras de negócio.
+
+**Dados:** mesma fonte de elegíveis que o motor / mesmo ciclo; contagens alinhadas ao legado.
+
+**Independência:** expandir ou abrir acordeão em **Respostas Agênticas** **não** abre nem altera o acordeão de **Ciclos de contato** (e reciprocamente).
+
+**Escopo fora desta seção:** modelo LLM, temperatura e `max_tokens` numéricos (config de implementação; referência na ZenSpec de baseline).
+
+#### Interface
+
+**Título visível do bloco:** Respostas Agênticas. **Regra:** segundo bloco colapsável no painel Retomar; **não** altera regras nem conteúdo de `### Container Ciclos de Contato` (nem `### Conteúdo`, `### Conteúdo expandido (ao clicar no ciclo)` nem `### Estados visuais`).
+
+**Casca:** paridade com `### Container Ciclos de Contato` / `### Conteúdo` / `### Estados visuais` — título + expandir/colapsar; **sem engrenagem** nesta secção (requisito: omitir). **Conteúdo fechado:** quatro linhas verticais (1ª / 2ª / 3ª / Última), contagem **"N pessoas"**, ícone à esquerda, **mesma hierarquia visual que Ciclos de contato**; linha secundária de campanha quando houver paridade com o legado.
+
+**Conteúdo expandido (diferente do legado):**
+
+- **Se** o usuário clicar numa das quatro linhas **então** acordeão: linha em destaque + painel **logo abaixo dessa linha**, empurrando as linhas seguintes (mesmo comportamento que em `### Conteúdo expandido (ao clicar no ciclo)`, linhas 577–578).
+- **Dentro desse painel:** só UI agêntica — **sem** Texto A, Texto B, radio Só A / Só B / A/B, **sem** botão legado **"Enviar para M pessoas"** nem **Simular** só deste bloco.
+- **Gerar textos para selecionados**; **Enviar** único (rótulo pode incluir contagem qualificada); lista com **checkbox**; **textarea** sob o nome; **Regenerar** por linha; **Ocultar** = remover da vista (sessão).
+- **Gerar:** para cada linha marcada, **agente de redação Retomar** (`retomarContextResolver` + `suggestRedacaoRetomar` + `prompts/agente_retomar.md`) preenche o textarea; após gerar, texto **sempre editável**.
+- **Enviar:** para cada linha **marcada** com textarea `trim() !== ''`, **mesmo** envio Retomar do painel (contador, distância mínima, `retomarMeta`, 4ª → Inativos). Marcada com textarea vazio: não envia. **Se** nenhuma linha qualificar **então** não chama envio; **Enviar** desativado ou mensagem explícita curta.
+- **Falha:** por item; textarea preservada; sem sucesso silencioso. **Gerar** em lote: falha numa linha **não** impede as outras.
+
+**Ordem no painel:** bloco **Respostas Agênticas** **abaixo** de **Ciclos de contato** no layout.
 
 ---
 
@@ -644,3 +782,31 @@ Então verei nessa tela um registro desse número que é fornecido pelo "Algorit
 - Store simples em chrome.storage, via bridge, por conta (`accountId`).  
 - Chave: `retomarContador_${accountId}` com o mapa `chatId → últimaChamadaEnviada (1–4)`.  
 - Ao enviar uma mensagem de Retomar, o painel atualiza esse campo diretamente (sem escanear histórico).
+
+---
+
+## Retomar V1 (Sensei) — contexto para baseline e juiz (RAG oculto)
+
+O slice `Retomar V1` usa `retomarContextResolver` para montar o contexto mínimo por chat, que alimenta a geração de mensagem baseline (texto visível na UI) e o “juiz” do experimento oculto (RAG vs baseline).
+
+O contrato técnico de montagem do `contextText` (formato fixo com `Cliente:` e `Atendente:` opcional) é definido na ZenSpec:
+
+- `ZenSpecKit/Mettri/Specs/retomar/retomar-context-resolver.zenspec.md` (`retomarContextResolver` / RT1)
+
+A geração baseline usada nas **Respostas Agênticas** (LLM + ficheiro `prompts/agente_retomar.md`) está em:
+
+- `ZenSpecKit/Mettri/Specs/retomar/gerar-mensagem-baseline.zenspec.md` (`suggestRedacaoRetomar` e `buildAgenteRetomarMessages`)
+
+O cálculo das métricas de resposta do Retomar (painel, janela temporal, taxas) está em:
+
+- `ZenSpecKit/Mettri/Specs/retomar/calcular-metricas-retomar.zenspec.md` (`retomarMetricsResolver`)
+
+O contrato do catálogo/export diário local de outcomes respondidos (JSONL por conta) está em:
+
+- `ZenSpecKit/Mettri/Specs/retomar/exportar-outcomes-retomar.zenspec.md` (`retomarOutcomeExporter`)
+
+Regra de alto nível:
+
+- O texto **enviado e editável na UI é sempre baseline**.
+- O RAG fica **oculto**, servindo apenas para avaliação do experimento, conforme o contrato do módulo RAG:
+  - `ZenSpecKit/Mettri/Specs/rag/spec.md`

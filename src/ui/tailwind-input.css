@@ -271,6 +271,39 @@
   overflow: visible;
 }
 
+/*
+ * Respostas Agênticas: inputs nativos herdam tema escuro da página (WhatsApp Web).
+ * color-scheme + cores fixas = texto, placeholder e seleção legíveis no painel claro.
+ */
+#mettri-panel .mettri-agentic-accordion-body {
+  color-scheme: light;
+}
+
+#mettri-panel .mettri-agentic-accordion-body textarea[data-agentic-draft] {
+  color: #171717 !important;
+  -webkit-text-fill-color: #171717 !important;
+  background-color: #ffffff !important;
+  caret-color: #171717 !important;
+  border-color: rgb(0 0 0 / 0.14) !important;
+}
+
+#mettri-panel .mettri-agentic-accordion-body textarea[data-agentic-draft]::placeholder {
+  color: #525252 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #525252 !important;
+}
+
+#mettri-panel .mettri-agentic-accordion-body textarea[data-agentic-draft]::selection {
+  background-color: #bfdbfe !important;
+  color: #171717 !important;
+  -webkit-text-fill-color: #171717 !important;
+}
+
+#mettri-panel .mettri-agentic-accordion-body textarea[data-agentic-draft]::-moz-selection {
+  background-color: #bfdbfe !important;
+  color: #171717 !important;
+}
+
 /* Tipo de relação (dropdown) – wrapper com overflow visible para o dropdown não ser cortado */
 #mettri-panel .mettri-relation-type {
   margin-bottom: 0.75rem;

@@ -113,5 +113,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'DOWNLOADS_DOWNLOAD') {
+    const payload = message?.payload as { url?: unknown; filename?: unknown; saveAs?: unknown };
+    const url = typeof payload?.url === 'string' ? payload.url : '';
+    const filename = typeof payload?.filename === 'string' ? payload.filename : '';
+    const saveAs = payload?.saveAs === true;
+    if (!url || !filename) {
+      sendResponse({ ok: false, error: 'Missing url or filename' });
+      return false;
+    }
+
+    chrome.downloads.download({ url, filename, saveAs }, (id) => {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        sendResponse({ ok: false, error: err.message });
+        return;
+      }
+      if (typeof id !== 'number') {
+        sendResponse({ ok: false, error: 'Download failed' });
+        return;
+      }
+      sendResponse({ ok: true, downloadId: id });
+    });
+    return true;
+  }
+
   return false;
 });

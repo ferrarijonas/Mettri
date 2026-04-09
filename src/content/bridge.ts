@@ -60,6 +60,46 @@ function removeStorage(keys: string[]): Promise<void> {
   });
 }
 
+/** No MV3, `chrome.downloads` não existe no content script; blob: só funciona no documento da aba. */
+async function downloadViaAnchor(url: string, filename: string): Promise<{ downloadId: number }> {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  a.style.position = 'fixed';
+  a.style.left = '-9999px';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  await new Promise<void>((resolve) => setTimeout(resolve, 2500));
+  return { downloadId: 0 };
+}
+
+async function downloadViaServiceWorker(
+  url: string,
+  filename: string,
+  saveAs: boolean,
+): Promise<{ downloadId: number }> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { type: 'DOWNLOADS_DOWNLOAD', payload: { url, filename, saveAs } },
+      (resp: unknown) => {
+        const lastErr = chrome.runtime.lastError;
+        if (lastErr) {
+          reject(new Error(lastErr.message));
+          return;
+        }
+        const r = resp as { ok?: boolean; downloadId?: number; error?: string };
+        if (r?.ok === true && typeof r.downloadId === 'number') {
+          resolve({ downloadId: r.downloadId });
+          return;
+        }
+        reject(new Error(typeof r?.error === 'string' ? r.error : 'DOWNLOADS_DOWNLOAD failed'));
+      },
+    );
+  });
+}
+
 async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number; text: string }> {
   const p = payload as { url?: unknown; method?: unknown; headers?: unknown; body?: unknown };
   const url = typeof p?.url === 'string' ? p.url : null;
@@ -150,24 +190,31 @@ async function handleRequest(request: BridgeRequest): Promise<unknown> {
       if (!url) throw new Error('Missing url');
       if (!filename) throw new Error('Missing filename');
 
-      const downloads = (chrome as unknown as { downloads?: { download?: unknown } }).downloads;
-      if (!downloads || typeof downloads.download !== 'function') {
-        throw new Error('chrome.downloads.download not available');
+      if (url.startsWith('blob:') || url.startsWith('data:')) {
+        return await downloadViaAnchor(url, filename);
       }
 
-      const downloadId = await new Promise<number>((resolve, reject) => {
-        (downloads.download as (opts: { url: string; filename: string; saveAs?: boolean }, cb: (id?: number) => void) => void)(
-          { url, filename, saveAs },
-          (id?: number) => {
-          const err = chrome.runtime.lastError;
-          if (err) return reject(err);
-          if (typeof id !== 'number') return reject(new Error('Download failed'));
-          resolve(id);
+      try {
+        return await downloadViaServiceWorker(url, filename, saveAs);
+      } catch (swErr: unknown) {
+        const downloads = (chrome as unknown as { downloads?: { download?: unknown } }).downloads;
+        if (downloads && typeof downloads.download === 'function') {
+          const downloadId = await new Promise<number>((resolve, reject) => {
+            (downloads.download as (
+              opts: { url: string; filename: string; saveAs?: boolean },
+              cb: (id?: number) => void,
+            ) => void)({ url, filename, saveAs }, (id?: number) => {
+              const err = chrome.runtime.lastError;
+              if (err) return reject(err);
+              if (typeof id !== 'number') return reject(new Error('Download failed'));
+              resolve(id);
+            });
+          });
+          return { downloadId };
         }
-        );
-      });
-
-      return { downloadId };
+        const msg = swErr instanceof Error ? swErr.message : 'download failed';
+        throw new Error(msg);
+      }
     }
     case 'net.fetch': {
       return await netFetch(request.payload);

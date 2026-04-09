@@ -117,5 +117,10 @@ export class VectorIndexLocal implements VectorIndex {
 
     return scored.slice(0, k);
   }
+
+  async isEmpty(): Promise<boolean> {
+    const records = await loadIndex(this.filePath);
+    return records.length === 0;
+  }
 }
 
