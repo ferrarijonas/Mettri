@@ -21,6 +21,10 @@ class FakeVectorIndex implements VectorIndex {
   async query(): Promise<VectorIndexQueryResult[]> {
     return [];
   }
+
+  async isEmpty(): Promise<boolean> {
+    return this.items.length === 0;
+  }
 }
 
 function makeMessage(

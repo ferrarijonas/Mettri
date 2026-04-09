@@ -5,6 +5,8 @@ import type { MettriBridgeClient } from '../../content/bridge-client';
 import { embed_consulta } from './embed_consulta';
 import { buscar } from './buscar';
 import { generateRagSuggestion, buildRagPrompt } from './prompt_gpt';
+import { avaliar_sugestao_rag, type AvaliarSugestaoFn } from './avaliar_sugestao_rag';
+import { logRagExperimentEvent } from './experiment_logger';
 
 export interface OrquestradorConsultaOptions {
   messages: CapturedMessage[];
@@ -14,6 +16,7 @@ export interface OrquestradorConsultaOptions {
   embedConsultaFn?: typeof embed_consulta;
   buscarFn?: typeof buscar;
   promptFn?: PromptGptFn;
+  avaliarFn?: AvaliarSugestaoFn;
 }
 
 export interface RagConsultaDebugInfo {
@@ -28,6 +31,23 @@ export interface RagConsultaDebugInfo {
     prompt: number;
   };
   suggestionOriginal: string;
+  evaluation?: {
+    scoreRelevance: number;
+    scoreFaithfulness: number;
+    scoreStyle: number;
+    mode: 'llm';
+    notes?: string;
+  };
+  baselineNoRag?: {
+    suggestion: string;
+    evaluation: {
+      scoreRelevance: number;
+      scoreFaithfulness: number;
+      scoreStyle: number;
+      mode: 'llm';
+      notes?: string;
+    };
+  };
 }
 
 export interface OrquestradorConsultaResult {
@@ -147,7 +167,7 @@ function nowMs(): number {
 export async function orquestrador_consulta_rag(
   options: OrquestradorConsultaOptions,
 ): Promise<OrquestradorConsultaResult> {
-  const { messages, k, bridge, index, embedConsultaFn, buscarFn, promptFn } = options;
+  const { messages, k, bridge, index, embedConsultaFn, buscarFn, promptFn, avaliarFn } = options;
 
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error(
@@ -166,6 +186,7 @@ export async function orquestrador_consulta_rag(
   const embedFn = embedConsultaFn ?? embed_consulta;
   const buscarFunction = buscarFn ?? buscar;
   const promptFunction = promptFn ?? generateRagSuggestion;
+  const avaliarFunction = avaliarFn ?? avaliar_sugestao_rag;
 
   const timings = {
     embed: 0,
@@ -203,6 +224,31 @@ export async function orquestrador_consulta_rag(
 
   const { system: promptSystem, user: promptUser } = buildRagPrompt(currentConversation, chunks);
 
+  const evaluation = await avaliarFunction(currentConversation, chunks, suggestion, bridge);
+
+  const baselineSuggestion = await promptFunction(currentConversation, [], bridge);
+  const baselineEvaluation = await avaliarFunction(currentConversation, [], baselineSuggestion, bridge);
+
+  const chatId = String(messages[0]?.chatId || '').trim();
+  const messageId = String(messages[messages.length - 1]?.id || '').trim() || undefined;
+
+  void logRagExperimentEvent({
+    bridge,
+    chatId,
+    messageId,
+    currentConversation,
+    chunks,
+    k,
+    ragSuggestion: suggestion,
+    ragEvaluation: evaluation,
+    baselineSuggestion,
+    baselineEvaluation,
+    model: 'gpt-4o-mini',
+    ragPromptVersion: 'v1',
+    judgePromptVersion: 'v1',
+    indexVersion: 'v1',
+  });
+
   const debugInfo: RagConsultaDebugInfo = {
     conversationText,
     currentConversation,
@@ -211,6 +257,11 @@ export async function orquestrador_consulta_rag(
     promptUser,
     timingsMs: timings,
     suggestionOriginal: suggestion,
+    evaluation,
+    baselineNoRag: {
+      suggestion: baselineSuggestion,
+      evaluation: baselineEvaluation,
+    },
   };
 
   return {

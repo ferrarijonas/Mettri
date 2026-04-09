@@ -47,6 +47,20 @@ export class VectorIndexIDB implements VectorIndex {
     });
   }
 
+  async isEmpty(): Promise<boolean> {
+    await this.open();
+    if (!this.db) {
+      throw new Error('IndexedDB não inicializado.');
+    }
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction(STORE_VECTORS, 'readonly');
+      const store = tx.objectStore(STORE_VECTORS);
+      const req = store.count();
+      req.onsuccess = () => resolve((req.result ?? 0) === 0);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   private async loadAllIntoMemory(): Promise<void> {
     if (!this.db || this.loaded) return;
 

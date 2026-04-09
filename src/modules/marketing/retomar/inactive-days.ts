@@ -48,10 +48,14 @@ export interface ReguaRange {
  */
 /**
  * Réguas do espec: faixas em 1x, 2x, 3.5x, 5.5x do tempo base.
- * frequente: base 21 → [21-41], [42-72], [73-115], [116+]
- * pontual: base 44 → [44-87], [88-153], [154-241], [242+]
- * sazonal: base 74 → [74-147], [148-258], [259-406], [407+]
+ * 4ª faixa fecha em 8x base (fim orgânico do funil; acima disso não entra na régua automática).
+ * frequente: base 21 → … [116–168]
+ * pontual: base 44 → … [242–352]
+ * sazonal: base 74 → … [407–592]
  */
+/** Multiplicador do teto da última faixa (mesma família 1× … 5,5× do tempo base). */
+export const RETOMAR_LAST_BAND_END_MULTIPLIER = 8;
+
 export const REGUAS: Record<
   Exclude<RelationType, 'personalizado'>,
   { minDistance: number; ranges: ReguaRange[] }
@@ -62,7 +66,7 @@ export const REGUAS: Record<
       { min: 21, max: 41 },
       { min: 42, max: 72 },
       { min: 73, max: 115 },
-      { min: 116, max: Infinity },
+      { min: 116, max: RETOMAR_LAST_BAND_END_MULTIPLIER * 21 },
     ],
   },
   pontual: {
@@ -71,7 +75,7 @@ export const REGUAS: Record<
       { min: 44, max: 87 },
       { min: 88, max: 153 },
       { min: 154, max: 241 },
-      { min: 242, max: Infinity },
+      { min: 242, max: RETOMAR_LAST_BAND_END_MULTIPLIER * 44 },
     ],
   },
   sazonal: {
@@ -80,7 +84,7 @@ export const REGUAS: Record<
       { min: 74, max: 147 },
       { min: 148, max: 258 },
       { min: 259, max: 406 },
-      { min: 407, max: Infinity },
+      { min: 407, max: RETOMAR_LAST_BAND_END_MULTIPLIER * 74 },
     ],
   },
 };
@@ -114,17 +118,18 @@ export function getRangesForType(
     return REGUAS.frequente.ranges;
   }
 
-  // Fórmula espec: 1x, 2x, 3.5x, 5.5x (4ª faixa aberta).
+  // Fórmula espec: 1x, 2x, 3.5x, 5.5x; 4ª faixa até 8x (teto finito).
   const base = interval;
   const m1 = base;
   const m2 = 2 * base;
   const m3 = 3.5 * base;
   const m4 = 5.5 * base;
+  const lastMax = RETOMAR_LAST_BAND_END_MULTIPLIER * base;
   return [
     { min: m1, max: Math.floor(m2) - 1 },
     { min: Math.floor(m2), max: Math.floor(m3) - 1 },
     { min: Math.floor(m3), max: Math.floor(m4) - 1 },
-    { min: Math.floor(m4), max: Infinity },
+    { min: Math.floor(m4), max: Math.floor(lastMax) },
   ];
 }
 

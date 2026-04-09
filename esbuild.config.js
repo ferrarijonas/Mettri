@@ -85,6 +85,8 @@ const buildOptions = {
   sourcemap: isWatch,
   target: ['chrome100'],
   format: 'iife',
+  /** prompts/agente_retomar.md e outros .md importados como string */
+  loader: { '.md': 'text' },
 };
 
 // Content script

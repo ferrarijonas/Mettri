@@ -11,13 +11,15 @@ import { orderDB } from '../../../storage/order-db';
 import { purchaseDB } from '../../../storage/purchase-db';
 import { resolveClientByChatId } from './client-resolver';
 import { clientDB } from '../../../storage/client-db';
-import { messageDB } from '../../../storage/message-db';
 import { MettriBridgeClient } from '../../../content/bridge-client';
+import type { RagConsultaDebugInfo } from '../../../modules/rag';
+import { downloadRagExperimentExportJson, readRagExperimentStatsForDashboard } from '../../../modules/rag';
 import {
-  orquestrador_consulta_rag,
-  orquestrador_indexacao_rag,
-  vectorIndexIDB,
-} from '../../../modules/rag';
+  clearRagAutoRetryPending,
+  getRagMettriControllerState,
+  runRagMettriConsultation,
+  subscribeRagMettriController,
+} from '../rag-mettri-controller';
 import { sendMessageService } from '../../../infrastructure/services';
 import {
   createList as createRetomarList,
@@ -27,6 +29,8 @@ import {
   renameList as renameRetomarList,
   toggleMembership,
 } from './retomar-support';
+
+const STORAGE_RAG_AUTO_SUGGEST = 'mettri:atendimento:rag:auto-suggest';
 
 const RETOMAR_COLORS: Array<{ var: string; name: string }> = [
   { var: '--tag-color-1', name: 'Verde' },
@@ -45,8 +49,19 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 ): Promise<PanelInstance> => {
   let currentChatId: string | null = null;
   let lastClientKey: string | null = null;
-  let ragIndexReady = false;
-  let ragIndexInProgress = false;
+  let ragAutoSuggestEnabled = false;
+  let unsubscribeRagController: (() => void) | null = null;
+
+  async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
+    try {
+      const bridge = new MettriBridgeClient(4000);
+      const obj = await bridge.storageGet([STORAGE_RAG_AUTO_SUGGEST]);
+      const v = obj[STORAGE_RAG_AUTO_SUGGEST];
+      return v === true || v === '1' || v === 1 || v === 'true';
+    } catch {
+      return false;
+    }
+  }
 
   const getListIdFromPayload = (payload: unknown): string => {
     const listId =
@@ -54,6 +69,50 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
         ? (payload as { listId?: string }).listId
         : '';
     return String(listId || '').trim();
+  };
+
+  let ui!: AtendimentoPanel;
+  let rerender!: () => Promise<void>;
+
+  async function refreshRagExperimentStatsOnPanel(): Promise<void> {
+    try {
+      const bridge = new MettriBridgeClient(8000);
+      const bundle = await readRagExperimentStatsForDashboard({ bridge });
+      if (!bundle) {
+        ui.setRagExperimentStatsBundle(null, null, null);
+        return;
+      }
+      ui.setRagExperimentStatsBundle(bundle.week, bundle.today, bundle.total);
+    } catch {
+      ui.setRagExperimentStatsBundle(null, null, null);
+    }
+  }
+
+  rerender = async () => {
+    ragAutoSuggestEnabled = await loadRagAutoSuggestFromStorage();
+    const vm = await getAtendimentoViewModel({ chatId: currentChatId });
+    if (vm.kind === 'ready') {
+      lastClientKey = vm.customer.clientKey || null;
+    } else {
+      lastClientKey = null;
+    }
+    ui.ragAutoSuggestEnabled = ragAutoSuggestEnabled;
+    const ctrl = getRagMettriControllerState();
+    ui.setRagConsultationFieldsFromController({
+      suggestionText: ctrl.ragSuggestionText,
+      loading: ctrl.ragLoading,
+      similarCount: ctrl.ragSimilarCount,
+      debugInfo: (ctrl.ragDebugInfo as RagConsultaDebugInfo | null) ?? null,
+    });
+    if (vm.kind === 'ready') {
+      await refreshRagExperimentStatsOnPanel();
+    } else {
+      ui.setRagExperimentStatsBundle(null, null, null);
+    }
+    ui.destroy();
+    container.innerHTML = '';
+    const element = await ui.render(vm);
+    container.appendChild(element);
   };
 
   const handleRetomarTagAction = async (actionId: string, payload?: unknown): Promise<void> => {
@@ -131,7 +190,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     }
   };
 
-  const ui = new AtendimentoPanel({
+  ui = new AtendimentoPanel({
     onAction: async (actionId, payload) => {
       // Integração mínima (sem acoplar UI ao resto)
       if (actionId === 'open-cadastro') {
@@ -241,69 +300,42 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
         return;
       }
 
-      if (actionId === 'rag:generate') {
-        const chatId = String(currentChatId || '').trim();
-        if (!chatId) {
-          alert('Abra um chat para gerar sugestão com histórico.');
-          (ui as any).ragLoading = false;
-          await rerender();
-          return;
-        }
-
+      if (actionId === 'rag:auto-suggest:changed') {
+        const enabled = Boolean((payload as { enabled?: boolean })?.enabled);
+        ragAutoSuggestEnabled = enabled;
+        ui.ragAutoSuggestEnabled = enabled;
         try {
-          // Se índice ainda não foi preparado, rodar a indexação primeiro (Opção B da spec).
-          if (!ragIndexReady && !ragIndexInProgress) {
-            ragIndexInProgress = true;
-            alert('Preparando histórico de conversas (pode levar 1–2 minutos)...');
-
-            const bridge = new MettriBridgeClient(60000);
-
-            await orquestrador_indexacao_rag({
-              bridge,
-              index: vectorIndexIDB,
-              maxMessages: 10_000,
-            });
-
-            ragIndexReady = true;
-            ragIndexInProgress = false;
-          }
-
-          const messagesDesc = await messageDB.getMessages(chatId, 200);
-          if (!messagesDesc.length) {
-            throw new Error('Nenhuma mensagem encontrada para este chat.');
-          }
-
-          const messages = [...messagesDesc].sort(
-            (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-          );
-
-          const bridge = new MettriBridgeClient(60000);
-
-          const { suggestion, chunks, debugInfo } = await orquestrador_consulta_rag({
-            messages,
-            k: 5,
-            bridge,
-            index: vectorIndexIDB,
-          });
-
-          console.log('[Atendimento] RAG chunks usados:', chunks.length);
-
-          (ui as any).ragLoading = false;
-          (ui as any).ragSuggestionText = suggestion;
-          (ui as any).ragSimilarCount = chunks.length;
-          (ui as any).ragDebugInfo = debugInfo;
-          await rerender();
-        } catch (error) {
-          console.error('[Atendimento] Erro ao gerar sugestão RAG:', error);
-          alert(
-            error instanceof Error
-              ? error.message
-              : 'Erro ao gerar sugestão com histórico.',
-          );
-          (ui as any).ragLoading = false;
-          (ui as any).ragSimilarCount = null;
-          await rerender();
+          const bridge = new MettriBridgeClient(4000);
+          await bridge.storageSet({ [STORAGE_RAG_AUTO_SUGGEST]: enabled ? '1' : '0' });
+        } catch (err) {
+          console.error('[Atendimento] Falha ao persistir modo RAG automático:', err);
         }
+        await rerender();
+        return;
+      }
+
+      if (actionId === 'rag:export-experiment') {
+        try {
+          const bridge = new MettriBridgeClient(120000);
+          const { eventCount, filename } = await downloadRagExperimentExportJson({ bridge });
+          alert(
+            eventCount === 0
+              ? `Exportação concluída (0 eventos). Arquivo: ${filename}`
+              : `Exportação concluída: ${eventCount} evento(s). Arquivo: ${filename}`,
+          );
+        } catch (err) {
+          alert(
+            err instanceof Error
+              ? err.message
+              : 'Não foi possível exportar o experimento. Verifique permissão de download e tente de novo.',
+          );
+        }
+        return;
+      }
+
+      if (actionId === 'rag:generate') {
+        clearRagAutoRetryPending();
+        await runRagMettriConsultation(String(currentChatId || '').trim(), 'manual');
         return;
       }
 
@@ -341,19 +373,6 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     },
   });
 
-  const rerender = async () => {
-    const vm = await getAtendimentoViewModel({ chatId: currentChatId });
-    if (vm.kind === 'ready') {
-      lastClientKey = vm.customer.clientKey || null;
-    } else {
-      lastClientKey = null;
-    }
-    ui.destroy();
-    container.innerHTML = '';
-    const element = await ui.render(vm);
-    container.appendChild(element);
-  };
-
   const onChatChanged = (data: any) => {
     const next = typeof data?.chatId === 'string' ? data.chatId : null;
     currentChatId = next;
@@ -363,10 +382,16 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   return {
     async render() {
       eventBus.on('chat:active-changed', onChatChanged);
+      unsubscribeRagController?.();
+      unsubscribeRagController = subscribeRagMettriController(() => {
+        rerender().catch(() => {});
+      });
       await rerender();
     },
     destroy() {
       eventBus.off('chat:active-changed', onChatChanged);
+      unsubscribeRagController?.();
+      unsubscribeRagController = null;
       ui.destroy();
       if (container) container.innerHTML = '';
     },

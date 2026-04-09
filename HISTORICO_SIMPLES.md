@@ -1,19 +1,6 @@
 Histórico Simples - Mettri
 
 ´´´´
-Agora, vamos
-
-1. Avaliação de respostas  
-   Implementar o avaliador após a sugestão RAG (LLM-as-judge ou heurísticas). Score no debug, primeiro experimento RAG ON vs OFF.
-
-2. Memória de sessão  
-   Short-term da conversa atual (último pedido, preferências, resumo) e injetar no contexto do prompt junto do RAG.
-
-3. Tool use  
-   Fluxo chamando 1–2 ferramentas reais (ex.: API de cardápio/preço) e usando o retorno na resposta.
-
-4. Orquestração  
-   Supervisor + intent + agentes especializados (vendas, suporte, etc.) quando RAG + avaliação + tools estiverem estáveis.
 
 ```typescript
 Design:
@@ -23,14 +10,154 @@ Design:
     Ontológico
 ```
 
+## 02ABR
+
+Métricas no retomar
+
+- [x] Marcar sempre as msgs enviadas pelo retomar, para criar uma base futura de msgs enviadas e conseguir avaliar elas...**foi feito e funciona**
+
+- [x] Montar sistema que avalia resposta ou não da msg do retomar e em qto tempo. **estado atual, criando o plano para gerar a spec**
+
+- [x] Plano feito, falta executar o plano e gerar a spec, depois implementar
+
+- [x] Spec Criadas, revisar se ficaram boas, implementar o código
+
+- [x] Implementar código das métricas
+
+- [x] Implementei o código, verificar se está certo e se já pode funcionar (como testa?)
+
+- [x] Não está funcionando, está com dados mocados, vou verificar
+
+- [x] Contia em Mock, pedi pra alterar
+
+- [x] Alterecao parece que foi feita, precisa aguardar envio para avaliar funcionamento.
+
+- [x] Parece que está tudo certo, vou fechar esse bloco.
+
+- [x] Vai exportar as msgs que foram respondidas, com cópia em arquivo local. Próximo passo é exportar e gerar as specs disso..
+
+- [x] Specs foram criadas, próximo passo é gerar o código.
+
+- [x] Vai criar o plano de como executar
+
+- [x] Mandei executar o plano, vamos ver o resultado.
+
+- [x] Está implementado, precisa ver se os relatórios são gerados
+
+- [x] Estou procurando o caminho para ver os resultados e saber onde posso exporar.
+
+- [x] Não encontrou de primeira, não tenho certeza que implementei. Faltou revisar as specs aqui...vou pedir novamente pra ele gerar arquivo com as frases que perforaram bem para alimentar outra ia
+
+- [x] O plano que tinha sido criado não englobava isso, isso diz repseito aos cuidados que preciso ter aqui...vou cuidar para não perder o escopo dessa tarefa agora.
+
+- [x] Implementando o plano, vou verificar e testar se a funcao de exportar as msgs do retomar foi criada.
+
+- [x] Entendeu bem, agora só ajustar a exportacao. Vou usar esse arquivo no Post sobre rag. Precisa ver se tbm está salvando as frases que performamra bem..mas isso vai sair lá do painel retomar, provávelmente...
+
+## 26MAR
+
+#### Detectar vendas
+
+- [x] Definir se existe forma de fazer, se é barata e segura se não, implementar upload. **Upload ou regex**
+
+- [x] Estou conversando sobre usar api do consumer ou ele vasculhar pc pra tentar
+
+- [x] Ela achou o pedido, agora precisa relacionar com um fone. Deu a ideia de, ao achar um pedido, relacionar com o chat que está aberto e ativo..boa ideia.
+
+- [x] Por um botão muito simples de confirmar se tem pedido prochat ativo...
+
+- [x] A coisa mais fácil a se fazer aqui é importar arquivo. Vou fazer isso.
+
+- [x] Rascunhar a ideia de importar arquivo, trabalhar na spec
+
+- [x] Comecei o rascunhos, vou garantir que ele entenda antes de ir pra spec aqui
+
+- [x] Já comecei a definir as coisas, enviei o arquivo para identificar clientes...
+
+- [x] Tudo definido, já pedi atualizacao das specs, e script para ler o xls dos dados dos clientes...
+
+- [x] Pedi para criar plano, no próximo passo executo implementacao
+
+- [x] Pedi implementacao, vamos ver como fica...
+
+- [x] Lista importada, parece que carregou. Verificar se pega por range, se vai gravar pra quem eu mandei hoje para nao aparecer no range amanhã dnv, e se eu nao enviar, mesma coisa...muita gente sem nome, pq? Pq não apareceu as outras datas? Impossível não ter ....deve ter gente pra isso tbm...
+
+- [x] Parece que está tudo certo, só falta enviar e fazer o primeiro teste agora.
+
+- [x] Parece tudo ok, posso fechar esse bloco.
+
+- [x] Antes de fechar, vou implementar um bloco das msgs que foram respondidas para ir montando um arquivo com elas.
+
+- [ ] Vamos implementar um bloco que grava as msgs que foram respondidas e quem sabe alguns metadados dela...coisas úteis para o agente do retomar.
+
+#### Projeto Sierra & PaineldeTestes
+
+Ligar o módulo Mensagens, deixar ele 100% e usar como padrão para o resto.
+
+- [x] Definir os módulos que o mettri usa, considerar isso a versão 1.0 e lancar a biblioteca. **Módulos definidos, enviar msg e ler msg**
+
+- [x] Limpando o painel, com acordeon com os dois módulos definidos
+
+- [x] Painel está limpo, preciso trocar aquilo de envio de teste e leitura de teste, isso vai ficar dentro do acrdeon, no seu teste especidifoc da sua funcao, o que vai precisar é uma revisao da ui pra pedir apenas um número para testes e com esse número, o painel precisa saber o que fazer em cada um dos pontos do acordeon...
+
+- [x] Aguardando para ver se a última modificacao ficou boa.
+
+- [x] Está com algumas dificuldade de entender o problema, mas estou encaminhando ux mais limpa pra testes, painel do lado esquerdo e visualizacao dos fallbacks
+
+- [x] O problema foi entendido, specs atualizadas e pedido de implementacao. Agora precisa ver se já mudou de lado o paineldetestes e se tudo está funcionando.
+
+- [x] Está com dificuldade de me entender, ele desenhou o que quero mas executou de outra forma.
+
+- [x] Parece que a parte de cima, da conexao ao bundle agora está entendida. Agora falta refinar a parte de baixo para ficar como eu quero. Ele não está entendendo isso tbm..
+
+- [x] A parte de cima está entendida, agora numa próxima rodada vou pedir para programar.
+
+- [x] Pedi para implemenar as specs, na próxima, a gente faz o código
+
+- [x] Pedi implementacao do código
+
+- [x] foi compilado, agora vou avaliar
+
+- [x] Já está muito bom, vou melhor um pouco a inicializacao do bundle.
+
+- [x] Já tivemos grandes ancancos, pedi alguns ajustes, vou ver o resultad
+
+- [x] Pedi modificacoes, plano feito, precisa executar.
+
+#### Mettri
+
+#### Retomar automático
+
+- [x] Ajustes semanticos no Prompt, está quase lá, ver claude **ajustando detalhes nas palavras do prompt, framework pronto**
+- [x] Ajuste fino nas palavras do prompt, framework completo
+- [x] Ver temperatura e top-p que o modelo está trabalhando
+- [x] Testar se mudanca de temperatura vai modificar as respotas
+- [x] **Melhorou um pouco, tente mudar um pouco mais**
+- [x] Ainda preciso saber se mudo + o TOp+ e temperatura e testar o novo prompt **mudou legal, gostei...**
+- [x] Estamos refinando o prompt, para ver qual abordagem o cliente é mais aberto
+- [x] Trabalhando agora na frase de objetivo da msg
+- [x] Gpt sugeriu mudancas, vou testar novo prompt
+- [x] Prompt atual com ajustes.
+- [x] Ajuste no prompt não ficou bom, vou voltar com um bom do claude e encerrar essa parte.
+- [x] Voltei com o prompt anterior, vou seguir com ele e finalizar essa tarefa se tudo ok.
+- [x] No geral, os resultados estão ruins..me perdi no refinamento. Devia ter parado antes, vou ter que escavar no Claude uma versão e fechar nela...
+- [x] Ou, vou deixar assim por enquanto, ajustar cada caso na mão e de qualquer maneira, depois, ensinar o modelo sobre isso...
+- [ ] Vou ajustando o prompt na mão, vou anotar o que está repetindo muito e por um "evitar" no final. Salvar o que gerou, o que mudei, exportar todas e pedir pro GPT montar uma lista de regras...
+
 ## 02MAR (2026)
 
 - README reescrito: estrutura inspirada no Spec Kit, escopo atual (m�dulos, RAG, marketing, specs), sem se��o de screenshots.
+
 - .gitignore atualizado: .cursor/, .specify/memory/, .tmp.driveupload/, desktop.ini, Lista-Clientes*.xlsx, wa-sync-found-files.txt.
+
 - Commit e push no branch fix-ui-shadow-dom-isolation (feat + docs).
+
 - README novo levado para a branch main para aparecer na p�gina padr�o do reposit�rio no GitHub.
+
 - Verifica��o de chaves de API no reposit�rio: nenhuma chave real encontrada (apenas placeholders e test-key).
+
 - Esclarecimento sobre specs e c�digo: branch fix-ui-shadow-dom-isolation restaurada; c�digo fonte e specs continuam na m�quina e no branch fix-ui.
+
 - # 14MAR
 
 - Muita água rolou! Entendi e evoluí mto nas últimas semanas

@@ -23,11 +23,28 @@ import { sendMessageService } from '../../../infrastructure/services';
 import { RateLimiter } from './rate-limiter';
 import { RetomarListsManager, type RetomarList } from './retomar-lists';
 import * as retomarContador from './retomar-contador';
-import { computeEligibleContacts, type LastActivityEntry } from './eligible-contacts-engine';
+import {
+  computeEligibleContactsDiagnostics,
+  type LastActivityEntry,
+} from './eligible-contacts-engine';
 import { splitAB } from './ab-split';
-import { suggestText } from './ai-suggestion';
+import { suggestRedacaoRetomar, suggestText } from './ai-suggestion';
+import { retomarContextResolver } from './retomar-context-resolver';
+import {
+  retomarMetricsResolver,
+  type RetomarMetricsResult,
+} from './retomar-metrics-resolver';
+import { retomarOutcomeExporter } from './retomar-outcome-exporter';
+import { createRetomarOutcomeBridgeDeps } from './retomar-outcome-export-bridge';
 import type { RetomarMeta } from '../../../types/schemas';
 import type { CapturedMessage } from '../../../types';
+import {
+  parseListaClientesXlsx,
+  loadSnapshot,
+  saveSnapshot,
+  resolveLastActivityFromSnapshot,
+  type PurchaseImportSnapshot,
+} from './retomar-purchase-import';
 
 interface InactiveClient {
   chatId: string;
@@ -65,12 +82,18 @@ const RELATION_TYPES = [
   { id: 'personalizado', label: 'Personalizado', shortRange: 'Você define' },
 ] as const;
 
-type ActivitySource = 'last-message' | 'last-purchase';
+type ActivitySource = 'last-message' | 'last-purchase' | 'last-purchase-import';
 
 const ACTIVITY_SOURCE_OPTIONS = [
   { id: 'last-message', label: 'Última mensagem' },
   { id: 'last-purchase', label: 'Última compra' },
+  { id: 'last-purchase-import', label: 'Lista importada (XLSX)' },
 ] as const;
+
+/** localStorage=1 → console com contagem por motivo de exclusão na elegibilidade Retomar. */
+const DEBUG_RETOMAR_ELIGIBILITY_KEY = 'mettri_debug_retomar_eligibility';
+/** localStorage=1 → ignora última mensagem enviada (distância mínima) só para depuração local. */
+const DEBUG_RETOMAR_SKIP_OUTGOING_KEY = 'mettri_debug_retomar_skip_outgoing';
 
 /** Configuração dos ciclos da régua (Primeira, Segunda, Terceira, Última tentativa). Última sempre usa o último dia. */
 const CHAMADAS_CONFIG = [
@@ -151,6 +174,11 @@ export class RetomarPanel {
   /** accountId para contador e listas (definido em loadConfig). */
   private accountId: string = 'default';
 
+  /** Snapshot da lista XLSX importada (fonte last-purchase-import). */
+  private purchaseImportSnapshot: PurchaseImportSnapshot | null = null;
+  /** Resumo do último import para exibir na UI. */
+  private purchaseImportSummary: { totalRows: number; matchedCount: number; unmatchedCount: number; importedAt: string; filename?: string } | null = null;
+
   /** Textos A/B por ciclo (rangeIndex 0–3) para a UI expandida de Ciclos de contato. */
   private cycleMessages: { textA: string; textB: string | null }[] = [
     { textA: '', textB: null },
@@ -171,8 +199,33 @@ export class RetomarPanel {
 
   /** Período selecionado nas métricas do ciclo (em dias). */
   private cycleMetricsPeriodDays: number = 7;
-  /** Cache dos dados de métricas para o ciclo selecionado. */
-  private cycleMetricsData: { sendsA: number; sendsB: number; total: number } | null = null;
+  /** Cache do bloco Métricas (este ciclo) após leitura do messageDB. */
+  private cycleMetricsView:
+    | null
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | {
+        kind: 'ok';
+        columns: Array<{ label: 'A' | 'B'; metrics: RetomarMetricsResult }>;
+      } = null;
+
+  /** Métricas agregadas no cartão "Retomar conversas" (todos os ciclos, A+B). */
+  private retomarSummaryPeriodDays: number = 7;
+  private retomarSummaryView:
+    | null
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | { kind: 'ok'; metrics: RetomarMetricsResult } = null;
+
+  /** Bloco Respostas Agênticas (independente do acordeão de Ciclos de contato). */
+  private isAgenticSectionExpanded: boolean = true;
+  private selectedAgenticRangeIndex: number | null = null;
+  private readonly agenticHiddenChatIds = new Set<string>();
+  private readonly agenticChecked = new Set<string>();
+  private readonly agenticDraftByChatId = new Map<string, string>();
+  /** Evita cliques duplicados enquanto a UI é re-renderizada durante geração em lote. */
+  private agenticBulkGenerating = false;
+  private agenticRegeneratingId: string | null = null;
 
   // Sistema de listas
   private listsManager: RetomarListsManager | null = null;
@@ -222,7 +275,17 @@ export class RetomarPanel {
     ];
     this.cyclePeopleExpanded = false;
     this.cycleMetricsExpanded = false;
+    this.cycleMetricsView = null;
+    this.retomarSummaryView = null;
+    this.retomarSummaryPeriodDays = 7;
     this.cycleSendMode = 'A';
+    this.isAgenticSectionExpanded = true;
+    this.selectedAgenticRangeIndex = null;
+    this.agenticHiddenChatIds.clear();
+    this.agenticChecked.clear();
+    this.agenticDraftByChatId.clear();
+    this.agenticBulkGenerating = false;
+    this.agenticRegeneratingId = null;
 
     try {
       await this.loadConfig();
@@ -296,7 +359,8 @@ export class RetomarPanel {
 
       if (
         result.retomarActivitySource === 'last-message' ||
-        result.retomarActivitySource === 'last-purchase'
+        result.retomarActivitySource === 'last-purchase' ||
+        result.retomarActivitySource === 'last-purchase-import'
       ) {
         this.selectedActivitySource = result.retomarActivitySource;
       }
@@ -306,6 +370,9 @@ export class RetomarPanel {
       this.listsManager = new RetomarListsManager(this.accountId);
       await this.listsManager.initialize();
       this.lists = this.listsManager.getLists();
+
+      // Carregar snapshot de import XLSX (se existir)
+      this.purchaseImportSnapshot = await loadSnapshot(this.accountId);
 
       // Carregar estado de envio em background
       const queueResult = await this.bridge.storageGet([
@@ -368,6 +435,15 @@ export class RetomarPanel {
     const now = new Date();
     const lastActivityByChat = await this.buildLastActivityByChat(this.selectedActivitySource);
     const lastOutgoingByContact = await messageDB.getLastOutgoingByContact();
+    let skipOutgoingForDebug = false;
+    try {
+      skipOutgoingForDebug =
+        typeof localStorage !== 'undefined' &&
+        localStorage.getItem(DEBUG_RETOMAR_SKIP_OUTGOING_KEY) === '1';
+    } catch {
+      skipOutgoingForDebug = false;
+    }
+    const lastOutgoingForEngine = skipOutgoingForDebug ? new Map() : lastOutgoingByContact;
     const contadorByChat = await retomarContador.getContadorMap(this.accountId);
     const chatIdsInLists = this.getChatIdsInListsSet();
 
@@ -384,15 +460,56 @@ export class RetomarPanel {
 
     let clients: InactiveClient[] = [];
 
-    const eligibleFromEngine = computeEligibleContacts({
+    const { eligible: eligibleFromEngine, stats: eligibilityStats } = computeEligibleContactsDiagnostics({
       now,
       lastActivityByChat,
-      lastOutgoingByContact,
+      lastOutgoingByContact: lastOutgoingForEngine,
       contadorByChat,
       ranges,
       minDistance,
       chatIdsInLists,
     });
+
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem(DEBUG_RETOMAR_ELIGIBILITY_KEY) === '1') {
+        const s = eligibilityStats;
+        const bloqFala = s.recentOutgoingBlockedPerRange;
+        const faixaStr = ranges.map((r, i) => `[${i}]${r.min}-${r.max}`).join(' ');
+        // Uma linha sempre legível (Chrome costuma colapsar objetos como "Object").
+        // eslint-disable-next-line no-console
+        console.info(
+          `[RETOMAR] elegibilidade mapa=${lastActivityByChat.size} scan=${s.totalScanned} entram=${s.included} | ` +
+            `lista=${s.excludedInList} foraRégua=${s.excludedOutsideRegua} fala<${minDistance}d=${s.excludedRecentOutgoing} ` +
+            `(porFaixa:${bloqFala.join(',')}) | cnt4=${s.excludedContadorComplete} cnt≠faixa=${s.excludedContadorMismatch} ` +
+            `diasNeg=${s.excludedNegativeDays} | rel=${relationType} src=${this.selectedActivitySource} | faixas ${faixaStr}` +
+            ` | skipFala=${skipOutgoingForDebug ? '1' : '0'}`
+        );
+        // eslint-disable-next-line no-console
+        console.info(
+          '[RETOMAR] elegibilidade (debug JSON)\n' +
+            JSON.stringify(
+              {
+                stats: eligibilityStats,
+                relationType,
+                minDistance,
+                activitySource: this.selectedActivitySource,
+                mapSize: lastActivityByChat.size,
+                skipOutgoingDebug: skipOutgoingForDebug,
+                faixas: ranges.map((r, i) => ({ i, min: r.min, max: r.max })),
+              },
+              null,
+              2
+            )
+        );
+        // eslint-disable-next-line no-console
+        console.info(
+          `[RETOMAR] Desligar debug eleg.: localStorage.removeItem("${DEBUG_RETOMAR_ELIGIBILITY_KEY}")` +
+            ` · skip fala: removeItem("${DEBUG_RETOMAR_SKIP_OUTGOING_KEY}")`
+        );
+      }
+    } catch {
+      /* localStorage indisponível */
+    }
 
     // Resolver nome via ClientDB (fonte forte) + fallback WhatsApp com “peneira”
     for (const value of eligibleFromEngine) {
@@ -447,6 +564,7 @@ export class RetomarPanel {
       }
     }
     this.updateStats();
+    await this.loadRetomarSummaryMetrics();
   }
 
   private async buildLastActivityByChat(source: ActivitySource): Promise<Map<string, LastActivityEntry>> {
@@ -466,6 +584,25 @@ export class RetomarPanel {
         });
       }
       return map;
+    }
+
+    if (source === 'last-purchase-import') {
+      if (!this.purchaseImportSnapshot || this.purchaseImportSnapshot.rows.length === 0) {
+        return new Map();
+      }
+      const lastIncomingByContact = await messageDB.getLastIncomingByContact();
+      const { lastActivityByChat, unmatchedCount } = resolveLastActivityFromSnapshot(
+        this.purchaseImportSnapshot.rows,
+        lastIncomingByContact
+      );
+      this.purchaseImportSummary = {
+        totalRows: this.purchaseImportSnapshot.rows.length,
+        matchedCount: lastActivityByChat.size,
+        unmatchedCount,
+        importedAt: this.purchaseImportSnapshot.importedAt,
+        filename: this.purchaseImportSnapshot.filename,
+      };
+      return lastActivityByChat;
     }
 
     const lastIncomingByContact = await messageDB.getLastIncomingByContact();
@@ -714,12 +851,16 @@ export class RetomarPanel {
     this.setupRelationTypeListeners();
     this.setupActivitySourceListeners();
     this.setupPeriodFiltersListeners();
+    this.setupAgenticListeners();
     this.setupContactsListeners();
     this.setupMessageInputListeners();
     this.setupHeaderActionsListeners();
     this.setupTestSectionListeners();
     this.setupSendButtonListener();
     this.setupListsListeners();
+    this.setupRetomarSummaryMetricsListener();
+    this.setupRetomarOutcomeExportListener();
+    this.setupPurchaseImportListener();
   }
 
   /**
@@ -843,7 +984,7 @@ export class RetomarPanel {
       el.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = (e.currentTarget as HTMLElement).dataset.activitySourceId;
-        if (id !== 'last-message' && id !== 'last-purchase') return;
+        if (id !== 'last-message' && id !== 'last-purchase' && id !== 'last-purchase-import') return;
 
         this.selectedActivitySource = id;
         this.activitySourceDropdownOpen = false;
@@ -858,6 +999,112 @@ export class RetomarPanel {
         this.updateUnifiedFlow();
       });
     });
+  }
+
+  private setupRetomarSummaryMetricsListener(): void {
+    const sel = this.container?.querySelector<HTMLSelectElement>('#retomar-summary-metrics-period');
+    sel?.addEventListener('change', async () => {
+      this.retomarSummaryPeriodDays = parseInt(sel.value, 10) || 7;
+      this.retomarSummaryView = { kind: 'loading' };
+      this.updateUnifiedFlow();
+      await this.loadRetomarSummaryMetrics();
+      this.updateUnifiedFlow();
+    });
+  }
+
+  private setupRetomarOutcomeExportListener(): void {
+    const btn = this.container?.querySelector<HTMLButtonElement>('#retomar-export-outcomes-btn');
+    btn?.addEventListener('click', () => {
+      void this.handleRetomarOutcomeExport();
+    });
+  }
+
+  /** Exporta outcomes Retomar respondidos (JSONL) no mesmo período do seletor de métricas resumo. */
+  private async handleRetomarOutcomeExport(): Promise<void> {
+    const btn = this.container?.querySelector<HTMLButtonElement>('#retomar-export-outcomes-btn');
+    if (btn) btn.disabled = true;
+    try {
+      const since = new Date(Date.now() - this.retomarSummaryPeriodDays * 24 * 60 * 60 * 1000);
+      const until = new Date();
+      const exportBridge = new MettriBridgeClient(120_000);
+      const { writer, exportStateStore } = createRetomarOutcomeBridgeDeps(this.accountId, exportBridge);
+      const r = await retomarOutcomeExporter({
+        accountId: this.accountId,
+        since,
+        until,
+        messageDB,
+        writer,
+        exportStateStore,
+      });
+      if (r.exportedCount > 0) {
+        this.addLog(
+          'success',
+          `Frases exportadas: ${r.exportedCount} linha(s) nova(s) em ${r.filePath}. (${r.skippedCount} envio(s) já estavam no arquivo.)`,
+        );
+      } else if (r.skippedCount > 0) {
+        this.addLog(
+          'info',
+          `Nada de novo para exportar: ${r.skippedCount} envio(s) deste período já estavam exportados.`,
+        );
+      } else {
+        this.addLog(
+          'info',
+          'Nenhum envio Retomar com resposta neste período — nada para exportar.',
+        );
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.addLog('error', `Exportar frases: ${msg}`);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  private setupPurchaseImportListener(): void {
+    const input = this.container?.querySelector<HTMLInputElement>('#retomar-xlsx-import-input');
+    input?.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        await this.handlePurchaseImportFile(file);
+      } catch (err) {
+        this.addLog('error', `Erro ao importar XLSX: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      }
+      // Limpar para permitir reimport do mesmo ficheiro
+      input.value = '';
+    });
+  }
+
+  private async handlePurchaseImportFile(file: File): Promise<void> {
+    this.addLog('info', `Importando "${file.name}"…`);
+    const buffer = await file.arrayBuffer();
+    const lastIncoming = await messageDB.getLastIncomingByContact();
+    const result = parseListaClientesXlsx(buffer, lastIncoming, file.name);
+
+    this.purchaseImportSnapshot = result.snapshot;
+    await saveSnapshot(this.accountId, result.snapshot);
+
+    const matched = result.lastActivityByChat.size;
+    const total = result.snapshot.rows.length;
+    this.purchaseImportSummary = {
+      totalRows: total,
+      matchedCount: matched,
+      unmatchedCount: result.warnings.unmatchedCount,
+      importedAt: result.snapshot.importedAt,
+      filename: file.name,
+    };
+
+    const msg = `Lista importada: ${total} linha(s), ${matched} com chat encontrado, ${result.warnings.unmatchedCount} sem match.`;
+    this.addLog('success', msg);
+
+    if (result.warnings.unmatchedCount > 0 && result.warnings.samples.length > 0) {
+      this.addLog('warning', `Telefones sem chat: ${result.warnings.samples.join(', ')}${result.warnings.unmatchedCount > 5 ? ' …' : ''}`);
+    }
+
+    // Recarregar lista com a nova fonte
+    this.selectedActivitySource = 'last-purchase-import';
+    await this.loadInactiveClients();
+    this.updateUnifiedFlow();
   }
 
   /**
@@ -1307,11 +1554,15 @@ export class RetomarPanel {
     });
 
     this.container?.querySelectorAll<HTMLInputElement>('input[name="retomar-cycle-send-mode"]').forEach(radio => {
-      radio.addEventListener('change', () => {
+      radio.addEventListener('change', async () => {
         const v = radio.value as 'A' | 'B' | 'AB';
         if (v === 'A' || v === 'B' || v === 'AB') {
           this.cycleSendMode = v;
           this.updateUnifiedFlow();
+          if (this.cycleMetricsExpanded && this.selectedRangeIndex != null) {
+            await this.loadCycleMetrics();
+            this.updateUnifiedFlow();
+          }
         }
       });
     });
@@ -1342,6 +1593,432 @@ export class RetomarPanel {
           this.updateUnifiedFlow();
         }
       });
+    });
+  }
+
+  /**
+   * Bloco colapsável Respostas Agênticas (abaixo de Ciclos de contato; acordeão independente).
+   */
+  private renderAgenticSection(): string {
+    return `
+      <div class="mettri-agentic-section-wrap space-y-1 mb-0 mt-1">
+        <div class="flex items-center justify-between py-2.5 border-b border-border/50 min-w-0">
+          <button
+            class="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors"
+            id="retomar-agentic-section-toggle"
+            type="button"
+          >
+            Respostas Agênticas
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="transition-transform shrink-0 ${this.isAgenticSectionExpanded ? 'rotate-180' : ''}" id="retomar-agentic-chevron" aria-hidden="true">
+              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        ${this.isAgenticSectionExpanded ? `
+          <div id="retomar-agentic-chamadas" class="mettri-chamadas-content">
+            ${this.renderAgenticChamadas()}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private getAgenticChamadasWithCounts(): Array<{
+    id: string;
+    label: string;
+    day: number;
+    count: number;
+    selected: boolean;
+    campaignLabel: string | null;
+    rangeIndex: number;
+  }> {
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    const n = Math.min(ranges.length, CHAMADAS_CONFIG.length);
+    if (n === 0) return [];
+
+    const result: Array<{
+      id: string;
+      label: string;
+      day: number;
+      count: number;
+      selected: boolean;
+      campaignLabel: string | null;
+      rangeIndex: number;
+    }> = [];
+
+    for (let i = 0; i < n; i++) {
+      const range = ranges[i];
+      const config = i < CHAMADAS_CONFIG.length - 1 ? CHAMADAS_CONFIG[i] : CHAMADAS_CONFIG[CHAMADAS_CONFIG.length - 1];
+
+      const count = this.eligibleClients.filter(c =>
+        isInRange(c.daysInactive, range) &&
+        c.status === 'pending' &&
+        !c.isSpecialList
+      ).length;
+
+      const isOpen = this.selectedAgenticRangeIndex === i;
+
+      result.push({
+        id: config.id,
+        label: config.label,
+        day: range.min,
+        count,
+        selected: isOpen,
+        campaignLabel: config.campaignLabel,
+        rangeIndex: i,
+      });
+    }
+
+    return result;
+  }
+
+  private getAgenticCycleClients(): InactiveClient[] {
+    if (this.selectedAgenticRangeIndex == null) return [];
+    const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+    const range = ranges[this.selectedAgenticRangeIndex];
+    if (!range) return [];
+    return this.eligibleClients.filter(c =>
+      isInRange(c.daysInactive, range) &&
+      c.status === 'pending' &&
+      !c.isSpecialList &&
+      !this.agenticHiddenChatIds.has(c.chatId)
+    );
+  }
+
+  private toggleAgenticRange(rangeIndex: number): void {
+    if (!Number.isFinite(rangeIndex) || rangeIndex < 0) return;
+
+    if (this.selectedAgenticRangeIndex === rangeIndex) {
+      this.selectedAgenticRangeIndex = null;
+      this.updateUnifiedFlow();
+      return;
+    }
+
+    const prev = this.selectedAgenticRangeIndex;
+    this.selectedAgenticRangeIndex = rangeIndex;
+
+    if (prev !== rangeIndex) {
+      const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+      const range = ranges[rangeIndex];
+      if (range) {
+        this.agenticChecked.clear();
+        this.eligibleClients
+          .filter(c =>
+            isInRange(c.daysInactive, range) &&
+            c.status === 'pending' &&
+            !c.isSpecialList &&
+            !this.agenticHiddenChatIds.has(c.chatId)
+          )
+          .forEach(c => this.agenticChecked.add(c.chatId));
+      }
+    }
+
+    this.updateUnifiedFlow();
+  }
+
+  private countAgenticSendQualifying(): number {
+    if (this.selectedAgenticRangeIndex == null) return 0;
+    let n = 0;
+    for (const c of this.getAgenticCycleClients()) {
+      if (!this.agenticChecked.has(c.chatId)) continue;
+      if ((this.agenticDraftByChatId.get(c.chatId) ?? '').trim() !== '') n++;
+    }
+    return n;
+  }
+
+  private renderAgenticChamadas(): string {
+    const chamadas = this.getAgenticChamadasWithCounts();
+    if (chamadas.length === 0) {
+      return '<div class="mettri-chamadas-list text-sm text-muted-foreground">Nenhum dia na régua.</div>';
+    }
+    return `
+      <div class="mettri-chamadas-list mettri-chamadas-accordion mettri-agentic-chamadas" role="list">
+        ${chamadas.map(c => `
+          <div class="mettri-chamadas-accordion-item" data-agentic-range-item="${c.rangeIndex}">
+            <button
+              type="button"
+              class="mettri-chamadas-row ${c.selected ? 'mettri-chamadas-row-selected' : ''}"
+              data-agentic-chamada-id="${this.escapeHtml(c.id)}"
+              data-agentic-range-index="${c.rangeIndex}"
+              role="listitem"
+            >
+              <span class="mettri-chamadas-selected-dot ${c.selected ? 'is-active' : 'is-inactive'}" aria-hidden="true"></span>
+              <span class="mettri-chamadas-row-label">${this.escapeHtml(c.label)}</span>
+              <span class="mettri-chamadas-row-count">${c.count} pessoa${c.count !== 1 ? 's' : ''}</span>
+              ${c.campaignLabel ? `
+              <span class="mettri-chamadas-campaign-pill" title="Campanha ativa">
+                <span class="mettri-dot-accent" aria-hidden="true"></span>
+                <span class="mettri-chamadas-campaign-pill-title">${this.escapeHtml(c.campaignLabel)}</span>
+              </span>` : ''}
+            </button>
+            ${c.selected ? this.renderAgenticDetailPanel() : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  private renderAgenticDetailPanel(): string {
+    if (this.selectedAgenticRangeIndex == null) return '';
+
+    const chamadas = this.getAgenticChamadasWithCounts();
+    const current = chamadas[this.selectedAgenticRangeIndex];
+    if (!current) return '';
+
+    const cycleClients = this.getAgenticCycleClients();
+    const n = cycleClients.length;
+    const checkedForGen = cycleClients.filter(c => this.agenticChecked.has(c.chatId)).length;
+    const qualifying = this.countAgenticSendQualifying();
+    const sendDisabled = this.testModeEnabled || this.isSending || qualifying === 0;
+    const genDisabled = this.isSending || checkedForGen === 0 || this.agenticBulkGenerating;
+
+    const rowsHtml =
+      n === 0
+        ? `<p class="text-xs text-muted-foreground">Nenhum contato elegível neste ciclo no momento.</p>`
+        : cycleClients
+            .map(client => {
+              const displayLabel = client.firstName || client.phone || 'Sem nome';
+              const isSelected = this.agenticChecked.has(client.chatId);
+              const draft = this.agenticDraftByChatId.get(client.chatId) ?? '';
+              return `
+        <div class="rounded-lg border border-border/50 bg-background/40 p-2 space-y-1.5" data-agentic-contact-row="${client.chatId}">
+          <div class="flex items-start gap-2">
+            <label class="cursor-pointer flex items-center pt-0.5 shrink-0">
+              <input type="checkbox" class="sr-only" data-agentic-check data-chat-id="${client.chatId}" ${isSelected ? 'checked' : ''}>
+              <div class="w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'border-primary bg-primary' : 'border-border bg-background'}">
+                ${isSelected ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M10 3L4.5 8.5L2 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+              </div>
+            </label>
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="text-xs font-medium text-foreground">${this.escapeHtml(displayLabel)}</span>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button type="button" class="text-[10px] px-2 py-0.5 rounded-md border border-border bg-background hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-agentic-regenerate data-chat-id="${client.chatId}" ${this.isSending || this.agenticRegeneratingId === client.chatId ? 'disabled' : ''}>Regenerar</button>
+                  <button type="button" class="text-[10px] px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors" data-agentic-hide data-chat-id="${client.chatId}">Ocultar</button>
+                </div>
+              </div>
+              <textarea rows="2" class="mettri-agentic-draft-textarea w-full rounded-md border text-xs px-2 py-1.5 outline-none resize-none text-neutral-900 bg-white placeholder:text-neutral-600" data-agentic-draft data-chat-id="${client.chatId}" placeholder="Texto para este contato...">${this.escapeHtml(draft)}</textarea>
+            </div>
+          </div>
+        </div>`;
+            })
+            .join('');
+
+    return `
+      <div class="mt-2 mb-2 rounded-xl border border-border/60 bg-background/60 p-3 space-y-3 mettri-agentic-accordion-body" data-agentic-detail>
+        <p class="mettri-agentic-instruction text-[11px] leading-snug text-neutral-700">
+          IA usa o histórico (última mensagem do cliente e sua última retomar, se houver). Revise o texto antes de enviar.
+        </p>
+        ${rowsHtml}
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button type="button" id="retomar-agentic-generate" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/50 text-primary text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${genDisabled ? 'disabled' : ''}>
+            Gerar textos para selecionados
+          </button>
+          <button type="button" id="retomar-agentic-send" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${sendDisabled ? 'disabled' : ''}>
+            Enviar${qualifying > 0 ? ` (${qualifying})` : ''}
+          </button>
+        </div>
+        ${this.testModeEnabled ? `<p class="text-[10px] text-amber-600/90">Desative &quot;Simular envio&quot; para enviar em massa aqui.</p>` : ''}
+        ${!this.testModeEnabled && qualifying === 0 && n > 0 ? `<p class="text-[10px] text-muted-foreground">Marque linhas e preencha o texto para habilitar Enviar.</p>` : ''}
+      </div>
+    `;
+  }
+
+  private async runAgenticGenerateForChatIds(chatIds: string[]): Promise<void> {
+    for (const chatId of chatIds) {
+      const client = this.getAgenticCycleClients().find(c => c.chatId === chatId);
+      const label = client?.firstName || client?.phone || chatId;
+      try {
+        const contexts = await retomarContextResolver({
+          chatIds: [chatId],
+          accountId: this.accountId,
+          messageDB,
+        });
+        let ctx = contexts[0];
+        if (!ctx) {
+          // Lista importada / chat sem mensagens capturadas: antes abortava; agora contexto mínimo para a IA.
+          const name = (client?.firstName || client?.chatName || '').trim() || '(nome não informado)';
+          const days = client?.daysInactive ?? 0;
+          const synthetic = `[Sem mensagem de texto do cliente no histórico local] ${name}, ~${days} dias de inatividade na régua.`;
+          ctx = {
+            chatId,
+            chatName: client?.chatName ?? chatId,
+            contextText: `Cliente: ${synthetic}`,
+            clientText: synthetic,
+            conversationThread: synthetic,
+          };
+          this.addLog(
+            'info',
+            `${label}: sem histórico de texto no banco — gerando com nome + dias inativo.`,
+          );
+        }
+        const rangeIdx = this.selectedAgenticRangeIndex ?? 0;
+        const text = await suggestRedacaoRetomar(this.bridge, {
+          firstName: client?.firstName ?? '',
+          cycleIndex: rangeIdx + 1,
+          lastIncomingFromClient: ctx.clientText,
+          lastRetomarSentText: ctx.attendantText ?? '',
+          conversationThread: ctx.conversationThread,
+        });
+        this.agenticDraftByChatId.set(chatId, text);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.addLog('error', `${label}: ${msg}`);
+      }
+      this.updateUnifiedFlow();
+    }
+  }
+
+  private async runAgenticSendFromPanel(): Promise<void> {
+    if (this.testModeEnabled) {
+      this.addLog('warning', 'Desative Simular envio para enviar pelas Respostas Agênticas.');
+      return;
+    }
+    if (this.selectedAgenticRangeIndex == null) return;
+
+    const cycleChatIds: string[] = [];
+    this.sendingPayloadByChatId.clear();
+
+    for (const c of this.getAgenticCycleClients()) {
+      if (!this.agenticChecked.has(c.chatId)) continue;
+      const text = (this.agenticDraftByChatId.get(c.chatId) ?? '').trim();
+      if (!text) continue;
+      cycleChatIds.push(c.chatId);
+      this.sendingPayloadByChatId.set(c.chatId, { text, variant: 'A' });
+    }
+
+    if (cycleChatIds.length === 0) {
+      this.addLog('warning', 'Nenhum contato marcado com texto para enviar.');
+      return;
+    }
+
+    this.pendingChamadaIndex = this.selectedAgenticRangeIndex;
+    this.sendingQueue = cycleChatIds.slice();
+    cycleChatIds.forEach(id => this.agenticChecked.delete(id));
+
+    await this.saveQueueState();
+    this.sendingProgress = {
+      total: this.sendingQueue.length,
+      sent: 0,
+      skipped: 0,
+      errors: 0,
+      current: null,
+      startTime: Date.now(),
+    };
+    this.isSending = true;
+    this.addLog('info', `Respostas Agênticas: enviando para ${this.sendingQueue.length} cliente(s)...`);
+    this.updateUnifiedFlow();
+    await this.processQueue();
+  }
+
+  private setupAgenticListeners(): void {
+    const sectionToggle = this.container?.querySelector('#retomar-agentic-section-toggle');
+    sectionToggle?.addEventListener('click', () => {
+      this.isAgenticSectionExpanded = !this.isAgenticSectionExpanded;
+      this.updateUnifiedFlow();
+    });
+
+    this.container?.querySelectorAll<HTMLButtonElement>('[data-agentic-range-index]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const raw = btn.dataset.agenticRangeIndex;
+        if (raw == null) return;
+        const rangeIndex = parseInt(raw, 10);
+        if (Number.isFinite(rangeIndex)) this.toggleAgenticRange(rangeIndex);
+      });
+    });
+
+    const agenticDetail = this.container?.querySelector('[data-agentic-detail]');
+    agenticDetail?.querySelectorAll<HTMLInputElement>('input[data-agentic-check][data-chat-id]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const chatId = cb.dataset.chatId;
+        if (!chatId) return;
+        if (cb.checked) this.agenticChecked.add(chatId);
+        else this.agenticChecked.delete(chatId);
+        this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLTextAreaElement>('textarea[data-agentic-draft][data-chat-id]').forEach(ta => {
+      ta.addEventListener('input', e => {
+        const id = (e.target as HTMLTextAreaElement).dataset.chatId;
+        if (id) this.agenticDraftByChatId.set(id, (e.target as HTMLTextAreaElement).value);
+        this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll('[data-agentic-contact-row]').forEach(row => {
+      row.addEventListener('click', e => {
+        const t = e.target as HTMLElement;
+        if (t.closest('textarea') || t.closest('button') || t.closest('label')) return;
+        const chatId = (row as HTMLElement).dataset.agenticContactRow;
+        if (!chatId) return;
+        const checkbox = row.querySelector<HTMLInputElement>('input[data-agentic-check][data-chat-id]');
+        if (checkbox) {
+          checkbox.checked = !checkbox.checked;
+          if (checkbox.checked) this.agenticChecked.add(chatId);
+          else this.agenticChecked.delete(chatId);
+          this.updateUnifiedFlow();
+        }
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-regenerate]').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        const chatId = btn.dataset.chatId;
+        if (!chatId) return;
+        this.agenticRegeneratingId = chatId;
+        this.updateUnifiedFlow();
+        try {
+          await this.runAgenticGenerateForChatIds([chatId]);
+        } finally {
+          this.agenticRegeneratingId = null;
+          this.updateUnifiedFlow();
+        }
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-hide]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const chatId = btn.dataset.chatId;
+        if (!chatId) return;
+        this.agenticHiddenChatIds.add(chatId);
+        this.agenticChecked.delete(chatId);
+        this.agenticDraftByChatId.delete(chatId);
+        this.updateUnifiedFlow();
+      });
+    });
+
+    const genBtn = this.container?.querySelector<HTMLButtonElement>('#retomar-agentic-generate');
+    genBtn?.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (genBtn.hasAttribute('disabled')) return;
+      const ids = this.getAgenticCycleClients()
+        .filter(c => this.agenticChecked.has(c.chatId))
+        .map(c => c.chatId);
+      if (ids.length === 0) return;
+      this.agenticBulkGenerating = true;
+      this.updateUnifiedFlow();
+      try {
+        await this.runAgenticGenerateForChatIds(ids);
+      } finally {
+        this.agenticBulkGenerating = false;
+        this.updateUnifiedFlow();
+      }
+    });
+
+    const sendBtn = this.container?.querySelector<HTMLButtonElement>('#retomar-agentic-send');
+    sendBtn?.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (sendBtn.hasAttribute('disabled')) return;
+      try {
+        await this.runAgenticSendFromPanel();
+      } catch (err) {
+        this.addLog('error', `Envio agêntico: ${err instanceof Error ? err.message : String(err)}`);
+      }
     });
   }
 
@@ -1396,6 +2073,9 @@ export class RetomarPanel {
 
     this.calculatePeriodFilters();
     this.updateUnifiedFlow();
+    if (this.cycleMetricsExpanded && this.selectedRangeIndex != null) {
+      void this.loadCycleMetrics().then(() => this.updateUnifiedFlow());
+    }
     const chamadaLabel = this.getChamadaLabelByRangeIndex(rangeIndex);
     this.addLog('info', `${allSelected ? 'Deselecionados' : 'Selecionados'} ${clientsInRange.length} cliente(s) da ${chamadaLabel}`);
   }
@@ -2039,18 +2719,8 @@ export class RetomarPanel {
             </div>
           </div>
         </div>
-        <div class="mt-3 pt-3 border-t border-border/50 flex items-baseline flex-wrap gap-x-3 gap-y-0 text-xs mettri-retomar-metrics">
-          <span class="text-muted-foreground">Abertura</span>
-          <span class="font-medium text-foreground tabular-nums">78%</span>
-          <span class="text-muted-foreground"> · </span>
-          <span class="text-muted-foreground">Resposta</span>
-          <span class="font-medium text-foreground tabular-nums">32%</span>
-          <span class="text-muted-foreground"> · </span>
-          <span class="text-muted-foreground">Conversão</span>
-          <span class="font-medium text-foreground tabular-nums">14%</span>
-          <span class="text-muted-foreground"> · </span>
-          <span class="text-muted-foreground">Últimos 7 dias</span>
-        </div>
+        ${this.renderPurchaseImportSection()}
+        ${this.renderRetomarSummaryMetricsSection()}
       </div>
 
       <!-- SEÇÃO CICLOS DE CONTATO (Colapsável) -->
@@ -2084,6 +2754,8 @@ export class RetomarPanel {
           </div>
         ` : ''}
       </div>
+
+      ${this.renderAgenticSection()}
 
       <!-- SEÇÃO DE ETIQUETAS (Colapsável) -->
       ${this.renderLists()}
@@ -2371,42 +3043,29 @@ export class RetomarPanel {
       { value: '7', label: '7 dias' },
       { value: '30', label: '30 dias' },
     ];
-    const md = this.cycleMetricsData;
+    const mv = this.cycleMetricsView;
+    const metricsColumnsHtml =
+      !mv || mv.kind === 'loading'
+        ? `<div class="text-[11px] text-muted-foreground">Carregando...</div>`
+        : mv.kind === 'error'
+          ? `<div class="text-[11px] text-destructive">${this.escapeHtml(mv.message)}</div>`
+          : mv.columns.length > 1
+            ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${mv.columns
+                .map(
+                  col => `
+            <div class="rounded-md border border-border/50 p-2 space-y-1">
+              <div class="text-[10px] font-semibold text-muted-foreground">Variante ${col.label}</div>
+              ${this.renderRetomarCycleMetricsRows(col.metrics)}
+            </div>`,
+                )
+                .join('')}</div>`
+            : `<div class="rounded-md border border-border/50 p-2">${this.renderRetomarCycleMetricsRows(mv.columns[0].metrics)}</div>`;
     const metricsContent = this.cycleMetricsExpanded ? `
       <div class="mt-2 space-y-2 pl-0">
         <select class="text-xs rounded border border-border bg-background px-2 py-1" id="retomar-cycle-metrics-period">
           ${metricsPeriodOptions.map(o => `<option value="${o.value}" ${o.value === String(this.cycleMetricsPeriodDays) ? 'selected' : ''}>${o.label}</option>`).join('')}
         </select>
-        ${md ? `
-        <div class="text-[11px] space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Envios totais:</span>
-            <span class="font-medium text-foreground tabular-nums">${md.total}</span>
-          </div>
-          ${this.cycleSendMode === 'AB' || md.sendsB > 0 ? `
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Variante A:</span>
-            <span class="font-medium text-foreground tabular-nums">${md.sendsA} envios</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Variante B:</span>
-            <span class="font-medium text-foreground tabular-nums">${md.sendsB} envios</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Melhor:</span>
-            <span class="font-medium text-foreground">${md.sendsA >= md.sendsB ? 'A' : 'B'} (mais envios)</span>
-          </div>
-          ` : `
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">Variante A:</span>
-            <span class="font-medium text-foreground tabular-nums">${md.sendsA} envios</span>
-          </div>
-          `}
-          <div class="text-[10px] text-muted-foreground/60">Respostas e compras — em breve</div>
-        </div>
-        ` : `
-        <div class="text-[11px] text-muted-foreground">Carregando...</div>
-        `}
+        ${metricsColumnsHtml}
       </div>
     ` : '';
 
@@ -2770,30 +3429,192 @@ export class RetomarPanel {
     }
   }
 
+  private formatRetomarResponseRate(m: RetomarMetricsResult): string {
+    return Math.abs(m.responseRate - Math.round(m.responseRate)) < 1e-6
+      ? `${Math.round(m.responseRate)}`
+      : m.responseRate.toFixed(1);
+  }
+
+  private formatRetomarAvgMinutes(m: RetomarMetricsResult): string {
+    return m.avgResponseTimeMinutes === null ? '—' : `${m.avgResponseTimeMinutes.toFixed(1)} min`;
+  }
+
+  /**
+   * Seção de import de lista XLSX — visível apenas quando fonte = last-purchase-import.
+   */
+  private renderPurchaseImportSection(): string {
+    if (this.selectedActivitySource !== 'last-purchase-import') return '';
+
+    const s = this.purchaseImportSummary;
+    let infoHtml = '';
+    if (s) {
+      const importedDate = new Date(s.importedAt);
+      const ageMs = Date.now() - importedDate.getTime();
+      const ageDays = Math.floor(ageMs / 86_400_000);
+      const dateStr = importedDate.toLocaleDateString('pt-BR');
+      const staleWarning = ageDays > 7
+        ? `<span class="text-yellow-600 text-xs ml-1">(importado há ${ageDays} dias — considere reimportar)</span>`
+        : '';
+      infoHtml = `
+        <div class="mt-1 text-xs text-muted-foreground">
+          ${s.filename ? `<span class="font-medium">${this.escapeHtml(s.filename)}</span> · ` : ''}
+          ${s.totalRows} linha(s) · ${s.matchedCount} com chat · ${s.unmatchedCount} sem match
+          · importado em ${dateStr}${staleWarning}
+        </div>`;
+    } else if (!this.purchaseImportSnapshot) {
+      infoHtml = `<div class="mt-1 text-xs text-muted-foreground">Nenhuma lista importada ainda. Selecione um arquivo XLSX.</div>`;
+    }
+
+    return `
+      <div class="mt-3 flex flex-col gap-1">
+        <label class="text-xs font-medium text-foreground cursor-pointer inline-flex items-center gap-2">
+          <span>Importar lista (.xlsx)</span>
+          <input
+            id="retomar-xlsx-import-input"
+            type="file"
+            accept=".xlsx"
+            class="text-xs text-muted-foreground file:mr-2 file:text-xs file:rounded file:border-0 file:bg-primary/10 file:text-primary file:cursor-pointer hover:file:bg-primary/20 cursor-pointer"
+          />
+        </label>
+        ${infoHtml}
+      </div>`;
+  }
+
+  /**
+   * Cartão "Retomar conversas": métricas reais (todos os ciclos, variantes A e B).
+   */
+  private renderRetomarSummaryMetricsSection(): string {
+    const periodOpts = [
+      { value: '7', label: '7 dias' },
+      { value: '30', label: '30 dias' },
+    ];
+    const v = this.retomarSummaryView;
+    let metricsHtml: string;
+    if (!v || v.kind === 'loading') {
+      metricsHtml = `<span class="text-muted-foreground">Carregando métricas…</span>`;
+    } else if (v.kind === 'error') {
+      metricsHtml = `<span class="text-destructive">${this.escapeHtml(v.message)}</span>`;
+    } else {
+      const m = v.metrics;
+      const rateStr = this.formatRetomarResponseRate(m);
+      const avgStr = this.formatRetomarAvgMinutes(m);
+      metricsHtml = `
+          <span class="text-muted-foreground">Envios</span>
+          <span class="font-medium text-foreground tabular-nums">${m.sentCount}</span>
+          <span class="text-muted-foreground"> · </span>
+          <span class="text-muted-foreground">Respostas</span>
+          <span class="font-medium text-foreground tabular-nums">${m.respondedCount}</span>
+          <span class="text-muted-foreground"> · </span>
+          <span class="text-muted-foreground">Taxa</span>
+          <span class="font-medium text-foreground tabular-nums">${rateStr}%</span>
+          <span class="text-muted-foreground"> · </span>
+          <span class="text-muted-foreground">Tempo médio</span>
+          <span class="font-medium text-foreground tabular-nums">${avgStr}</span>`;
+    }
+    return `
+        <div class="mt-3 pt-3 border-t border-border/50 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs mettri-retomar-metrics">
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <select id="retomar-summary-metrics-period" class="text-xs rounded border border-border bg-background px-2 py-1" aria-label="Período das métricas Retomar">
+              ${periodOpts
+                .map(
+                  o =>
+                    `<option value="${o.value}" ${o.value === String(this.retomarSummaryPeriodDays) ? 'selected' : ''}>${o.label}</option>`,
+                )
+                .join('')}
+            </select>
+            <button type="button" id="retomar-export-outcomes-btn" class="inline-flex items-center gap-1 rounded-md border border-primary/50 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/15 transition-colors" title="Baixa JSONL com cada envio Retomar que teve resposta (textos truncados). Usa o mesmo período acima.">
+              Exportar frases (JSONL)
+            </button>
+          </div>
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0 min-w-0">${metricsHtml}</div>
+        </div>`;
+  }
+
+  /** Agrega envios Retomar da conta no período (sem filtrar ciclo nem variante). */
+  private async loadRetomarSummaryMetrics(): Promise<void> {
+    const since = new Date(Date.now() - this.retomarSummaryPeriodDays * 24 * 60 * 60 * 1000);
+    const until = new Date();
+    try {
+      const metrics = await retomarMetricsResolver({
+        accountId: this.accountId,
+        since,
+        until,
+        messageDB,
+      });
+      this.retomarSummaryView = { kind: 'ok', metrics };
+    } catch (err) {
+      console.warn('[RETOMAR] Falha ao carregar métricas resumo:', err);
+      this.retomarSummaryView = {
+        kind: 'error',
+        message: 'Não foi possível carregar métricas.',
+      };
+    }
+  }
+
   /**
    * Carrega métricas reais de envios Retomar para o ciclo selecionado.
    */
+  private renderRetomarCycleMetricsRows(m: RetomarMetricsResult): string {
+    const rateStr = this.formatRetomarResponseRate(m);
+    const avgStr = this.formatRetomarAvgMinutes(m);
+    return `
+    <div class="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-[11px]">
+      <span class="text-muted-foreground">Envios</span>
+      <span class="font-medium text-foreground tabular-nums text-right">${m.sentCount}</span>
+      <span class="text-muted-foreground">Respostas</span>
+      <span class="font-medium text-foreground tabular-nums text-right">${m.respondedCount}</span>
+      <span class="text-muted-foreground">Taxa</span>
+      <span class="font-medium text-foreground tabular-nums text-right">${rateStr}%</span>
+      <span class="text-muted-foreground">Tempo médio</span>
+      <span class="font-medium text-foreground tabular-nums text-right">${avgStr}</span>
+    </div>`;
+  }
+
   private async loadCycleMetrics(): Promise<void> {
     if (this.selectedRangeIndex == null) {
-      this.cycleMetricsData = null;
+      this.cycleMetricsView = null;
       return;
     }
+    this.cycleMetricsView = { kind: 'loading' };
+    this.updateUnifiedFlow();
+
+    const cycleIndex = (this.selectedRangeIndex + 1) as 1 | 2 | 3 | 4;
+    const since = new Date(Date.now() - this.cycleMetricsPeriodDays * 24 * 60 * 60 * 1000);
+    const until = new Date();
+    const base = {
+      accountId: this.accountId,
+      since,
+      until,
+      cycleIndex,
+      messageDB,
+    } as const;
+
     try {
-      const cycleIndex = (this.selectedRangeIndex + 1) as 1 | 2 | 3 | 4;
-      const since = new Date(Date.now() - this.cycleMetricsPeriodDays * 24 * 60 * 60 * 1000);
-      const until = new Date();
-      const entries = await messageDB.getRetomarSends(this.accountId, { cycleIndex, since, until });
-      let sendsA = 0;
-      let sendsB = 0;
-      for (const e of entries) {
-        if (e.retomarMeta?.variant === 'A') sendsA++;
-        else if (e.retomarMeta?.variant === 'B') sendsB++;
+      if (this.cycleSendMode === 'AB') {
+        const [metricsA, metricsB] = await Promise.all([
+          retomarMetricsResolver({ ...base, variant: 'A' }),
+          retomarMetricsResolver({ ...base, variant: 'B' }),
+        ]);
+        this.cycleMetricsView = {
+          kind: 'ok',
+          columns: [
+            { label: 'A', metrics: metricsA },
+            { label: 'B', metrics: metricsB },
+          ],
+        };
+      } else {
+        const variant = this.cycleSendMode === 'B' ? 'B' : 'A';
+        const metrics = await retomarMetricsResolver({ ...base, variant });
+        this.cycleMetricsView = { kind: 'ok', columns: [{ label: variant, metrics }] };
       }
-      this.cycleMetricsData = { sendsA, sendsB, total: entries.length };
     } catch (err) {
       console.warn('[RETOMAR] Falha ao carregar métricas:', err);
-      this.cycleMetricsData = null;
+      this.cycleMetricsView = {
+        kind: 'error',
+        message: 'Não foi possível carregar métricas.',
+      };
     }
+    this.updateUnifiedFlow();
   }
 
   /**
@@ -2880,17 +3701,14 @@ export class RetomarPanel {
       `);
     }
 
-    // Pré-visualização das faixas "Último contato".
-    const previewParts: string[] = [];
-    for (let i = 0; i < days.length; i++) {
-      const start = days[i];
-      const end = days[i + 1] !== undefined ? days[i + 1] - 1 : null;
-      if (end !== null) {
-        previewParts.push(`${start}–${end} dias`);
-      } else {
-        previewParts.push(`${start}+ dias`);
-      }
-    }
+    // Pré-visualização das faixas "Último contato" (usa ranges reais, incl. teto da 4ª faixa).
+    const rangesPreview = getRangesForType(
+      this.selectedRelationType ?? 'frequente',
+      this.customRelationIntervalDays
+    );
+    const previewParts = rangesPreview.map(r =>
+      Number.isFinite(r.max) ? `${r.min}–${r.max} dias` : `${r.min}+ dias`
+    );
 
     return `
       <div class="mettri-relation-type-custom-advanced">
@@ -3254,6 +4072,7 @@ export class RetomarPanel {
     } else if (this.isPaused) {
       this.addLog('info', 'Envio pausado');
     }
+    await this.loadRetomarSummaryMetrics();
     this.updateUnifiedFlow();
   }
 

@@ -1,5 +1,5 @@
 import type { AtendimentoViewModel } from './view-model';
-import type { RagConsultaDebugInfo } from '../../../modules/rag';
+import type { RagConsultaDebugInfo, RagExperimentStats } from '../../../modules/rag';
 
 type ActionHandler = (actionId: string, payload?: unknown) => void;
 type RetomarEtiquetaVm = Extract<AtendimentoViewModel, { kind: 'ready' }>['retomar']['etiquetas'][number];
@@ -25,6 +25,12 @@ export class AtendimentoPanel {
   private ragSimilarCount: number | null = null;
   private ragDebugOpen: boolean = false;
   private ragDebugInfo: RagConsultaDebugInfo | null = null;
+  /** Agregados do mini-dashboard: semana (percentuais/médias), hoje e total (~1 ano de chaves). */
+  private ragExperimentStatsWeek: RagExperimentStats | null = null;
+  private ragExperimentStatsToday: RagExperimentStats | null = null;
+  private ragExperimentStatsTotal: RagExperimentStats | null = null;
+  /** Persistido via bridge em `mettri:atendimento:rag:auto-suggest`. */
+  public ragAutoSuggestEnabled: boolean = false;
 
   constructor(params: { onAction?: ActionHandler } = {}) {
     this.onAction = params.onAction ?? null;
@@ -171,6 +177,9 @@ export class AtendimentoPanel {
         </div>
       </div>
     `;
+    if (this.vm.kind === 'ready') {
+      this.bindRagAutoSuggestListener();
+    }
   }
 
   private bindListeners(): void {
@@ -340,6 +349,20 @@ export class AtendimentoPanel {
 
     // Se drawer começar aberto (raramente), garantir wiring
     this.bindNotesListeners();
+  }
+
+  private bindRagAutoSuggestListener(): void {
+    if (!this.container) return;
+    const el = this.container.querySelector('[data-field="rag-auto-suggest"]') as HTMLInputElement | null;
+    if (!el) return;
+    el.checked = this.ragAutoSuggestEnabled;
+    el.title =
+      'Quando ligado, gera sugestão ao chegar mensagem nova do cliente (mesmo fluxo RAG que o botão).';
+    el.addEventListener('change', () => {
+      const checked = el.checked;
+      this.ragAutoSuggestEnabled = checked;
+      this.onAction?.('rag:auto-suggest:changed', { enabled: checked });
+    });
   }
 
   private bindNotesListeners(): void {
@@ -547,7 +570,9 @@ export class AtendimentoPanel {
     if (!this.vm || this.vm.kind !== 'ready') return '';
 
     const headerTitle = 'Resposta sugerida';
-    const placeholder = 'Clique em \'Gerar sugestão\' para usar conversas passadas como base.';
+    const placeholder =
+      'Use \'Gerar sugestão\' ou ligue o modo automático para usar conversas passadas como base.';
+    const autoChecked = this.ragAutoSuggestEnabled ? 'checked' : '';
     const textareaValue = this.escapeHtml(this.ragSuggestionText);
     const textareaDisabled = this.ragLoading ? 'disabled' : '';
     const textareaPlaceholder = this.escapeAttr(placeholder);
@@ -612,6 +637,15 @@ export class AtendimentoPanel {
         </div>
         ${this.ragBlockExpanded ? `
         <div class="mt-2">
+          <label class="mt-1 mb-2 flex items-center gap-2 text-[11px] text-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              data-field="rag-auto-suggest"
+              class="rounded border-border/40"
+              ${autoChecked}
+            />
+            <span>Gerar sugestão automático</span>
+          </label>
           ${textareaContent}
           ${similarLine}
           <div class="mt-2 flex gap-2">
@@ -700,6 +734,8 @@ export class AtendimentoPanel {
       })
       .join('');
 
+    const experimentSummary = this.renderRagExperimentSummary();
+
     return `
       <div class="mt-3 border-t border-border/20 pt-3 space-y-3">
         <div class="text-[11px] font-semibold text-foreground">Detalhes técnicos do RAG</div>
@@ -759,6 +795,130 @@ ${this.escapeHtml(info.promptUser)}
           <pre class="rounded-lg border border-border/30 bg-background/60 p-2 text-[11px] text-muted-foreground whitespace-pre-wrap max-h-24 overflow-auto">
 ${this.escapeHtml(info.suggestionOriginal)}
           </pre>
+        </div>
+
+        ${info.evaluation ? `
+        <div class="space-y-1">
+          <div class="text-[11px] font-medium text-foreground">Avaliação da sugestão</div>
+          <div class="text-[11px] text-muted-foreground">
+            Relevância: ${info.evaluation.scoreRelevance.toFixed(2).replace('.', ',')}
+            · Fidelidade: ${info.evaluation.scoreFaithfulness.toFixed(2).replace('.', ',')}
+            · Estilo: ${info.evaluation.scoreStyle.toFixed(2).replace('.', ',')}
+          </div>
+        </div>
+        ` : ''}
+
+        ${info.baselineNoRag ? `
+        <div class="space-y-1">
+          <div class="text-[11px] font-medium text-foreground">Resposta sem RAG (baseline)</div>
+          <pre class="rounded-lg border border-border/30 bg-background/60 p-2 text-[11px] text-muted-foreground whitespace-pre-wrap max-h-24 overflow-auto">${this.escapeHtml(info.baselineNoRag.suggestion)}</pre>
+          <div class="text-[11px] text-muted-foreground">
+            Relevância: ${info.baselineNoRag.evaluation.scoreRelevance.toFixed(2).replace('.', ',')}
+            · Fidelidade: ${info.baselineNoRag.evaluation.scoreFaithfulness.toFixed(2).replace('.', ',')}
+            · Estilo: ${info.baselineNoRag.evaluation.scoreStyle.toFixed(2).replace('.', ',')}
+          </div>
+        </div>
+        ` : ''}
+
+        ${experimentSummary}
+      </div>
+    `;
+  }
+
+  /** Sincroniza bloco RAG com o estado global do `rag-mettri-controller` antes do `render`. */
+  public setRagConsultationFieldsFromController(p: {
+    suggestionText: string;
+    loading: boolean;
+    similarCount: number | null;
+    debugInfo: RagConsultaDebugInfo | null;
+  }): void {
+    this.ragSuggestionText = p.suggestionText;
+    this.ragLoading = p.loading;
+    this.ragSimilarCount = p.similarCount;
+    this.ragDebugInfo = p.debugInfo;
+  }
+
+  public setRagExperimentStatsBundle(
+    week: RagExperimentStats | null,
+    today: RagExperimentStats | null,
+    total: RagExperimentStats | null,
+  ): void {
+    this.ragExperimentStatsWeek = week;
+    this.ragExperimentStatsToday = today;
+    this.ragExperimentStatsTotal = total;
+  }
+
+  private renderRagExperimentSummary(): string {
+    const stats = this.ragExperimentStatsWeek;
+    const todayN = this.ragExperimentStatsToday?.totalEvents;
+    const totalN = this.ragExperimentStatsTotal?.totalEvents;
+
+    const countsLine =
+      todayN != null || totalN != null
+        ? `<div class="text-[11px] text-muted-foreground">Mensagens avaliadas (hoje): ${todayN ?? 0} · Total no experimento: ${totalN ?? 0}</div>`
+        : '';
+
+    if (!stats) {
+      return `
+        <div class="space-y-1">
+          <div class="text-[11px] font-medium text-foreground">Dados do experimento (amostra)</div>
+          ${countsLine}
+          <div class="text-[11px] text-muted-foreground">
+            Ainda não há dados suficientes do experimento RAG vs baseline para este período.
+          </div>
+          <button
+            type="button"
+            class="mt-2 h-8 px-3 rounded-xl border border-border/30 bg-secondary/20 text-[11px] text-foreground hover:bg-secondary/30"
+            data-action="rag:export-experiment"
+          >
+            Exportar JSON do experimento (completo)
+          </button>
+        </div>
+      `;
+    }
+
+    const totalLabel = stats.totalEvents === 1 ? '1 mensagem avaliada' : `${stats.totalEvents} mensagens avaliadas`;
+
+    const formatPct = (value: number): string =>
+      `${value.toFixed(0).replace('.', ',')}%`;
+
+    const ragBetter = formatPct(stats.ragBetterPct);
+    const baselineBetter = formatPct(stats.baselineBetterPct);
+    const tie = formatPct(stats.tiePct);
+
+    const fmt = (v: number): string => v.toFixed(2).replace('.', ',');
+
+    const avgRag = `RAG — Relevância ${fmt(stats.averages.rag.relevance)}, Fidelidade ${fmt(
+      stats.averages.rag.faithfulness,
+    )}, Estilo ${fmt(stats.averages.rag.style)}`;
+    const avgBase = `Baseline — Relevância ${fmt(stats.averages.baseline.relevance)}, Fidelidade ${fmt(
+      stats.averages.baseline.faithfulness,
+    )}, Estilo ${fmt(stats.averages.baseline.style)}`;
+
+    return `
+      <div class="space-y-1">
+        <div class="text-[11px] font-medium text-foreground">Dados do experimento (amostra)</div>
+        ${countsLine}
+        <div class="text-[11px] text-muted-foreground">
+          ${this.escapeHtml(totalLabel)} (últimos 7 dias) — RAG melhor em ${this.escapeHtml(ragBetter)}, empate em ${this.escapeHtml(
+            tie,
+          )}, baseline melhor em ${this.escapeHtml(baselineBetter)}.
+        </div>
+        <div class="text-[11px] text-muted-foreground">
+          ${this.escapeHtml(avgRag)}
+        </div>
+        <div class="text-[11px] text-muted-foreground">
+          ${this.escapeHtml(avgBase)}
+        </div>
+        <button
+          type="button"
+          class="mt-2 h-8 px-3 rounded-xl border border-border/30 bg-secondary/20 text-[11px] text-foreground hover:bg-secondary/30"
+          data-action="rag:export-experiment"
+        >
+          Exportar JSON do experimento (completo)
+        </button>
+        <div class="text-[10px] text-muted-foreground">
+          Inclui todos os eventos da janela, scores, textos e blocos de 100 para série temporal. Arquivo pode ficar grande.
         </div>
       </div>
     `;

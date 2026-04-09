@@ -4,7 +4,7 @@
  */
 
 import { whatsappInterceptors } from '../whatsapp-interceptors';
-import { digitsOnly } from '../../storage/client-db';
+import { digitsOnly, normalizePhoneDigitsWithAliases } from '../../storage/client-db';
 
 /**
  * Normaliza entrada para número puro (extrai dígitos de qualquer formato).
@@ -19,29 +19,69 @@ function normalizeInputToPhoneNumber(chatIdOrPhone: string): string {
   return digitsOnly(chatIdOrPhone);
 }
 
+/** Conjunto de aliases do mesmo telefone (BR com/sem 55 e com/sem 9). */
+function aliasDigitSet(phoneDigits: string): Set<string> {
+  return new Set(normalizePhoneDigitsWithAliases(phoneDigits).aliasesDigits);
+}
+
+/** Há interseção entre os “apelidos” de dois números? */
+function phoneAliasesIntersect(aDigits: string, bDigits: string): boolean {
+  const sa = aliasDigitSet(aDigits);
+  const sb = aliasDigitSet(bDigits);
+  for (const x of sa) {
+    if (sb.has(x)) return true;
+  }
+  return false;
+}
+
 /**
- * Cria variantes de WID exatamente como o TestPanel (linhas 2296-2311).
- * Recebe número PURO como entrada e cria: [número@c.us, 55+número@c.us, countryCode+número@c.us]
+ * WIDs @c.us a tentar: mesma lógica do import Retomar (aliases BR), sem duplicar 55 no número.
  */
-function createWidVariants(phoneNumber: string, currentUserWid: string | null): string[] {
-  // TestPanel linha 2297-2298: cria testWid1 e testWid2
-  const testWid1 = `${phoneNumber}@c.us`;
-  const testWid2 = `55${phoneNumber}@c.us`;
-  
-  // TestPanel linhas 2299-2309: cria testWid3 com código do país do usuário atual
-  let testWid3: string | null = null;
-  if (currentUserWid) {
-    const match = currentUserWid.match(/^(\d{2})(\d+)/);
-    if (match) {
-      const countryCode = match[1];
-      if (!phoneNumber.startsWith(countryCode)) {
-        testWid3 = `${countryCode}${phoneNumber}@c.us`;
-      }
+function buildWidCandidates(phoneNumber: string, currentUserWid: string | null): string[] {
+  const { aliasesDigits } = normalizePhoneDigitsWithAliases(phoneNumber);
+  const wids = new Set<string>();
+  for (const a of aliasesDigits) {
+    if (a.length >= 10) wids.add(`${a}@c.us`);
+  }
+  // Extra: se o número parece só nacional (10–11) e o usuário tem DDI de 2 dígitos, prefixar uma vez
+  if (currentUserWid && phoneNumber.length >= 10 && phoneNumber.length <= 11 && !phoneNumber.startsWith('55')) {
+    const bare = currentUserWid.replace('@c.us', '').replace('@lid', '');
+    const m = bare.match(/^(\d{2})\d+/);
+    if (m && !phoneNumber.startsWith(m[1])) {
+      wids.add(`${m[1]}${phoneNumber}@c.us`);
     }
   }
-  
-  // TestPanel linha 2311: filtra valores nulos
-  return [testWid1, testWid2, testWid3].filter(Boolean) as string[];
+  return [...wids];
+}
+
+/**
+ * Procura na lista de chats já carregada no WA (getModelsArray / _models) por @c.us cujo user bate com aliases.
+ * Metáfora: se o endereço exato falha, varre a agenda até achar o mesmo telefone com outro “uniforme”.
+ */
+async function findChatMatchingPhoneInModels(Chat: any, phoneDigits: string): Promise<any> {
+  const lists: unknown[][] = [];
+  try {
+    if (typeof Chat.getModelsArray === 'function') {
+      const raw = Chat.getModelsArray();
+      const arr = await Promise.resolve(raw);
+      if (Array.isArray(arr)) lists.push(arr);
+    }
+  } catch {
+    /* ignore */
+  }
+  if (Array.isArray(Chat._models)) lists.push(Chat._models);
+
+  for (const chats of lists) {
+    for (const c of chats) {
+      const sid: string =
+        (c?.id?._serialized ?? (typeof c?.id === 'string' ? c.id : '')) || '';
+      if (!sid.endsWith('@c.us')) continue;
+      const userDigits = digitsOnly(sid.split('@')[0] || '');
+      if (!userDigits) continue;
+      if (phoneAliasesIntersect(phoneDigits, userDigits)) return c;
+    }
+  }
+  return null;
 }
 
 export class SendMessageService {
@@ -96,8 +136,8 @@ export class SendMessageService {
 
       if (!currentUser) throw new Error('Não foi possível obter usuário atual (User)');
 
-      // 3. Criar variantes de WID (igual TestPanel linhas 2296-2311)
-      const widsToTry = createWidVariants(phoneNumber, currentUserWid);
+      // 3. WIDs a tentar (aliases BR + sem bug 55+55)
+      const widsToTry = buildWidCandidates(phoneNumber, currentUserWid);
       
       // Verificar se está enviando para si mesmo (igual TestPanel linhas 2315-2325)
       const isSendingToSelf = currentUserWid && widsToTry.some(wid => {
@@ -219,10 +259,15 @@ export class SendMessageService {
         }
       }
 
+      // Estratégia 6: varrer chats carregados (mesmo telefone, outro formato de @c.us)
+      if (!chat) {
+        chat = await findChatMatchingPhoneInModels(chatModule, phoneNumber);
+      }
+
       // Validação: Chat não encontrado (TestPanel linhas 2490-2495)
       if (!chat) {
         throw new Error(
-          `Chat não encontrado para ${phoneNumber}. O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: 11999999999 sem espaços ou caracteres especiais)`
+          `Chat não encontrado para ${phoneNumber} (tentámos ${widsToTry.length} formato(s) de número + busca na lista). O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: 11999999999 sem espaços ou caracteres especiais)`
         );
       }
 

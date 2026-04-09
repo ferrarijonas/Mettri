@@ -19,6 +19,10 @@ class FakeVectorIndex implements VectorIndex {
     this.lastQueryArgs = { queryVector, k };
     return this.resultsToReturn;
   }
+
+  async isEmpty(): Promise<boolean> {
+    return true;
+  }
 }
 
 describe('buscar (RAG)', () => {

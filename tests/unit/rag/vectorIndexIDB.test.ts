@@ -70,4 +70,20 @@ describe('VectorIndexIDB (RAG)', () => {
     const results = await index.query(new Array(EMBEDDING_DIMENSION).fill(0), 5);
     expect(results).toEqual([]);
   });
+
+  it('isEmpty é true sem dados e false após upsertMany', async () => {
+    const dbName = `mettri-rag-isempty-${Math.random().toString(36).slice(2)}`;
+    await new Promise<void>((resolve) => {
+      const req = indexedDB.deleteDatabase(dbName);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    });
+    const index = new VectorIndexIDB(dbName);
+    expect(await index.isEmpty()).toBe(true);
+    await index.upsertMany([
+      { chunk: createChunk('c1', 'x'), vector: new Array(EMBEDDING_DIMENSION).fill(0.1) },
+    ]);
+    expect(await index.isEmpty()).toBe(false);
+  });
 });

@@ -11,6 +11,7 @@ import { MettriBridgeClient } from '../content/bridge-client';
 import { LocalBatchExporter } from '../infrastructure/local-batch-exporter';
 import { ActiveChatService } from '../infrastructure/active-chat-service';
 import { ModuleUpdater } from '../infrastructure/module-updater';
+import { registerRagAutoListeners } from '../modules/atendimento/rag-mettri-controller';
 
 type PanelSettings = Record<string, unknown> & {
   historyEnabled?: unknown;
@@ -57,6 +58,7 @@ export class MettriPanel {
     // Inicializar Plugin System
     this.registry = new ModuleRegistry();
     this.eventBus = new EventBus();
+    registerRagAutoListeners(this.eventBus);
     this.init();
   }
 

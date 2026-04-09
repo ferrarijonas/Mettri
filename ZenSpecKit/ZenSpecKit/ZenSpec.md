@@ -86,11 +86,72 @@ Alterações no sistema exigem alteração prévia na spec.
 
 ---
 
+## Organização de specs
+
+### Dois níveis
+
+| Nível | Arquivo | Escopo | Quando criar |
+| ----- | ------- | ------ | ------------ |
+| **Spec de módulo** | `spec.md` (uma por pasta de domínio) | Conceito do domínio, regras de negócio, Interface completa | Quando o módulo/domínio nasce |
+| **ZenSpec de componente** | `nome-descritivo.zenspec.md` (uma por programa) | Pipeline, Contrato, Regras, Edge cases, Critérios de aceitação | Quando o Sensei gera uma tarefa de tipo "ZenSpec" |
+
+A spec de módulo é a "mãe". As ZenSpecs de componente são "filhas" que vivem na mesma pasta.
+
+```
+Specs/retomar/
+  spec.md                                ← módulo (guarda-chuva)
+  montar-contexto-do-cliente.zenspec.md  ← componente (filha)
+  gerar-mensagem-baseline.zenspec.md     ← componente (filha)
+```
+
+### Criar ou atualizar?
+
+| A mudança é sobre… | Ação |
+| ------------------- | ---- |
+| Regra de negócio, conceito ou interface do domínio | **Atualizar** a spec de módulo |
+| Contrato, pipeline ou edge cases de um programa específico | **Criar ou atualizar** a ZenSpec filha |
+| Programa que ainda não tem ZenSpec filha | **Criar** ZenSpec filha |
+| Programa que já tem ZenSpec filha | **Atualizar** a ZenSpec filha existente |
+
+A spec de módulo não detalha contratos de componentes individuais. Quando uma ZenSpec filha é criada, o contrato daquele programa passa a viver **só** na filha; a spec de módulo mantém apenas a referência e o contexto de negócio.
+
+### Nomes de arquivo
+
+O nome do arquivo `.zenspec.md` deve completar a frase **"Este programa existe para ___"**, em português, usando verbos no infinitivo.
+
+Exemplos:
+
+| Nome técnico (no código) | Nome do arquivo |
+| ------------------------ | --------------- |
+| `retomarContextResolver` | `montar-contexto-do-cliente.zenspec.md` |
+| `retomarBaselineAgent` | `gerar-mensagem-baseline.zenspec.md` |
+| `retomarSendRecorder` | `gravar-envio-no-historico.zenspec.md` |
+| `retomarApprovalPanel` | `aprovar-envio-em-lote.zenspec.md` |
+| `retomarExperimentOrchestrator` | `comparar-rag-vs-baseline.zenspec.md` |
+
+Dentro do arquivo, o título pode incluir o nome técnico entre parênteses para manter o vínculo com o código:
+
+```markdown
+# Montar contexto do cliente (`retomarContextResolver`)
+```
+
+Specs de módulo mantêm o nome `spec.md` (sem prefixo descritivo) porque representam o domínio inteiro.
+
+---
+
 ## Formato Zen
 
-### Estrutura:
+### Estrutura por feature:
 
-Seções: Conceito, Interface (se houver UI), Lógica, `[Nome da feature] com subseções. Sem numeração fixa.
+Toda feature com seção de Lógica DEVE seguir esta ordem:
+
+1. **Conceito** — O que é, em 2-3 frases. Linguagem humana, sem contrato. Quem lê o Conceito entende o domínio sem ler o resto.
+2. **Lógica** — Regras, contratos, pipeline, edge cases, critérios de aceitação. Tudo determinístico. Quem lê a Lógica consegue implementar sem ler a Interface.
+3. **Interface** (se houver UI) — Layout, estados visuais, hierarquia, interações. Quem lê a Interface consegue desenhar a tela sem ler a Lógica inteira.
+
+Conceito responde "o que é". Lógica responde "como funciona". Interface responde "como aparece".
+
+Sem numeração fixa, mas a ordem é sempre esta. Features sem UI omitem a seção Interface. Subseções dentro de cada bloco são livres (`[Nome da feature]` com subseções).
 
 ### Intenção por feature:
 
