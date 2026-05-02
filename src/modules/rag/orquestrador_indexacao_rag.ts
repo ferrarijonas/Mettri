@@ -1,5 +1,5 @@
 import type { CapturedMessage } from '../../types';
-import { MettriBridgeClient } from '../../content/bridge-client';
+import type { MettriBridgeClient } from '../../content/bridge-client';
 import type { MessageDB } from '../../storage/message-db';
 import { fonte } from './fonte';
 import { agrupar_por_turno } from './agrupar_por_turno';

@@ -419,7 +419,7 @@ export class MessageDB {
   public async getStats(): Promise<{
     totalMessages: number;
     contactCount: number;
-    perContact: Array<{ chatId: string; chatName: string; messageCount: number }>;
+    perContact: { chatId: string; chatName: string; messageCount: number }[];
   }> {
     const totalMessages = await this.getMessageCount();
     const contactsMap = await this.groupMessagesByContact();
@@ -653,6 +653,83 @@ export class MessageDB {
           console.error('[MessageDB] Erro ao calcular lastOutgoing por contato:', error);
         }
 
+        cursor.continue();
+      };
+    });
+  }
+
+  /**
+   * Data/hora da primeira mensagem RECEBIDA (cliente) persistida para o chat.
+   * Usa índice composto `chatId_timestamp` em ordem crescente — adequado para janela “primeiro contato”.
+   */
+  public async getFirstIncomingCapturedAtForChat(chatId: string): Promise<Date | null> {
+    const db = await this.ensureReady();
+    if (!chatId || !chatId.endsWith('@c.us')) {
+      return null;
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readonly');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      const index = store.index('chatId_timestamp');
+      const range = IDBKeyRange.bound([chatId, ''], [chatId, '\uffff']);
+      const request = index.openCursor(range, 'next');
+
+      request.onerror = () => reject(request.error ?? new Error('IDB cursor'));
+      request.onsuccess = () => {
+        const cursor = request.result as IDBCursorWithValue | null;
+        if (!cursor) {
+          resolve(null);
+          return;
+        }
+        try {
+          const validatedEntry = this.validateDBEntry(cursor.value);
+          const message = dbEntryToMessage(validatedEntry);
+          if (message.chatId === chatId && message.isOutgoing === false) {
+            resolve(message.timestamp);
+            return;
+          }
+        } catch (error) {
+          console.error('[MessageDB] Erro em getFirstIncomingCapturedAtForChat:', error);
+        }
+        cursor.continue();
+      };
+    });
+  }
+
+  /**
+   * Última mensagem ENVIADA deste chat (só @c.us), via índice composto — barato para o gate da fila Retomar.
+   */
+  public async getLastOutgoingAtForChat(chatId: string): Promise<Date | null> {
+    const db = await this.ensureReady();
+    if (!chatId || !chatId.endsWith('@c.us')) {
+      return null;
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_MESSAGES], 'readonly');
+      const store = transaction.objectStore(STORE_MESSAGES);
+      const index = store.index('chatId_timestamp');
+      const range = IDBKeyRange.bound([chatId, ''], [chatId, '\uffff']);
+      const request = index.openCursor(range, 'prev');
+
+      request.onerror = () => reject(request.error ?? new Error('IDB cursor'));
+      request.onsuccess = () => {
+        const cursor = request.result as IDBCursorWithValue | null;
+        if (!cursor) {
+          resolve(null);
+          return;
+        }
+        try {
+          const validatedEntry = this.validateDBEntry(cursor.value);
+          const message = dbEntryToMessage(validatedEntry);
+          if (message.isOutgoing === true && message.chatId === chatId) {
+            resolve(message.timestamp);
+            return;
+          }
+        } catch (error) {
+          console.error('[MessageDB] Erro em getLastOutgoingAtForChat:', error);
+        }
         cursor.continue();
       };
     });

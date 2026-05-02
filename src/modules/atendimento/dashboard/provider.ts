@@ -1,8 +1,13 @@
 import { orderDB } from '../../../storage/order-db';
+import type { OrderRecordV2 } from '../../../storage/order-db';
+import { messageDB } from '../../../storage/message-db';
 import { purchaseDB } from '../../../storage/purchase-db';
 import { digitsOnly } from '../../../storage/client-db';
+import { customerProfileDB } from '../../../storage/customer-profile-db';
+import { catalogoDB } from '../../../storage/catalogo-db';
 import { whatsappInterceptors } from '../../../infrastructure/whatsapp-interceptors';
-import type { AtendimentoViewModel } from './view-model';
+import type { AtendimentoViewModel, FunilEtapa, PedidoItemAuto, ProximaAcao, VitrineItemUi, IntencaoTipo, PedidoResumoVm, MetricaClienteVm } from './view-model';
+import { criarClienteContextoVitrine, fornecerFichaClienteParaAtendimento } from '../../cadastro';
 import {
   buildClientBadges,
   buildPhoneLabel,
@@ -10,6 +15,9 @@ import {
   resolveClientByChatId,
 } from './client-resolver';
 import { getRetomarSupportSnapshot } from './retomar-support';
+
+/** Horas após a 1ª msg do cliente capturada em que ainda orientamos tom de “primeiro contato” para o agente (chip pode ser Contato). */
+const RELACIONAMENTO_INICIAL_HORAS = 48;
 
 function extractChatId(chatLike: any): string | null {
   const id =
@@ -244,11 +252,137 @@ async function getWhatsAppName(chatId: string): Promise<string> {
 function mapOrderStatusLabel(status: string): string {
   if (status === 'open') return 'Aberto';
   if (status === 'awaiting_payment') return 'Aguardando pagamento';
-  if (status === 'closed') return 'Fechado';
+  if (status === 'closed' || status === 'completed') return 'Completo';
+  if (status === 'lead') return 'Lead';
+  if (status === 'draft') return 'Draft';
+  if (status === 'cancelled') return 'Cancelado';
+  if (status === 'lost') return 'Perdido';
   return status;
 }
 
-export async function getAtendimentoViewModel(params?: { chatId?: string | null }): Promise<AtendimentoViewModel> {
+// ── ClassificarIntencao ──
+
+const TRIGGERS_POS_VENDA = [
+  'status', 'cade', 'cadê', 'onde está', 'onde ta', 'chegou', 'chega', 'saiu',
+  'demorando', 'atrasou', 'atrasado', 'entrega', 'entregador', 'entregue',
+  'moto', 'motoqueiro', 'endereço', 'endereco', 'bairro', 'rua', 'paguei',
+  'pagamento', 'pix', 'comprovante', 'transferi', 'depositei', 'veio errado',
+  'faltou', 'trocar', 'troca', 'devolver', 'reembolso', 'problema', 'errado',
+  'estragado', 'ja paguei', 'já paguei', 'ta pago', 'tá pago',
+];
+
+const TRIGGERS_COMPRA = [
+  'quero', 'queria', 'gostaria', 'vou querer', 'vou pedir', 'pedir', 'quisesse',
+  'me vê', 'me ve', 'me da', 'me dá', 'manda', 'envia',
+];
+
+const TRIGGERS_ORCAMENTO = [
+  'quanto é', 'qual o valor', 'qual o preço', 'ta quanto', 'tá quanto',
+  'preço', 'valor', 'custa', 'faz orçamento', 'orçamento', 'orcar', 'orçar',
+];
+
+function classificarIntencao(params: {
+  texto: string;
+  temPedidosAtivos: boolean;
+  temProdutosOuvinte: boolean;
+}): { tipo: IntencaoTipo; confianca: 'alta' | 'media' | 'baixa' } {
+  const texto = String(params.texto || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  if (!texto) return { tipo: 'outro', confianca: 'baixa' };
+
+  // R1: Pós-venda
+  if (params.temPedidosAtivos && TRIGGERS_POS_VENDA.some((t) => texto.includes(t))) {
+    return { tipo: 'suporte_pos_venda', confianca: 'media' };
+  }
+
+  // R2: Compra nova
+  const temTriggerCompra = TRIGGERS_COMPRA.some((t) => texto.includes(t));
+  if (params.temProdutosOuvinte || temTriggerCompra) {
+    const confianca = params.temProdutosOuvinte && temTriggerCompra ? 'alta'
+      : params.temProdutosOuvinte || temTriggerCompra ? 'media' : 'baixa';
+    return { tipo: 'compra_nova', confianca };
+  }
+
+  // R3: Orçamento
+  if (TRIGGERS_ORCAMENTO.some((t) => texto.includes(t)) && !temTriggerCompra) {
+    return { tipo: 'orcamento', confianca: 'media' };
+  }
+
+  // R4: Dúvida
+  if (texto.includes('?') || /^(como|onde|qual|quem|quando|por que|pq)\s/.test(texto)) {
+    return { tipo: 'duvida', confianca: 'baixa' };
+  }
+
+  return { tipo: 'outro', confianca: 'baixa' };
+}
+
+function orderRecordToResumoVm(r: OrderRecordV2): PedidoResumoVm {
+  return {
+    orderId: r.orderId,
+    numeroSequencial: r.numeroSequencial || 0,
+    status: (() => {
+      if (r.status === 'closed') return 'completed';
+      return r.status as PedidoResumoVm['status'];
+    })(),
+    intencao: r.intencao || 'outro',
+    itens: (r.itens || []).map((i) => ({
+      skuId: i.skuId,
+      nome: i.nome,
+      quantidade: i.quantidade,
+      precoUnitarioCentavos: i.precoUnitarioCentavos,
+      precoTotalCentavos: i.precoTotalCentavos,
+    })),
+    subtotalCentavos: (r.itens || []).reduce((s, i) => s + i.precoTotalCentavos, 0),
+    entregaCentavos: 0,
+    totalCentavos: r.totalCents || 0,
+    funil: r.funil || {
+      produto: { estado: 'pendente', valor: null },
+      endereco: { estado: 'pendente', valor: null },
+      pagamento: { estado: 'pendente', valor: null },
+      prazo: { estado: 'pendente', valor: null },
+      fechar: { estado: 'pendente', valor: null },
+    },
+    timeline: (r.timeline || []).map((t) => ({
+      statusAnterior: t.statusAnterior as PedidoResumoVm['timeline'][0]['statusAnterior'],
+      statusNovo: t.statusNovo as PedidoResumoVm['timeline'][0]['statusNovo'],
+      iso: t.iso,
+      motivo: t.motivo,
+    })),
+    observacoes: r.observacoes,
+    pagamentoStatus: r.pagamentoStatus,
+    pagamentoMetodo: r.pagamentoMetodo,
+    createdAtIso: r.createdAtIso,
+    updatedAtIso: r.updatedAtIso,
+  };
+}
+
+function calcularMetricasCliente(historico: PedidoResumoVm[]): MetricaClienteVm {
+  const completos = historico.filter((p) => p.status === 'completed');
+  const totalPedidos = completos.length;
+
+  const ticketMedioCentavos = totalPedidos > 0
+    ? Math.round(completos.reduce((s, p) => s + p.totalCentavos, 0) / totalPedidos)
+    : 0;
+
+  let frequencia = '—';
+  if (totalPedidos >= 2) {
+    const ordenados = [...completos].sort((a, b) => a.createdAtIso.localeCompare(b.createdAtIso));
+    const primeiro = new Date(ordenados[0].createdAtIso).getTime();
+    const ultimo = new Date(ordenados[ordenados.length - 1].createdAtIso).getTime();
+    const diasTotal = Math.max(1, (ultimo - primeiro) / 86400000);
+    const freqDias = Math.round(diasTotal / totalPedidos);
+    if (freqDias < 1) frequencia = 'hoje';
+    else if (freqDias <= 3) frequencia = `${totalPedidos}x/semana`;
+    else if (freqDias <= 14) frequencia = '1x/semana';
+    else if (freqDias <= 60) frequencia = '1x/mês';
+    else frequencia = 'esporádico';
+  }
+
+  return { ticketMedioCentavos, frequencia, totalPedidos };
+}
+
+export async function getAtendimentoViewModel(params?: { chatId?: string | null; updatedFields?: string[]; confiancaPerfil?: number }): Promise<AtendimentoViewModel> {
   const chatId = String(params?.chatId || (await getActiveChatIdDirect()) || '').trim();
   if (!chatId) {
     return {
@@ -264,6 +398,28 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null 
     fallbackWhatsAppName: waName,
     getPhoneForLid: getPhoneFromContactForLid,
   });
+  const fichaResult = await fornecerFichaClienteParaAtendimento(
+    chatId,
+    {
+      getClientByChatId: async () => resolved.record,
+      getLastPurchaseByChatId: async (resolvedChatId: string) => await purchaseDB.getLastActiveByChatId(resolvedChatId),
+      getOperationalProfile: async (cid: string) => {
+        const perfil = await customerProfileDB.getByChatId(cid);
+        return perfil;
+      },
+    },
+    { allowPartialOnError: true },
+  );
+
+  const ficha = fichaResult.ok
+    ? fichaResult.data
+    : {
+        chatId,
+        cadastro: null,
+        ultimaCompra: null,
+        perfilOperacional: null,
+        flags: { cadastroUtil: false },
+      };
 
   if (resolved.isGroup) {
     return {
@@ -278,7 +434,7 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null 
   const displayName = waName || pickStrongDisplayName(record, waName, resolved.phoneDigits);
   const phoneLabel = buildPhoneLabel(resolved.phoneDigits);
   const badges = buildClientBadges(record);
-  const hasCadastro = !!record;
+  const hasCadastro = ficha.flags.cadastroUtil;
 
   const clientKey = String(record?.clientKey || resolved.phoneDigits || '').trim();
 
@@ -297,14 +453,14 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null 
 
   // Dados do módulo Retomar (contador + etiquetas)
   let retomarContadorValor = 0;
-  let retomarEtiquetas: Array<{
+  let retomarEtiquetas: {
     id: string;
     name: string;
     isMember: boolean;
     isDefault: boolean;
     color: string;
     memberCount: number;
-  }> = [];
+  }[] = [];
 
   try {
     const snapshot = await getRetomarSupportSnapshot(chatId);
@@ -325,29 +481,106 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null 
     retomarEtiquetas = [];
   }
 
-  let lastPurchase: {
-    purchaseId: string;
-    purchaseDate: string;
-    value: number | null;
-    items: string[] | null;
-    notes: string | null;
-    source: 'MANUAL' | 'AI_DETECTED';
-  } | null = null;
+  const lastPurchase = ficha.ultimaCompra
+    ? {
+        purchaseId: ficha.ultimaCompra.purchaseId,
+        purchaseDate: ficha.ultimaCompra.purchaseDateIso,
+        value: ficha.ultimaCompra.value,
+        items: ficha.ultimaCompra.items,
+        notes: ficha.ultimaCompra.notes,
+        source: ficha.ultimaCompra.source,
+      }
+    : null;
+  const clienteContextoVitrine = criarClienteContextoVitrine(ficha);
+
+  const perfil = ficha.perfilOperacional;
+
+  let temCapturaConversa = false;
   try {
-    const last = await purchaseDB.getLastActiveByChatId(chatId);
-    if (last) {
-      lastPurchase = {
-        purchaseId: last.purchaseId,
-        purchaseDate: last.purchaseDateIso,
-        value: last.value,
-        items: last.items,
-        notes: last.notes,
-        source: last.source,
-      };
-    }
+    const amostra = await messageDB.getMessages(chatId, 1);
+    temCapturaConversa = amostra.length > 0;
   } catch {
-    // PurchaseDB pode não estar inicializado por usuário; manter null
+    temCapturaConversa = false;
   }
+
+  let comprasAtivasCount = 0;
+  try {
+    comprasAtivasCount = (await purchaseDB.listActiveByChatId(chatId)).length;
+  } catch {
+    comprasAtivasCount = ficha.ultimaCompra ? 1 : 0;
+  }
+
+  let relacionamentoInicialParaAgente = false;
+  if (comprasAtivasCount === 0) {
+    try {
+      const primeiraInbound = await messageDB.getFirstIncomingCapturedAtForChat(chatId);
+      if (primeiraInbound) {
+        const limite = RELACIONAMENTO_INICIAL_HORAS * 60 * 60 * 1000;
+        relacionamentoInicialParaAgente = Date.now() - primeiraInbound.getTime() < limite;
+      }
+    } catch {
+      relacionamentoInicialParaAgente = false;
+    }
+  }
+
+  const tipoCliente: 'novo' | 'contato' | 'ativo' | 'recorrente' | null = (() => {
+    if (comprasAtivasCount === 0) {
+      if (!temCapturaConversa) return 'novo';
+      return relacionamentoInicialParaAgente ? 'novo' : 'contato';
+    }
+    if (comprasAtivasCount === 1) return 'ativo';
+    return 'recorrente';
+  })();
+
+  /** Pedido automático: itens do Ouvinte + match catálogo */
+  const pedido = await buildPedidoAuto(perfil);
+  /** Vitrine inline: outros produtos ativos do catálogo (cross-sell) */
+  const vitrine = await buildVitrineInline(perfil, pedido.itens);
+
+  // ── ClassificarIntencao + OrderDB ──
+
+  // Obter última mensagem do cliente para classificação
+  let ultimaMensagemCliente = '';
+  try {
+    const ultimas = await messageDB.getMessages(chatId, 1);
+    if (ultimas.length > 0) ultimaMensagemCliente = ultimas[0].text;
+  } catch { /* ignore */ }
+
+  const pedidosAtivos = clientKey ? await orderDB.listActiveByClientKey(clientKey, 5) : [];
+  const classificacao = classificarIntencao({
+    texto: ultimaMensagemCliente,
+    temPedidosAtivos: pedidosAtivos.length > 0,
+    temProdutosOuvinte: Boolean(perfil?.preferenciasProduto?.length),
+  });
+
+  // Pedido atual: o mais recente entre os ativos
+  let pedidoAtual: PedidoResumoVm | null = null;
+  if (pedidosAtivos.length > 0) {
+    pedidoAtual = orderRecordToResumoVm(pedidosAtivos[0]);
+  } else if (classificacao.tipo === 'compra_nova' && clientKey) {
+    // Criar pedido lead automaticamente
+    try {
+      const novoPedido = await orderDB.createOrder({
+        clientKey,
+        chatId,
+        intencao: 'compra_nova',
+      });
+      pedidoAtual = orderRecordToResumoVm(novoPedido);
+    } catch { /* silencioso */ }
+  }
+
+  // Histórico de pedidos (completed + cancelled)
+  let historicoPedidos: PedidoResumoVm[] = [];
+  if (clientKey) {
+    try {
+      const todos = await orderDB.listByClientKey(clientKey, 10);
+      historicoPedidos = todos
+        .filter((r) => r.status === 'completed' || r.status === 'closed' || r.status === 'cancelled')
+        .map((r) => orderRecordToResumoVm(r));
+    } catch { /* silencioso */ }
+  }
+
+  const metricaCliente = calcularMetricasCliente(historicoPedidos);
 
   return {
     kind: 'ready',
@@ -359,7 +592,70 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null 
       phoneDigits: resolved.phoneDigits || undefined,
       badges,
       hasCadastro,
+      tipoCliente,
+      ...(relacionamentoInicialParaAgente ? { relacionamentoInicialParaAgente: true } : {}),
+      aversoesProduto: perfil?.aversoesProduto,
+      enderecoEntrega: perfil?.enderecoEntrega,
+      formaPagamentoPreferida: perfil?.formaPagamentoPreferida,
+      urgenciaEntrega: perfil?.urgenciaEntrega,
+      observacoesLogisticas: perfil?.observacoesLogisticas,
+      camposConfianca: perfil?.camposConfianca,
+      preferenciasProduto: perfil?.preferenciasProduto,
+      updatedFields: params?.updatedFields,
+      confiancaPerfil: params?.confiancaPerfil ?? perfil?.confiancaPerfil,
+      timeline: buildTimeline(perfil, resolved.phoneDigits),
     },
+    /** Classificação da intenção da conversa */
+    tipoConversa: classificacao.tipo,
+    /** Pedido atual do cliente, persistido no OrderDB */
+    pedidoAtual,
+    /** Últimos N pedidos do cliente */
+    historicoPedidos,
+    /** Métricas do cliente */
+    metricaCliente,
+    /** Funil automático: 5 etapas, cada uma acende quando Ouvinte captura */
+    funil: (() => {
+      const etapas: FunilEtapa[] = [
+        { id: 'produto', label: 'Produto', estado: 'pendente', valor: null },
+        { id: 'endereco', label: 'Endereço', estado: 'pendente', valor: null },
+        { id: 'pagamento', label: 'Pagamento', estado: 'pendente', valor: null },
+        { id: 'prazo', label: 'Prazo', estado: 'pendente', valor: null },
+        { id: 'fechar', label: 'Fechar', estado: 'pendente', valor: null },
+      ];
+      if (perfil?.preferenciasProduto?.length) {
+        const ep = etapas.find(e => e.id === 'produto')!;
+        ep.estado = 'ok';
+        ep.valor = perfil.preferenciasProduto.join(', ');
+      }
+      if (perfil?.enderecoEntrega) {
+        const ep = etapas.find(e => e.id === 'endereco')!;
+        ep.estado = 'ok';
+        ep.valor = perfil.enderecoEntrega;
+      }
+      if (perfil?.formaPagamentoPreferida?.length) {
+        const ep = etapas.find(e => e.id === 'pagamento')!;
+        ep.estado = 'ok';
+        ep.valor = perfil.formaPagamentoPreferida.join(', ');
+      }
+      if (perfil?.urgenciaEntrega) {
+        const ep = etapas.find(e => e.id === 'prazo')!;
+        ep.estado = 'ok';
+        ep.valor = perfil.urgenciaEntrega;
+      }
+      const okCount = etapas.filter(e => e.estado === 'ok').length;
+      return { etapas, progresso: Math.round((okCount / 5) * 100) };
+    })(),
+    /** Pedido automático: itens do Ouvinte + match catálogo */
+    pedido,
+    /** Vitrine inline (recomendações) */
+    vitrine,
+    /** Pendências de confirmação */
+    pendentesConfirmacao: perfil?.pendentesConfirmacao ?? [],
+    /** Próxima ação: o que está pendente no funil */
+    proximaAcao: buildProximaAcao(perfil),
+    /** Sugestão de texto (preenchida pelo LLM após gerar) */
+    sugestaoTexto: '',
+    sugestaoLoading: false,
     // KPIs rápidos (placeholder até termos cálculo real)
     kpis: [
       { label: 'Aberto', value: String(activeOrders.filter(o => o.status === 'open').length) },
@@ -398,6 +694,340 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null 
       etiquetas: retomarEtiquetas,
     },
     lastPurchase,
+    clienteContextoVitrine,
+    comercial: {
+      modo: activeOrders.length > 0 ? 'pedido_ativo' : 'pre_venda',
+      faltantes: [],
+      pedidoConfirmado: false,
+    },
   };
+}
+
+function buildTimeline(perfil: any, phoneDigits: string | undefined | null): string[] {
+  const items: string[] = []
+  if (perfil?.historico?.compras90d && perfil.historico.compras90d > 0) {
+    items.push(`${perfil.historico.compras90d} compras`)
+  }
+  if (perfil?.formaPagamentoPreferida?.length) {
+    items.push(perfil.formaPagamentoPreferida.join(', ').toUpperCase())
+  }
+  if (perfil?.comportamento?.janelaAtiva) {
+    items.push(perfil.comportamento.janelaAtiva)
+  }
+  if (perfil?.preferenciasProduto?.length) {
+    items.push(perfil.preferenciasProduto.join(', '))
+  }
+  if (perfil?.sensibilidadeOferta) {
+    items.push(`oferta ${perfil.sensibilidadeOferta}`)
+  }
+  return items
+}
+
+/** Normaliza texto para comparação (NFD, lowercase, trim). */
+function normalizeText(t: string): string {
+  return t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+/** Extrai quantidade do início de um nome de produto. Ex: "dois de abobora" → { qty: 2, nome: "abobora" } */
+function parseQuantidade(nome: string): { qty: number; nome: string } {
+  const numerais: Record<string, number> = {
+    um: 1, uma: 1, dois: 2, duas: 2, três: 3, tres: 3,
+    quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10,
+    meia: 0.5, meio: 0.5,
+  }
+  const trimmed = nome.trim()
+
+  // Formato "produto (Nx)"
+  const parenQtd = trimmed.match(/^(.+?)\s*\((\d+)x\)\s*$/i)
+  if (parenQtd) {
+    return { qty: parseInt(parenQtd[2], 10), nome: parenQtd[1].trim() }
+  }
+
+  // Formato "N produto"
+  const matchDigitos = trimmed.match(/^(\d+)\s+(.+)/)
+  if (matchDigitos) {
+    return { qty: parseInt(matchDigitos[1], 10), nome: matchDigitos[2].trim() }
+  }
+
+  // Formato "dois de produto" / "dois produto"
+  const words = trimmed.split(/\s+/)
+  const firstWord = normalizeText(words[0])
+  if (numerais[firstWord] !== undefined) {
+    const rest = words.slice(1).join(' ').trim()
+    const cleanRest = rest.replace(/^de\s+/i, '')
+    return { qty: numerais[firstWord], nome: cleanRest || rest }
+  }
+  return { qty: 1, nome: trimmed }
+}
+
+/** Busca produto no catálogo com match fuzzy (exato → contém → parcial). */
+function buscarProdutoCatalogo(
+  texto: string,
+  produtos: Array<{ productId: string; nome: string; precoCentavos: number }>
+): { productId: string; nome: string; precoCentavos: number } | null {
+  const norm = normalizeText(texto)
+  if (!norm || produtos.length === 0) return null
+
+  // Tier 1: exato
+  for (const p of produtos) {
+    if (normalizeText(p.nome) === norm) return p
+  }
+  // Tier 2: contém
+  for (const p of produtos) {
+    const pn = normalizeText(p.nome)
+    if (pn.includes(norm) || norm.includes(pn)) return p
+  }
+  // Tier 3: parcial (>=50% palavras >3 chars batem)
+  const palavras = norm.split(/\s+/).filter(w => w.length > 3)
+  if (palavras.length > 0) {
+    for (const p of produtos) {
+      const pn = normalizeText(p.nome)
+      const matchCount = palavras.filter(w => pn.includes(w)).length
+      if (matchCount / palavras.length >= 0.5) return p
+    }
+  }
+  return null
+}
+
+/** Filler/hesitação — mesmo filtro do Ouvinte */
+const NUM_EXTENSO_PROVIDER: Record<string, number> = {
+  um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5,
+  seis: 6, sete: 7, oito: 8, nove: 9, dez: 10,
+}
+
+function normalizeProdutoNome(texto: string): string {
+  return texto
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim()
+}
+
+/** Extrai "N de produto" de um chunk, limpando fillers. */
+function extrairProdutoDeChunk(chunk: string): string[] {
+  const c = chunk.trim()
+  if (c.length < 3) return []
+
+  // Pula fillers conhecidos
+  const fillerStarts = ['qte pedir', 'qte', 'te pedir', 'te perguntar', 'uma coisa',
+    'quero ver', 'deixa eu ver', 'vou te falar', 'tipo assim', 'entendeu', 'entao',
+    'ahn', 'hmm', 'hum', 'olha', 'olhe', 'veja', 'vou te perguntar', 'vou te contar',
+    'sabe o que', 'cê entendeu', 'entende', 'é o seguinte', 'olha só', 'depois',
+    'antes', 'agora', 'sempre', 'so', 'ver']
+  const lower = c.toLowerCase()
+  if (fillerStarts.some(f => lower.startsWith(f))) return []
+
+  // Tenta extrair quantidade + nome
+  // "10 de abobra" ou "dois de abobora"
+  const comQtd = c.match(/^(\d+)\s*(?:de\s+)?(.+)$/i)
+  if (comQtd) return [`${comQtd[2].trim()} (${parseInt(comQtd[1], 10)}x)`]
+
+  // Número por extenso
+  const partes = lower.split(/\s+/)
+  const num = NUM_EXTENSO_PROVIDER[partes[0]]
+  if (num) {
+    const resto = partes.slice(1).join(' ').replace(/^de\s+/i, '')
+    return resto.length > 2 ? [`${resto} (${num}x)`] : []
+  }
+
+  return [c]
+}
+
+/** Varre o texto de uma mensagem e extrai menções a produtos. 
+ *  Espelha a lógica do Ouvinte, mas escaneia TODAS as mensagens (inclusive outgoing).
+ *  Usa matchAll para capturar múltiplas menções num mesmo texto longo. */
+function extrairProdutosDeTexto(texto: string): string[] {
+  const t = (texto || '').trim()
+  if (!t || t.length < 4) return []
+
+  const resultados: string[] = []
+
+  // Tier 1: padrões de intenção de compra (matchAll)
+  const patterns = [
+    /(?:gosto de|gostaria de|quero|vou querer|vou pedir|pedir|quisesse|queria)\s+(.+?)(?:\.|,|;|$| para| pra| por favor|\?)/gi,
+    /(?:você tem|vocês tem|tu tem|vende|tem como)\s+(.+?)(?:\.|,|;|\?|$)/gi,
+    /(?:quanto é|qual o preço|qual é o preço|qual o valor|qual é o valor|preço do|preço da|valor do|valor da)\s+(.+?)(?:\.|,|;|\?|$)/gi,
+  ]
+  for (const re of patterns) {
+    let m: RegExpExecArray | null
+    while ((m = re.exec(t)) !== null) {
+      if (m[1]) {
+        const raw = m[1].trim()
+        const partes = raw.split(/\s+e\s+/)
+        for (const parte of partes) {
+          resultados.push(...extrairProdutoDeChunk(parte))
+        }
+      }
+    }
+  }
+  if (resultados.length > 0) return [...new Set(resultados)]
+
+  // Tier 2: padrão "número + nome" no texto inteiro
+  const reQtd = /(\d+)\s*(?:de\s+)?([\wà-ú%]+(?:\s+[\wà-ú%]+){0,4})(?=\s*[,;.!?]|\s+e\s+|$)/gi
+  let qm: RegExpExecArray | null
+  while ((qm = reQtd.exec(t)) !== null) {
+    const nome = qm[2].trim()
+    if (nome.length > 2) {
+      resultados.push(`${nome} (${parseInt(qm[1], 10)}x)`)
+    }
+  }
+  if (resultados.length > 0) return [...new Set(resultados)]
+
+  return []
+}
+
+async function buildPedidoAuto(perfil: any): Promise<{
+  itens: PedidoItemAuto[]
+  subtotalCentavos: number
+  entregaCentavos: number | null
+  totalCentavos: number
+  status: 'aberto' | 'fechado'
+}> {
+  const itens: PedidoItemAuto[] = []
+
+  // Carregar catálogo
+  let produtosCatalogo: Array<{ productId: string; nome: string; precoCentavos: number }> = []
+  try {
+    const accountId = catalogoDB.getCurrentUserWid() || 'default'
+    const todos = await catalogoDB.listByAccount(accountId)
+    produtosCatalogo = todos
+      .filter(p => p.ativo)
+      .map(p => ({ productId: p.productId, nome: p.nome, precoCentavos: p.precoCentavos }))
+  } catch {
+    // Catálogo indisponível — itens sem preço
+  }
+
+  // Coletar menções de produtos: perfil operacional + escaneamento do histórico
+  const todosNomes = new Set<string>()
+
+  // 1. Do perfil operacional (acumulado pelo Ouvinte)
+  if (perfil?.preferenciasProduto?.length) {
+    for (const nome of perfil.preferenciasProduto) {
+      todosNomes.add(String(nome))
+    }
+  }
+
+  // 2. Do histórico de mensagens (varredura direta, ignora direção)
+  //    Janela: apenas mensagens após o último pedido fechado (se houver)
+  if (perfil?.chatId) {
+    try {
+      let sinceTimestamp: number | null = null
+      try {
+        const lastPurchase = await purchaseDB.getLastActiveByChatId(perfil.chatId)
+        if (lastPurchase?.purchaseDateIso) {
+          sinceTimestamp = new Date(lastPurchase.purchaseDateIso).getTime()
+        }
+      } catch {
+        // Sem purchaseDB ou sem pedido anterior → escaneia tudo
+      }
+
+      const msgs = await messageDB.getMessages(perfil.chatId, 100)
+      for (const msg of msgs) {
+        if (sinceTimestamp && msg.timestamp.getTime() <= sinceTimestamp) continue
+        const extraidos = extrairProdutosDeTexto(msg.text)
+        for (const nome of extraidos) {
+          todosNomes.add(nome)
+        }
+      }
+    } catch {
+      // Silencioso: se o messageDB falhar, usamos só o perfil
+    }
+  }
+
+  // 3. Fallback: escanear DOM diretamente (captura mensagens que o MessageCapturer truncou)
+  try {
+    const msgElements = document.querySelectorAll('[data-id]')
+    for (const el of msgElements) {
+      const text = (el.textContent || '').trim()
+      if (text.length < 4) continue
+      const extraidos = extrairProdutosDeTexto(text)
+      for (const nome of extraidos) {
+        todosNomes.add(nome)
+      }
+    }
+  } catch {
+    // DOM inacessível (ex: chat não carregado)
+  }
+
+  if (todosNomes.size > 0) {
+    const catalogados = new Set<string>()
+    for (const rawNome of todosNomes) {
+      const { qty, nome } = parseQuantidade(String(rawNome))
+      const match = buscarProdutoCatalogo(nome, produtosCatalogo)
+
+      if (match && !catalogados.has(match.productId)) {
+        catalogados.add(match.productId)
+        itens.push({
+          nomeExtraido: nome,
+          quantidade: qty,
+          precoTotalCentavos: match.precoCentavos * qty,
+          produtoCatalogo: {
+            productId: match.productId,
+            nome: match.nome,
+            precoCentavos: match.precoCentavos,
+          },
+        })
+      }
+    }
+  }
+
+  const subtotal = itens.reduce((sum, i) => sum + i.precoTotalCentavos, 0)
+  const entrega = 0
+  return {
+    itens,
+    subtotalCentavos: subtotal,
+    entregaCentavos: entrega || null,
+    totalCentavos: subtotal + (entrega || 0),
+    status: 'aberto',
+  }
+}
+
+/** Monta vitrine inline com produtos do catálogo não incluídos no pedido atual. */
+async function buildVitrineInline(perfil: any, itensPedido: PedidoItemAuto[]): Promise<VitrineItemUi[]> {
+  const accountId = catalogoDB.getCurrentUserWid() || 'default'
+  let todos: Array<{ productId: string; nome: string; precoCentavos: number }> = []
+  try {
+    const raw = await catalogoDB.listByAccount(accountId)
+    todos = raw
+      .filter(p => p.ativo)
+      .map(p => ({ productId: p.productId, nome: p.nome, precoCentavos: p.precoCentavos }))
+  } catch {
+    return []
+  }
+
+  const idsNoPedido = new Set(
+    itensPedido
+      .filter(i => i.produtoCatalogo?.productId)
+      .map(i => i.produtoCatalogo!.productId)
+  )
+
+  const disponiveis = todos.filter(p => !idsNoPedido.has(p.productId))
+  if (disponiveis.length === 0) return []
+
+  return disponiveis.slice(0, 3).map(p => ({
+    productId: p.productId,
+    nome: p.nome,
+    precoCentavos: p.precoCentavos,
+    score: 5,
+    motivo: 'Também disponível no catálogo',
+  }))
+}
+
+function buildProximaAcao(perfil: any): ProximaAcao | null {
+  if (!perfil?.preferenciasProduto?.length) {
+    return { label: 'Perguntar o que deseja', sugestaoTexto: 'Oi! O que você gostaria de pedir hoje?' }
+  }
+  if (!perfil?.enderecoEntrega) {
+    return { label: 'Perguntar endereço', sugestaoTexto: 'Certo! Qual o endereço de entrega?' }
+  }
+  if (!perfil?.formaPagamentoPreferida?.length) {
+    return { label: 'Confirmar pagamento', sugestaoTexto: 'Como você prefere pagar? PIX ou cartão?' }
+  }
+  if (!perfil?.urgenciaEntrega) {
+    return { label: 'Confirmar prazo', sugestaoTexto: 'Para quando você precisa? Hoje ou outro dia?' }
+  }
+  return { label: 'Fechar pedido', sugestaoTexto: 'Tudo certo! Posso confirmar o pedido?' }
 }
 

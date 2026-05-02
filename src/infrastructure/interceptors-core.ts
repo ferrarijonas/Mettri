@@ -97,7 +97,7 @@ export class WhatsAppInterceptors {
   private initialized = false;
   private modulesCache: Record<string, any> = {}; // Cache de módulos (equivalente ao Ct do reverse.txt)
   private N: any = null; // Objeto N (cópia de GroupMetadata.default) - padrão reverse.txt linha 309
-  private warnedModules: Set<string> = new Set(); // Rastrear módulos que já geraram avisos
+  private warnedModules = new Set<string>(); // Rastrear módulos que já geraram avisos
   private suppressModuleWarnings = false; // Flag para suprimir avisos durante inicialização
 
   /**
@@ -114,7 +114,7 @@ export class WhatsAppInterceptors {
     const acceptedStates = new Set(['CONNECTED', 'OPENING', 'PAIRING', 'TIMEOUT']);
 
     type RequireFn = (moduleId: string) => unknown;
-    type SocketModel = { Socket?: { state?: unknown } };
+    interface SocketModel { Socket?: { state?: unknown } }
 
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -404,6 +404,8 @@ export class WhatsAppInterceptors {
           await orderDB.setUserWid(userWid);
           const { purchaseDB } = await import('../storage/purchase-db');
           await purchaseDB.setUserWid(userWid);
+          const { customerProfileDB } = await import('../storage/customer-profile-db');
+          await customerProfileDB.setUserWid(userWid);
           console.log('[Mettri] Banco inicializado com WID:', userWid);
         } else {
           console.warn('[Mettri] Banco não inicializado - conta não detectada');
@@ -439,6 +441,8 @@ export class WhatsAppInterceptors {
         await orderDB.setUserWid(userWid);
         const { purchaseDB } = await import('../storage/purchase-db');
         await purchaseDB.setUserWid(userWid);
+        const { customerProfileDB } = await import('../storage/customer-profile-db');
+        await customerProfileDB.setUserWid(userWid);
         console.log('[Mettri] Banco inicializado com WID:', userWid);
       } else {
         console.warn('[Mettri] Banco não inicializado - conta não detectada');
@@ -455,7 +459,7 @@ export class WhatsAppInterceptors {
    * Aguarda WID do usuário estar disponível (polling)
    * Usa os mesmos métodos que test-panel.ts: getMaybeMePnUser() e getMaybeMeLidUser()
    */
-  private async waitForUserWid(maxAttempts: number = 20, delayMs: number = 500): Promise<string | null> {
+  private async waitForUserWid(maxAttempts = 20, delayMs = 500): Promise<string | null> {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         // Tentar via window.Mettri.User (já carregado na Fase 1)

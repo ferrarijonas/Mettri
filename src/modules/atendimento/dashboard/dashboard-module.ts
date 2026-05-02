@@ -4,6 +4,7 @@
 
 import type { ModuleDefinition, PanelFactory, PanelInstance } from '../../../ui/core/module-registry';
 import type { EventBus } from '../../../ui/core/event-bus';
+import type { OuvirProfileUpdatedEvent } from '../../ouvir/types';
 import { AtendimentoPanel } from './atendimento-panel';
 import { getAtendimentoViewModel, getActiveChatIdDirect } from './provider';
 import { emitPanelNavigate } from '../../../ui/core/panel-navigation';
@@ -32,7 +33,8 @@ import {
 
 const STORAGE_RAG_AUTO_SUGGEST = 'mettri:atendimento:rag:auto-suggest';
 
-const RETOMAR_COLORS: Array<{ var: string; name: string }> = [
+
+const RETOMAR_COLORS: { var: string; name: string }[] = [
   { var: '--tag-color-1', name: 'Verde' },
   { var: '--tag-color-2', name: 'Azul' },
   { var: '--tag-color-3', name: 'Roxo' },
@@ -51,6 +53,9 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   let lastClientKey: string | null = null;
   let ragAutoSuggestEnabled = false;
   let unsubscribeRagController: (() => void) | null = null;
+  let updatedFields: string[] | undefined;
+  let confiancaPerfil: number | undefined;
+  let clearAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
     try {
@@ -90,7 +95,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 
   rerender = async () => {
     ragAutoSuggestEnabled = await loadRagAutoSuggestFromStorage();
-    const vm = await getAtendimentoViewModel({ chatId: currentChatId });
+    const vm = await getAtendimentoViewModel({ chatId: currentChatId, updatedFields, confiancaPerfil });
     if (vm.kind === 'ready') {
       lastClientKey = vm.customer.clientKey || null;
     } else {
@@ -113,6 +118,19 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     container.innerHTML = '';
     const element = await ui.render(vm);
     container.appendChild(element);
+  };
+
+  const onOuvinteUpdate = (data: OuvirProfileUpdatedEvent) => {
+    if (data.chatId !== currentChatId) return;
+    if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
+    updatedFields = data.camposAtualizados;
+    confiancaPerfil = data.confiancaPerfil;
+    rerender().catch(() => {});
+    clearAnimationTimer = setTimeout(() => {
+      updatedFields = undefined;
+      confiancaPerfil = undefined;
+      clearAnimationTimer = null;
+    }, 4000);
   };
 
   const handleRetomarTagAction = async (actionId: string, payload?: unknown): Promise<void> => {
@@ -194,6 +212,18 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     onAction: async (actionId, payload) => {
       // Integração mínima (sem acoplar UI ao resto)
       if (actionId === 'open-cadastro') {
+        let key = String(lastClientKey || '').trim();
+        if (!key) {
+          let chatId = String(currentChatId || '').trim();
+          if (!chatId) {
+            chatId = String((await getActiveChatIdDirect()) || '').trim();
+          }
+          if (chatId) {
+            const resolved = await resolveClientByChatId({ chatId });
+            key = String(resolved?.record?.clientKey || resolved?.phoneDigits || '').trim();
+          }
+        }
+        eventBus.data.pendingClientKey = key || '';
         emitPanelNavigate(eventBus, 'clientes.directory');
         return;
       }
@@ -339,6 +369,173 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
         return;
       }
 
+      if (actionId === 'comercial:generate') {
+        // Stub: orquestrador real virá depois; o painel simula loading → rascunho mock.
+        return;
+      }
+
+      if (actionId === 'order:register-mock') {
+        try {
+          const chatId = String(currentChatId || (await getActiveChatIdDirect()) || '').trim();
+          if (!chatId) { alert('Nenhum chat ativo.'); return; }
+          const vm = await getAtendimentoViewModel({ chatId });
+          if (vm.kind !== 'ready' || !vm.pedido.itens.length) { alert('Nenhum item no pedido.'); return; }
+          const items = vm.pedido.itens.map(i => {
+            const nome = i.produtoCatalogo?.nome || i.nomeExtraido;
+            return `${i.quantidade}x ${nome}`;
+          });
+          await purchaseDB.addPurchase({
+            chatId,
+            purchaseDate: new Date(),
+            value: vm.pedido.totalCentavos,
+            items,
+            notes: `Pedido fechado via atendimento. Total: R$ ${(vm.pedido.totalCentavos / 100).toFixed(2)}`,
+            source: 'AI_DETECTED',
+          });
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao registrar pedido:', err);
+          alert('Erro ao registrar pedido.');
+        }
+        return;
+      }
+
+      // ── Ações do pedido (OrderRecordV2) ──
+
+      if (actionId === 'order:confirm') {
+        const orderId = String((payload as { orderId?: string })?.orderId || '').trim();
+        if (!orderId) return;
+        try {
+          await orderDB.advanceStatus(orderId, 'open');
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao confirmar pedido:', err);
+          alert('Erro ao confirmar pedido.');
+        }
+        return;
+      }
+
+      if (actionId === 'order:cancel') {
+        const orderId = String((payload as { orderId?: string })?.orderId || '').trim();
+        const motivo = prompt('Motivo do cancelamento:') || '';
+        if (!orderId || !motivo.trim()) return;
+        try {
+          await orderDB.advanceStatus(orderId, 'cancelled', motivo.trim());
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao cancelar pedido:', err);
+          alert('Erro ao cancelar pedido.');
+        }
+        return;
+      }
+
+      if (actionId === 'order:addItem') {
+        const p = payload as { orderId?: string; skuId?: string; nome?: string; quantidade?: number; precoUnitarioCentavos?: number };
+        const orderId = String(p?.orderId || '').trim();
+        if (!orderId || !p?.skuId) return;
+        try {
+          await orderDB.addItem(orderId, {
+            skuId: p.skuId,
+            nome: String(p.nome || p.skuId),
+            quantidade: p.quantidade || 1,
+            precoUnitarioCentavos: p.precoUnitarioCentavos || 0,
+          });
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao adicionar item:', err);
+          alert('Erro ao adicionar item.');
+        }
+        return;
+      }
+
+      if (actionId === 'order:removeItem') {
+        const orderId = String((payload as { orderId?: string })?.orderId || '').trim();
+        const skuId = String((payload as { skuId?: string })?.skuId || '').trim();
+        if (!orderId || !skuId) return;
+        try {
+          await orderDB.removeItem(orderId, skuId);
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao remover item:', err);
+          alert('Erro ao remover item.');
+        }
+        return;
+      }
+
+      if (actionId === 'order:updateQty') {
+        const { orderId, skuId, qty } = payload as { orderId?: string; skuId?: string; qty?: number };
+        if (!orderId || !skuId || typeof qty !== 'number') return;
+        try {
+          await orderDB.updateItemQty(orderId, skuId, qty);
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao atualizar qtd:', err);
+          alert('Erro ao atualizar quantidade.');
+        }
+        return;
+      }
+
+      if (actionId === 'order:addObs') {
+        const p = payload as { orderId?: string; texto?: string };
+        const orderId = String(p?.orderId || '').trim();
+        if (!orderId) return;
+        try {
+          await orderDB.addObservacao(orderId, String(p?.texto || ''));
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao salvar observação:', err);
+        }
+        return;
+      }
+
+      if (actionId === 'order:markPaid') {
+        const orderId = String((payload as { orderId?: string })?.orderId || '').trim();
+        if (!orderId) return;
+        try {
+          await orderDB.advanceStatus(orderId, 'completed', 'Pagamento confirmado');
+          await rerender();
+        } catch (err) {
+          console.error('[Atendimento] Erro ao marcar como pago:', err);
+          alert('Erro ao confirmar pagamento.');
+        }
+        return;
+      }
+
+      if (actionId === 'open-pedidos') {
+        emitPanelNavigate(eventBus, 'pedidos');
+        return;
+      }
+
+      if (actionId === 'comercial:send') {
+        const text = String((payload as { text?: string })?.text ?? '').trim();
+        if (!text) {
+          alert('Digite ou gere um rascunho antes de enviar.');
+          return;
+        }
+
+        let chatId = String(currentChatId || '').trim();
+        if (!chatId) {
+          chatId = String((await getActiveChatIdDirect()) || '').trim();
+        }
+
+        if (!chatId) {
+          alert('Não foi possível enviar pelo WhatsApp. Verifique se a conversa está aberta e tente de novo.');
+          return;
+        }
+
+        try {
+          await sendMessageService.sendText(chatId, text);
+          alert('Mensagem enviada no WhatsApp.');
+        } catch (error) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível enviar pelo WhatsApp. Verifique se a conversa está aberta e tente de novo.',
+          );
+        }
+        return;
+      }
+
       if (actionId === 'rag:send') {
         const text = String((payload as { text?: string })?.text ?? '').trim();
         if (!text) {
@@ -376,12 +573,16 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   const onChatChanged = (data: any) => {
     const next = typeof data?.chatId === 'string' ? data.chatId : null;
     currentChatId = next;
+    if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
+    updatedFields = undefined;
+    confiancaPerfil = undefined;
     rerender().catch(() => {});
   };
 
   return {
     async render() {
       eventBus.on('chat:active-changed', onChatChanged);
+      eventBus.on('ouvir:profile-updated', onOuvinteUpdate);
       unsubscribeRagController?.();
       unsubscribeRagController = subscribeRagMettriController(() => {
         rerender().catch(() => {});
@@ -390,8 +591,10 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     },
     destroy() {
       eventBus.off('chat:active-changed', onChatChanged);
+      eventBus.off('ouvir:profile-updated', onOuvinteUpdate as any);
       unsubscribeRagController?.();
       unsubscribeRagController = null;
+      if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
       ui.destroy();
       if (container) container.innerHTML = '';
     },
@@ -402,7 +605,6 @@ export const AtendimentoDashboardModule: ModuleDefinition = {
   id: 'atendimento.dashboard',
   name: 'Atendimento',
   parent: 'atendimento',
-  icon: '🧰',
   dependencies: [],
   panelFactory: createAtendimentoDashboardPanel,
   lazy: true,

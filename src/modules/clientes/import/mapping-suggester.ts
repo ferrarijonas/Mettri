@@ -2,11 +2,11 @@ import type { ImportMapping, ParsedTable } from './import-engine';
 import { inferMappingFromHeaders } from './import-engine';
 import { MettriBridgeClient } from '../../../content/bridge-client';
 
-export type MappingSuggestion = {
+export interface MappingSuggestion {
   mapping: ImportMapping;
   confidence: number; // 0..1
   reason: string;
-};
+}
 
 export interface MappingSuggester {
   suggest(table: ParsedTable): Promise<MappingSuggestion | null>;

@@ -17,7 +17,7 @@ export class ImageAnalyzer {
    * @param tolerance Tolerância de cor (0-255)
    * @returns Array de regiões detectadas
    */
-  detectColorRegions(imageData: ImageData, targetColor: RGB, tolerance: number = 30): Region[] {
+  detectColorRegions(imageData: ImageData, targetColor: RGB, tolerance = 30): Region[] {
     const regions: Region[] = [];
     const data = imageData.data;
     const width = imageData.width;
@@ -235,8 +235,8 @@ export class ImageAnalyzer {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const stack: Array<[number, number]> = [[startX, startY]];
-    const pixels: Array<[number, number]> = [];
+    const stack: [number, number][] = [[startX, startY]];
+    const pixels: [number, number][] = [];
 
     let minX = startX;
     let maxX = startX;
@@ -349,8 +349,8 @@ export class ImageAnalyzer {
   ): Region | null {
     const width = imageData.width;
     const height = imageData.height;
-    const stack: Array<[number, number]> = [[startX, startY]];
-    const pixels: Array<[number, number]> = [];
+    const stack: [number, number][] = [[startX, startY]];
+    const pixels: [number, number][] = [];
 
     let minX = startX;
     let maxX = startX;

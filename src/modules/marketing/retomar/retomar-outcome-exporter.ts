@@ -13,21 +13,21 @@ import {
 
 export type { RetomarMetricsMessageDB };
 
-export type RetomarOutcomeExportState = {
+export interface RetomarOutcomeExportState {
   /** IDs de mensagens de envio Retomar já exportadas (idempotência). */
   exportedSendMessageIds: string[];
-};
+}
 
-export type RetomarOutcomeExporterWriter = {
+export interface RetomarOutcomeExporterWriter {
   append(filePath: string, text: string): Promise<void>;
-};
+}
 
-export type RetomarOutcomeExporterStateStore = {
+export interface RetomarOutcomeExporterStateStore {
   get(accountId: string): Promise<RetomarOutcomeExportState>;
   set(accountId: string, state: RetomarOutcomeExportState): Promise<void>;
-};
+}
 
-export type RetomarOutcomeExporterParams = {
+export interface RetomarOutcomeExporterParams {
   accountId: string;
   since: Date;
   until: Date;
@@ -37,16 +37,16 @@ export type RetomarOutcomeExporterParams = {
   exportStateStore: RetomarOutcomeExporterStateStore;
   /** Instante usado em exportedAt e lastExportedAt (testes). */
   now?: Date;
-};
+}
 
-export type RetomarOutcomeExporterResult = {
+export interface RetomarOutcomeExporterResult {
   exportedCount: number;
   skippedCount: number;
   lastExportedAt: Date;
   filePath: string;
-};
+}
 
-export type RetomarOutcomeJsonlLine = {
+export interface RetomarOutcomeJsonlLine {
   eventId: string;
   accountId: string;
   chatId: string;
@@ -63,7 +63,7 @@ export type RetomarOutcomeJsonlLine = {
   sendText: string;
   replyText: string;
   exportedAt: string;
-};
+}
 
 const DEFAULT_MAX_TEXT = 500;
 

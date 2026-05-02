@@ -4,11 +4,11 @@ import { messageDB } from '../../storage/message-db';
 
 const RAG_FONTE_MAX_MESSAGES = 50_000;
 
-export type FonteOptions = {
+export interface FonteOptions {
   chatId?: string;
   db?: MessageDB;
   maxMessages?: number;
-};
+}
 
 /**
  * Fonte do pipeline RAG: lê mensagens do MessageDB e entrega em ordem cronológica ascendente.

@@ -5,7 +5,7 @@
  * Lista todos os módulos organizados hierarquicamente e permite testar cada um.
  */
 
-import { WhatsAppInterceptors } from '../../../infrastructure/whatsapp-interceptors';
+import type { WhatsAppInterceptors } from '../../../infrastructure/whatsapp-interceptors';
 import { ModuleTester, type ModuleTestResult } from '../../../infrastructure/module-tester';
 import { testConfig } from '../../../storage/test-config';
 import { getIcon } from '../../../ui/icons/lucide-icons';
@@ -16,9 +16,7 @@ interface ModuleHierarchy {
   modules: string[];
 }
 
-interface ModuleStatus {
-  [moduleName: string]: ModuleTestResult | null;
-}
+type ModuleStatus = Record<string, ModuleTestResult | null>;
 
 export class TestPanel {
   private container: HTMLElement | null = null;
@@ -403,7 +401,7 @@ export class TestPanel {
     requiredTotal: number;
   } {
     type RequireFn = (moduleId: string) => unknown;
-    type SocketModel = { Socket?: { state?: unknown } };
+    interface SocketModel { Socket?: { state?: unknown } }
 
     const mettri = (window as unknown as { Mettri?: Record<string, unknown> }).Mettri;
     const hasMettri = !!mettri;
@@ -1256,9 +1254,9 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
    * Spike: tenta várias abordagens para obter chatIds de uma etiqueta.
    * TODO: remover após implementar WhatsAppLabelsService.
    */
-  private async runLabelToChatsSpike(Label: any, Chat: any): Promise<Array<{
+  private async runLabelToChatsSpike(Label: any, Chat: any): Promise<{
     approach: string; success: boolean; chatIds: string[]; error?: string;
-  }>> {
+  }[]> {
     const toIds = (chats: any[]): string[] => {
       if (!Array.isArray(chats)) return [];
       return chats.map((c: any) => c?.id?.toString?.() ?? c?.id ?? '').filter(Boolean);
@@ -1269,7 +1267,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
     const firstLabel = labels.find((l: any) => l?.id != null) ?? labels[0];
     if (!firstLabel?.id) return [];
     const labelId = firstLabel.id;
-    const results: Array<{ approach: string; success: boolean; chatIds: string[]; error?: string }> = [];
+    const results: { approach: string; success: boolean; chatIds: string[]; error?: string }[] = [];
 
     const run = async (approach: string, fn: () => Promise<any>) => {
       try {
@@ -1507,7 +1505,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
           }
 
           // Spike: Label → Chats (10 abordagens na primeira etiqueta)
-          const labelsList: Array<{ id: string; name: string }> = [];
+          const labelsList: { id: string; name: string }[] = [];
           let winnerApproachName: string | null = null;
           if (totalLabels > 0) {
             const spikeResults = await this.runLabelToChatsSpike(module, this.interceptors.Chat);
@@ -1777,7 +1775,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
                   for (const chat of allChats.slice(0, 100)) { // Limitar a 100 para não sobrecarregar
                     try {
                       // Extrair wid
-                      let wid: string = '';
+                      let wid = '';
                       if (typeof chat.id === 'string') {
                         wid = chat.id;
                       } else if (chat.id?._serialized && typeof chat.id._serialized === 'string') {
@@ -1830,7 +1828,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
                 for (const chat of allChats) {
                   try {
                     // Extrair wid
-                    let wid: string = '';
+                    let wid = '';
                     if (typeof chat.id === 'string') {
                       wid = chat.id;
                     } else if (chat.id?._serialized && typeof chat.id._serialized === 'string') {

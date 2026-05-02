@@ -1,12 +1,12 @@
 import type { ClientRecord } from '../../../storage/client-db';
 import { clientDB, digitsOnly, normalizePhoneDigitsWithAliases } from '../../../storage/client-db';
 
-export type ResolvedClient = {
+export interface ResolvedClient {
   chatId: string;
   isGroup: boolean;
   phoneDigits: string | null;
   record: ClientRecord | null;
-};
+}
 
 function formatPhoneLabel(phoneDigits: string | null): string {
   const digits = digitsOnly(phoneDigits || '');

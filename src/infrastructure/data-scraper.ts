@@ -126,6 +126,32 @@ const MessageSchema = z.object({
     })
     .passthrough()
     .optional(),
+  // Campos de reply (via getters do protótipo, validados como permissivos)
+  quotedStanzaID: z.string().optional(),
+  quotedParticipant: z
+    .object({
+      _serialized: z.string().optional(),
+      user: z.string().optional(),
+      server: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+  quotedMsg: z.any().optional(),
+  quotedRemoteJid: z.string().optional(),
+  isQuotedMsgAvailable: z.boolean().optional(),
+  // Backing fields __x_* (propriedades próprias no objeto WhatsApp, preservadas pelo Zod)
+  __x_quotedStanzaID: z.string().optional(),
+  __x_quotedParticipant: z
+    .object({
+      _serialized: z.string().optional(),
+      user: z.string().optional(),
+      server: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+  __x_quotedMsg: z.any().optional(),
+  __x_isQuotedMsgAvailable: z.boolean().optional(),
+  __x_fromQuotedMsg: z.boolean().optional(),
 }).passthrough(); // Aceita campos extras que não estão no schema
 
 type MessageCallback = (msg: any) => void;
@@ -134,7 +160,7 @@ type PresenceCallback = (data: any) => void;
 export class DataScraper {
   private messageCallbacks: MessageCallback[] = [];
   private presenceCallbacks: PresenceCallback[] = [];
-  private chatCallbacks: Array<(chatId: string) => void> = [];
+  private chatCallbacks: ((chatId: string) => void)[] = [];
   private isRunning = false;
 
   constructor() {
@@ -186,11 +212,75 @@ export class DataScraper {
               return; // Ignorar mensagens antigas
             }
 
-            // Evento Msg.on("add") disparado (apenas mensagens novas)
+            // Extrair campos de reply dos backing fields __x_* (propriedades próprias)
+            // em vez dos getters do protótipo — o Zod preserva propriedades próprias,
+            // então esses campos passam pelo parse sem perder dados
+            let replyToId: string | undefined;
+            let quotedSender: string | undefined;
+            let quotedText: string | undefined;
             
+            // __x_quotedStanzaID é o backing field da propriedade computada quotedStanzaID
+            if (typeof msg.__x_quotedStanzaID === 'string' && msg.__x_quotedStanzaID.length > 0) {
+              replyToId = msg.__x_quotedStanzaID;
+            }
+            // __x_quotedParticipant é o backing field da propriedade computada quotedParticipant
+            if (msg.__x_quotedParticipant && typeof msg.__x_quotedParticipant === 'object') {
+              const serialized = msg.__x_quotedParticipant._serialized;
+              if (typeof serialized === 'string' && serialized.length > 0) {
+                quotedSender = serialized;
+              }
+            }
+            // __x_quotedMsg é o backing field da propriedade computada quotedMsg
+            if (msg.__x_quotedMsg && typeof msg.__x_quotedMsg === 'object') {
+              const qBody = msg.__x_quotedMsg.body || msg.__x_quotedMsg.__x_body;
+              if (typeof qBody === 'string' && qBody.length > 0) {
+                quotedText = qBody.length > 500 ? qBody.slice(0, 500) : qBody;
+              }
+            }
+
+            // Fallback: tentar getters do protótipo se backing fields não estiverem disponíveis
+            if (replyToId === undefined) {
+              try {
+                const qs = msg.quotedStanzaID;
+                if (typeof qs === 'string' && qs.length > 0) replyToId = qs;
+              } catch {}
+            }
+            if (quotedSender === undefined) {
+              try {
+                const qp = msg.quotedParticipant;
+                if (qp && typeof qp === 'object') {
+                  const serialized = qp._serialized;
+                  if (typeof serialized === 'string' && serialized.length > 0) quotedSender = serialized;
+                }
+              } catch {}
+            }
+            if (quotedText === undefined) {
+              try {
+                const qm = msg.quotedMsg;
+                if (qm && typeof qm === 'object') {
+                  const qBody = qm.body || qm.__x_body;
+                  if (typeof qBody === 'string' && qBody.length > 0) {
+                    quotedText = qBody.length > 500 ? qBody.slice(0, 500) : qBody;
+                  }
+                }
+              } catch {}
+            }
+
             try {
               // Validar com Zod (permissivo - aceita campos opcionais faltando)
               const validated = MessageSchema.parse(msg);
+              
+              // O Zod preserva __x_quotedStanzaID como própria, mas vamos garantir
+              // que o campo padronizado quotedStanzaID também esteja presente
+              if (replyToId !== undefined) {
+                (validated as any).quotedStanzaID = replyToId;
+              }
+              if (quotedSender !== undefined) {
+                if ((validated as any).quotedParticipant === undefined) {
+                  (validated as any).quotedParticipant = { _serialized: quotedSender };
+                }
+              }
+              
               // Mensagem validada com sucesso
               this.messageCallbacks.forEach((cb) => cb(validated));
             } catch (error) {

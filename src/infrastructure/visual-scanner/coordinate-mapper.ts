@@ -154,7 +154,7 @@ export class CoordinateMapper {
    * @param maxDistance Distância máxima em pixels
    * @returns Elemento mais próximo ou null (rejeita elementos do Mettri)
    */
-  findNearestElement(x: number, y: number, maxDistance: number = 50): HTMLElement | null {
+  findNearestElement(x: number, y: number, maxDistance = 50): HTMLElement | null {
     // Primeiro, tentar coordenada exata
     let element = this.findElementAtCoordinate(x, y);
     if (element) {
@@ -201,7 +201,7 @@ export class CoordinateMapper {
    * @param scaleFactor Fator de escala (ex: window.devicePixelRatio)
    * @returns Coordenada normalizada
    */
-  normalizeCoordinate(coordinate: Coordinate, scaleFactor: number = 1): Coordinate {
+  normalizeCoordinate(coordinate: Coordinate, scaleFactor = 1): Coordinate {
     return {
       x: coordinate.x / scaleFactor,
       y: coordinate.y / scaleFactor,

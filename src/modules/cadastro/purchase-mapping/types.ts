@@ -20,9 +20,9 @@ export interface MappingSession {
   status: MappingStatus;
   selectedSampleChatIds: string[];
   /** Pool: até 6 chatIds por messageCount (para substituição ao desmarcar) */
-  samplePool: Array<{ chatId: string; chatName: string; messageCount: number }>;
+  samplePool: { chatId: string; chatName: string; messageCount: number }[];
   conceptText: string | null;
-  examplePayloads: Array<{ date: string; value?: number; items?: string[]; notes?: string }>;
+  examplePayloads: { date: string; value?: number; items?: string[]; notes?: string }[];
   totalChatsToProcess: number;
   totalChatsProcessed: number;
   totalPurchasesPersisted: number;
@@ -32,7 +32,7 @@ export interface MappingSession {
 
 export interface ConceptResult {
   conceptText: string;
-  examplePayloads: Array<{ date: string; value?: number; items?: string[]; notes?: string }>;
+  examplePayloads: { date: string; value?: number; items?: string[]; notes?: string }[];
 }
 
 export interface PurchaseItem {

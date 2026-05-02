@@ -1,5 +1,5 @@
 import type { ConversationChunk } from './agrupar_por_turno';
-import { MettriBridgeClient } from '../../content/bridge-client';
+import type { MettriBridgeClient } from '../../content/bridge-client';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
@@ -164,7 +164,7 @@ export async function generateRagSuggestion(
   }
 
   const data = JSON.parse(result.text) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
 
   const content = data.choices?.[0]?.message?.content?.trim();

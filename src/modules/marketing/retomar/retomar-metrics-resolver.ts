@@ -11,12 +11,12 @@ export type RetomarMetricsMessageDB = Pick<
   'getRetomarSends' | 'getMessagesByDateRange'
 >;
 
-export type RetomarMetricsResult = {
+export interface RetomarMetricsResult {
   sentCount: number;
   respondedCount: number;
   responseRate: number;
   avgResponseTimeMinutes: number | null;
-};
+}
 
 function assertValidTimestamp(d: Date, context: string): void {
   const t = d.getTime();

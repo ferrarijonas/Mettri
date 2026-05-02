@@ -37,12 +37,12 @@ export interface RagExperimentLogEvent {
     suggestion: string;
     evaluation: RagJudgeScores;
   };
-  chunksSummary: Array<{
+  chunksSummary: {
     id: string;
     chatId: string;
     timestamp: string;
     preview: string;
-  }>;
+  }[];
   k: number;
   ragPromptVersion?: string;
   judgePromptVersion?: string;
@@ -158,7 +158,7 @@ export async function logRagExperimentEvent(params: {
     await params.bridge.storageSet({ [storageKey]: nextValue });
   } catch (error) {
     // Logging é best-effort: nunca deve quebrar o fluxo principal do atendimento.
-    // eslint-disable-next-line no-console
+     
     console.error('[RAG][experiment_logger] Erro ao gravar evento de experimento:', error);
   }
 }
@@ -280,7 +280,7 @@ export async function readRagExperimentStats(params: {
     keys.push(key);
   }
 
-  let events: RagExperimentLogEvent[] = [];
+  const events: RagExperimentLogEvent[] = [];
 
   try {
     const stored = await bridge.storageGet(keys);
@@ -292,7 +292,7 @@ export async function readRagExperimentStats(params: {
     }
   } catch (error) {
     // Falha em leitura de logs não deve quebrar a UI.
-    // eslint-disable-next-line no-console
+     
     console.error('[RAG][experiment_logger] Erro ao ler logs de experimento:', error);
     return null;
   }
@@ -334,9 +334,9 @@ export async function readRagExperimentStatsForDashboard(params: {
     weekKeySet.add(getStorageKeyForDate(d.toISOString()));
   }
 
-  let todayEvents: RagExperimentLogEvent[] = [];
-  let weekEvents: RagExperimentLogEvent[] = [];
-  let totalEvents: RagExperimentLogEvent[] = [];
+  const todayEvents: RagExperimentLogEvent[] = [];
+  const weekEvents: RagExperimentLogEvent[] = [];
+  const totalEvents: RagExperimentLogEvent[] = [];
 
   try {
     const stored = await bridge.storageGet(keys);
@@ -353,7 +353,7 @@ export async function readRagExperimentStatsForDashboard(params: {
       }
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error('[RAG][experiment_logger] Erro ao ler bundle de stats:', error);
     return null;
   }
@@ -475,7 +475,7 @@ export async function collectRagExperimentEventsForExport(params: {
         collected.push(...parseEventsFromStorageRaw(raw));
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error('[RAG][experiment_logger] Erro ao coletar eventos para export:', error);
       throw error;
     }

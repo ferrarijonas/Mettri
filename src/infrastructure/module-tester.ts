@@ -5,7 +5,7 @@
  * Testa cada módulo individualmente, verifica métodos esperados e coleta logs.
  */
 
-import { WhatsAppInterceptors } from './whatsapp-interceptors';
+import type { WhatsAppInterceptors } from './whatsapp-interceptors';
 
 export interface ModuleTestResult {
   status: 'success' | 'error' | 'not-found' | 'testing';

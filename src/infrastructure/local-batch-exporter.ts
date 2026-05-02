@@ -4,7 +4,7 @@ import { MettriBridgeClient } from '../content/bridge-client';
 
 export type ExportTrigger = 'startup' | 'interval' | 'near-limit' | 'manual' | 'retry-pending';
 
-type ExportStateV1 = {
+interface ExportStateV1 {
   version: 1;
   lastCursorIso?: string; // último timestamp exportado com sucesso
   lastSuccessIso?: string;
@@ -13,7 +13,7 @@ type ExportStateV1 = {
   pending?: boolean;
   pendingReason?: string;
   seqByDay?: Record<string, number>;
-};
+}
 
 const EXPORT_STATE_KEY = 'mettri_export_state_v1';
 const SCHEMA_VERSION = 1;

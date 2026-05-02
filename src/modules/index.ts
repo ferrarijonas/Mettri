@@ -21,6 +21,15 @@ import { EnviarDivulgarModule } from './marketing/enviar/divulgar/divulgar-modul
 import { AtendimentoDashboardModule } from './atendimento/dashboard/dashboard-module';
 import { CadastroModule } from './cadastro/cadastro-module';
 import { PurchaseMappingModule } from './cadastro/purchase-mapping/purchase-mapping-module';
+import { ClienteProfileModule } from './cadastro/cliente-profile';
+import { CatalogoModule } from './catalogo/catalogo-module';
+import { CatalogoDashboardModule } from './catalogo/dashboard/dashboard-module';
+import { VitrineModule } from './vitrine/vitrine-module';
+import { VitrineDashboardModule } from './vitrine/dashboard/dashboard-module';
+import { CampanhasModule } from './campanhas/campanhas-module';
+import { CampanhasDashboardModule } from './campanhas/dashboard/dashboard-module';
+import { PedidosModule } from './pedidos/pedidos-module';
+import { PedidosDashboardModule } from './pedidos/dashboard/dashboard-module';
 
 /**
  * Registra todos os módulos no registry
@@ -33,10 +42,18 @@ export function registerAllModules(registry: ModuleRegistry): void {
   registry.register(InfrastructureModule);
   registry.register(MarketingModule);
   registry.register(CadastroModule);
+  registry.register(CatalogoModule);
+  registry.register(VitrineModule);
+  registry.register(CampanhasModule);
+  registry.register(PedidosModule);
 
   // Depois registrar módulos filhos
   registry.register(AtendimentoDashboardModule);
+  registry.register(ClienteProfileModule);
   registry.register(PurchaseMappingModule);
+  registry.register(CatalogoDashboardModule);
+  registry.register(VitrineDashboardModule);
+  registry.register(CampanhasDashboardModule);
   registry.register(ClientesDirectoryModule);
   registry.register(HistoryModule);
   registry.register(TestsModule);
@@ -45,4 +62,5 @@ export function registerAllModules(registry: ModuleRegistry): void {
   registry.register(EnviarRetomarModule);
   registry.register(EnviarResponderModule);
   registry.register(EnviarDivulgarModule);
+  registry.register(PedidosDashboardModule);
 }

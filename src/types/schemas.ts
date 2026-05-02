@@ -22,6 +22,9 @@ export const CapturedMessageSchema = z.object({
   type: z.enum(['text', 'image', 'audio', 'video', 'document', 'sticker'], {
     errorMap: () => ({ message: 'Tipo de mensagem inválido' }),
   }),
+  replyToId: z.string().optional(),
+  quotedText: z.string().optional(),
+  quotedSender: z.string().optional(),
 });
 
 /**
@@ -96,6 +99,9 @@ export const MessageDBEntrySchema = z.object({
     errorMap: () => ({ message: 'Tipo de mensagem inválido' }),
   }),
   retomarMeta: RetomarMetaSchema.optional(),
+  replyToId: z.string().optional(),
+  quotedText: z.string().optional(),
+  quotedSender: z.string().optional(),
 });
 
 /**

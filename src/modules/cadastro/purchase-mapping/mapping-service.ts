@@ -76,7 +76,7 @@ async function callOpenAI(
   if (!result.ok) {
     throw new Error(`OpenAI ${result.status}: ${result.text}`);
   }
-  const data = JSON.parse(result.text) as { choices?: Array<{ message?: { content?: string } }> };
+  const data = JSON.parse(result.text) as { choices?: { message?: { content?: string } }[] };
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) throw new Error('OpenAI respondeu sem conteúdo');
   return content;
@@ -85,7 +85,7 @@ async function callOpenAI(
 /** Extrai conceito a partir dos transcripts dos 3 chats */
 export async function extractConcept(
   apiKey: string,
-  transcripts: Array<{ chatName: string; transcript: string }>
+  transcripts: { chatName: string; transcript: string }[]
 ): Promise<ConceptResult> {
   const userContent = transcripts
     .map((t) => `--- Conversa: ${t.chatName} ---\n${t.transcript}`)
@@ -143,7 +143,7 @@ function parseJsonFromResponse(raw: string): Record<string, unknown> {
 
 /** Carrega pool de amostra: top 6 por messageCount */
 export async function loadSamplePool(): Promise<
-  Array<{ chatId: string; chatName: string; messageCount: number }>
+  { chatId: string; chatName: string; messageCount: number }[]
 > {
   const map = await messageDB.groupMessagesByContact();
   const list = Array.from(map.entries())

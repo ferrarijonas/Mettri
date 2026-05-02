@@ -1,5 +1,9 @@
 # Cadastro
 
+Panorama Zen: [ZenSpec.md](../../../ZenSpecKit/ZenSpec.md).
+
+Este domínio é a **fonte de verdade** do cliente e do perfil operacional interno; ver secções **19–21**. O módulo Atendimento consome esses dados por leitura (ver [../atendimento/spec.md](../atendimento/spec.md)).
+
 ---
 
 # 1. Intenção
@@ -15,6 +19,8 @@ Permitir que um usuário execute um processo explícito e auditável que:
 4. Registra compras válidas no `PurchaseDB`.
 
 5. Produz relatório final auditável com contadores consistentes.
+
+6. **(Evolução)** Mantém ficha de cliente e perfil operacional sob contrato único (`ClientDB`, `PurchaseDB`, `CustomerProfileDB`), consumíveis pelo Atendimento e pelo pipeline comercial.
 
 ### Objetivo mensurável
 
@@ -56,6 +62,8 @@ Inclui:
 
 - Cancelamento explícito.
 
+- **Ownership de dados de cliente** (cadastro oficial, compras, perfil operacional inferido) e contratos das ZenSpecs filhas em `Specs/cadastro/` (secção 21).
+
 Não inclui:
 
 - Alterações automáticas sem aprovação.
@@ -80,6 +88,8 @@ Não inclui:
 
 - Não persistir conceito automaticamente para uso futuro fora da sessão ativa.
 
+- Não tornar o Atendimento fonte de verdade de `ClientDB` ou `CustomerProfileDB` (escrita via programas do Cadastro; ver secção 19).
+
 ---
 
 ## 4. Entidades Envolvidas
@@ -90,9 +100,17 @@ Fonte de mensagens por `chatId`.
 
 ### 4.2 PurchaseDB
 
-Destino das compras detectadas.
+Destino das compras detectadas e histórico transacional usado no perfil operacional (compras manuais e `AI_DETECTED`).
 
-### 4.3 API key e canal de rede (OpenAI)
+### 4.3 ClientDB
+
+Fonte de verdade do **cadastro oficial** do cliente (identidade, nomes, telefones, endereço, notas). Leitura/escrita via programas do domínio Cadastro ou fluxos que delegam a eles.
+
+### 4.4 CustomerProfileDB
+
+Armazenamento do **perfil operacional inferido** (`CustomerOperationalProfile`, secção 20): segmentos, confiança, preferências derivadas de fatos. Não substitui `ClientDB`; em conflito prevalece dado oficial.
+
+### 4.5 API key e canal de rede (OpenAI)
 
 - **Chave API OpenAI:** informada pelo usuário na UI (estado inicial); opcionalmente persistida em `chrome.storage.local` (chave `mettri:openai:apiKey`). Não é persistida fora da sessão sem ação explícita de "Salvar chave".
 - **Chamadas à API:** o painel roda no contexto MAIN da página (content script); a CSP do WhatsApp bloqueia `fetch` direto para `api.openai.com`. As requisições são feitas via **bridge** (MettriBridge, `net.fetch`) → **service worker** (NET_FETCH). O service worker executa o `fetch` e devolve a resposta.
@@ -100,7 +118,7 @@ Destino das compras detectadas.
 - **Modelo:** `gpt-4o-mini` (ou equivalente configurável).
 - **Persistência da chave:** ao acionar "Salvar chave", o painel grava `mettri:openai:apiKey` via bridge; se o bridge estiver indisponível ou ocorrer erro, o painel mantém a chave apenas em memória e exibe feedback visual de falha.
 
-### 4.4 MappingSession
+### 4.6 MappingSession
 
 Objeto de controle do processo.
 
@@ -589,3 +607,117 @@ A seção pode ficar no topo da área de Cadastro ou em uma aba dedicada (ex.: "
 - Compras detectadas são persistidas via `purchaseDB.addPurchase` e ficam consultáveis como "última compra" (ex.: atendimento).
 - Erros de API ou de parse são tratados sem quebrar o fluxo; resultado final exibe totais e erros.
 - Cancelamento interrompe o mapeamento; compras já salvas permanecem.
+
+---
+
+## 19. Cliente (fonte de verdade no Cadastro)
+
+Esta feature existe para que o sistema tenha uma ficha única e auditável do cliente, sem espalhar escrita de dados por múltiplos módulos.
+
+### Conceito
+
+`cadastro` é o domínio dono dos dados de cliente.  
+`atendimento` consome e exibe, mas não vira fonte de verdade.
+
+### Lógica
+
+#### Pipeline & fluxos
+
+```
+UI Cadastro / importações / mapeamento  →  CadastroClienteOrchestrator  →  ClientDB / PurchaseDB / CustomerProfileDB
+```
+
+| Programa | Recebe | Faz | Manda para |
+| --- | --- | --- | --- |
+| `CadastroClienteOrchestrator` | intenção (upsert cliente, compra, perfil) + `deps` agrupadas | roteia para `persistirClienteOficial`, `atualizarPerfilOperacionalCliente` ou gravação de compra conforme regra | stores canónicas |
+| `persistirClienteOficial` | payload validado + `deps` | grava/atualiza `ClientDB` | — |
+| `atualizarPerfilOperacionalCliente` | sinais + `deps` | grava/atualiza `CustomerProfileDB` | — |
+| `fornecerFichaClienteParaAtendimento` | `chatId` + `deps` | lê stores e devolve visão agregada | chamador (ex.: provider Atendimento) |
+
+Contratos fechados (entrada, saída, erros) vivem **só** nas ZenSpecs filhas da secção 21; a spec mãe não duplica campos finos.
+
+#### Contrato agregado (visão de domínio)
+
+Objeto lógico `FichaClienteAtendimento` (saída de `fornecerFichaClienteParaAtendimento`): agrega cadastro oficial (`ClientDB`), últimas compras relevantes (`PurchaseDB`) e `CustomerOperationalProfile` quando existir. Campos alinhados à secção 20 e à filha [fornecer-ficha-cliente-para-atendimento.zenspec.md](fornecer-ficha-cliente-para-atendimento.zenspec.md).
+
+Erros comuns:
+
+- `INVALID_INPUT` → `chatId` ou payload obrigatório inválido.
+- `STORE_ERROR` → falha em persistência ou leitura de dependência.
+
+#### Ownership (onde cada dado mora)
+
+- `ClientDB`:
+  - identidade e cadastro base (`nomeConfiavel`, telefones, aliases, endereço, notas).
+- `PurchaseDB`:
+  - compras (`MANUAL` e `AI_DETECTED`) e sinais transacionais.
+- `CustomerProfileDB` (novo, interno):
+  - perfil operacional inferido (não psicológico), com versionamento e `confidence`.
+
+#### Regras
+
+- **Se** um campo for cadastral oficial **então** gravar em `ClientDB`.
+- **Se** um campo representar compra/valor/data de compra **então** gravar em `PurchaseDB`.
+- **Se** um campo for inferido de comportamento/preferência **então** gravar em `CustomerProfileDB`.
+- **Ritmo de atualização do perfil:** preferir atualização incremental no **fim do turno** (`turn_end`) e permitir reprocessamento assíncrono por evento de compra (`purchase_event`) ou agendado (`scheduled`), sem travar a resposta do Atendimento.
+- **Se** `atendimento` editar dado de cliente **então** deve chamar ação de `cadastro` (nunca gravar direto em store local da UI de atendimento).
+- **Se** `confidence` do perfil inferido estiver abaixo do limiar da versão **então** mostrar como sugestão interna, sem afirmação categórica ao cliente.
+- **Se** houver conflito entre dado oficial e inferido **então** prevalece o oficial (`ClientDB`), mantendo trilha de auditoria.
+
+#### Edge cases (Se X -> Y)
+
+- `chatId` vazio -> rejeitar com `INVALID_INPUT`.
+- Cliente sem cadastro, mas com histórico de mensagens -> criar perfil parcial com `cadastroUtil = false`.
+- Perfil sem sinais suficientes -> persistir estado mínimo com `confidence` baixo.
+- Falha ao gravar perfil inferido -> não bloquear gravação de cadastro oficial.
+
+#### Critérios de aceitação
+
+- Atendimento consegue montar a ficha do cliente só por leitura do domínio Cadastro.
+- Um mesmo `chatId` mantém consistência entre dados oficiais e dados inferidos.
+- Campos inferidos podem evoluir sem quebrar contratos de compra/cadastro oficial.
+
+### Escopo fora
+
+- Perfil psicológico.
+- Classificação sensível (saúde, religião, política, etnia, etc.).
+- Decisão automática irreversível sem validação humana.
+
+---
+
+## 20. Contrato inicial de perfil operacional (interno)
+
+Metáfora: é um "painel de bordo" do cliente, não um diagnóstico da pessoa.
+
+`CustomerOperationalProfile`:
+
+- `chatId: string`
+- `segmentos: string[]`
+- `confiancaPerfil: number` (`0..1`)
+- `nomeConfiavel?: string`
+- `cadastroUtil?: boolean`
+- `comportamento?: { janelaAtiva?: 'manha' | 'tarde' | 'noite'; frequenciaContato7d?: number }`
+- `historico?: { diasDesdeUltimaCompra?: number | null; compras90d?: number; ticketMedioFaixa?: 'baixo' | 'medio' | 'alto' }`
+- `preferenciasProduto?: string[]`
+- `preferenciasLogistica?: string[]`
+- `sensibilidadeOferta?: 'baixa' | 'media' | 'alta'`
+- `proximidade?: { score?: number; banda?: 'frio' | 'morno' | 'quente'; lastRecomputeReason?: 'turn_end' | 'purchase_event' | 'scheduled'; lastRecomputeAtIso?: string }`
+- `rfm?: { recenciaDias?: number; frequencia30d?: number; monetario30d?: number; bandaRecencia?: string; bandaFrequencia?: string; bandaMonetario?: string; score?: number }`
+- `updatedAtIso: string`
+- `modelVersion: string`
+
+Regra de uso: este perfil é interno e explicável; cada campo deve ser rastreável a fatos observáveis (mensagens, compras, cadastro e regras versionadas).
+
+**Metodologia de apoio (opcional, não obrigatória no MVP):** enriquecimento por **RFM** (Recência, Frequência, Monetário) e scores de propensão versionados; sempre com `confiancaPerfil` e rastreio da regra que produziu o número.
+
+---
+
+## 21. ZenSpecs filhas (`Specs/cadastro/`)
+
+| Ficheiro | Programa |
+| --- | --- |
+| [persistir-cliente-oficial.zenspec.md](persistir-cliente-oficial.zenspec.md) | `persistirClienteOficial` |
+| [atualizar-perfil-operacional-do-cliente.zenspec.md](atualizar-perfil-operacional-do-cliente.zenspec.md) | `atualizarPerfilOperacionalCliente` |
+| [fornecer-ficha-cliente-para-atendimento.zenspec.md](fornecer-ficha-cliente-para-atendimento.zenspec.md) | `fornecerFichaClienteParaAtendimento` |
+
+Orquestração: `CadastroClienteOrchestrator` compõe estes programas conforme gatilho; contrato do orquestrador pode ser filha futura se necessário.

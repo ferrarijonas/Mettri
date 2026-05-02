@@ -28,6 +28,7 @@ export async function getAtendimentoViewModelMock(): Promise<AtendimentoViewMode
       chatId: '5511999999999@c.us',
       badges: ['Sem cadastro', 'Novo'],
       hasCadastro: false,
+      tipoCliente: 'novo',
     },
     kpis: [
       { label: 'Último pedido', value: '—' },
@@ -132,6 +133,65 @@ export async function getAtendimentoViewModelMock(): Promise<AtendimentoViewMode
       ],
     },
     lastPurchase: null,
+    clienteContextoVitrine: {
+      clienteId: '5511999999999',
+      nome: 'Cliente Exemplo',
+      telefone: '5511999999999',
+      tags: [],
+      ultimaCompra: {
+        data: null,
+        valor: null,
+        itens: null,
+        origem: null,
+      },
+      perfil: {
+        segmento: null,
+        confiancaPerfil: null,
+        rfm: null,
+      },
+    },
+    comercial: {
+      modo: 'pedido_ativo',
+      faltantes: [],
+      pedidoConfirmado: true,
+      slotsResumo:
+        'Itens: 2× Pão de queijo · 1× Café 250g\n' +
+        'Logística: Retirada\n' +
+        'Horário: Hoje 17h\n' +
+        'Valor: R$ 49,90 · PIX\n' +
+        'Upsell: oferecido\n' +
+        'Fecho: confirmado pelo cliente',
+      mockLabel: 'DEMO · pedido completo',
+    },
+    funil: {
+      etapas: [
+        { id: 'produto', label: 'Produto', estado: 'ok', valor: 'Pão de queijo, Café 250g' },
+        { id: 'endereco', label: 'Endereço', estado: 'ok', valor: 'Retirada' },
+        { id: 'pagamento', label: 'Pagamento', estado: 'ok', valor: 'PIX' },
+        { id: 'prazo', label: 'Prazo', estado: 'ok', valor: 'Hoje 17h' },
+        { id: 'fechar', label: 'Fechar', estado: 'ok', valor: null },
+      ],
+      progresso: 100,
+    },
+    pedido: {
+      itens: [
+        { nomeExtraido: 'Pão de queijo', quantidade: 2, precoTotalCentavos: 3980 },
+        { nomeExtraido: 'Café 250g', quantidade: 1, precoTotalCentavos: 3490 },
+      ],
+      subtotalCentavos: 7470,
+      entregaCentavos: null,
+      totalCentavos: 7470,
+      status: 'fechado',
+    },
+    vitrine: [],
+    proximaAcao: null,
+    sugestaoTexto: '',
+    sugestaoLoading: false,
+    tipoConversa: 'compra_nova',
+    pedidoAtual: null,
+    historicoPedidos: [],
+    metricaCliente: { ticketMedioCentavos: 0, frequencia: '—', totalPedidos: 0 },
+    pendentesConfirmacao: [],
   };
 }
 
