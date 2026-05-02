@@ -166,6 +166,8 @@ Número inteiro ≥ 1
 
 Representa dias mínimos entre mensagens enviadas.
 
+**Montagem da entrada `lastOutgoingByContact`:** o painel funde MessageDB, `retomarLastOutgoingAt_*` em `chrome.storage` e, quando falta dado para um chat, fallback ao Store do WhatsApp. Ver `elegibilidade-last-outgoing.zenspec.md`.
+
 #### 4.6 chatIdsInLists
 
 `Set<chatId>` ou array de chatIds
@@ -620,6 +622,10 @@ A **máquina A/B** é um módulo de responsabilidade única: receber a lista de 
 
 **Nota:** O serviço de envio (ex.: `sendMessageService.sendText(chatId, text)`) permanece único; a máquina A/B apenas "prepara o cardápio" para ele.
 
+### Orquestração de envio em massa (motor natural)
+
+Fila persistida, ritmo conservador (limites hora/dia + atrasos) e **gate** antes de cada envio: confirma contador e **última mensagem nossa lida só no WhatsApp Web** (poka-yoke contra loop). Ver `orquestracao-envio-retomar.zenspec.md`.
+
 ### Sugestão IA
 
 O botão "Sugerir com IA" no detalhe do ciclo deve preencher o Texto B a partir do Texto A (e do contexto da campanha, quando existir). Isso é feito por um **módulo único de sugestão**, reutilizável, com contrato estável.
@@ -720,6 +726,8 @@ motor de elegíveis  →  retomarContextResolver  →  suggestRedacaoRetomar (ba
 #### Interface
 
 **Título visível do bloco:** Respostas Agênticas. **Regra:** segundo bloco colapsável no painel Retomar; **não** altera regras nem conteúdo de `### Container Ciclos de Contato` (nem `### Conteúdo`, `### Conteúdo expandido (ao clicar no ciclo)` nem `### Estados visuais`).
+
+- **Indicador do prompt embutido:** logo abaixo do título **Respostas Agênticas**, texto discreto (ex.: tipografia pequena, cor secundária) com o nome do ficheiro `agente_retomar.md` e a **data/hora da última modificação desse ficheiro no momento do build** do bundle (gravada quando o esbuild lê o `.md`, alinhada ao conteúdo embutido). Tooltip ou equivalente pode repetir o instante em ISO (UTC) para conferência.
 
 **Casca:** paridade com `### Container Ciclos de Contato` / `### Conteúdo` / `### Estados visuais` — título + expandir/colapsar; **sem engrenagem** nesta secção (requisito: omitir). **Conteúdo fechado:** quatro linhas verticais (1ª / 2ª / 3ª / Última), contagem **"N pessoas"**, ícone à esquerda, **mesma hierarquia visual que Ciclos de contato**; linha secundária de campanha quando houver paridade com o legado.
 

@@ -138,6 +138,24 @@ export class MessageCapturer {
       if (this.processedIds.has(messageId)) return;
       this.processedIds.add(messageId);
 
+      // Metadados de reply — extraídos dos backing fields __x_* ou dos getters
+      const replyToId: string | undefined =
+        msg.__x_quotedStanzaID || msg.quotedStanzaID || undefined;
+      const quotedSender: string | undefined =
+        msg.__x_quotedParticipant?._serialized || msg.quotedParticipant?._serialized || undefined;
+      let quotedText: string | undefined;
+      try {
+        const qm = msg.__x_quotedMsg || msg.quotedMsg;
+        if (qm && typeof qm === 'object') {
+          const qBody = qm.body || qm.__x_body;
+          if (typeof qBody === 'string' && qBody.length > 0) {
+            quotedText = qBody.length > 500 ? qBody.slice(0, 500) : qBody;
+          }
+        }
+      } catch {
+        // quotedMsg pode ser objeto complexo não serializável
+      }
+
       const captured: CapturedMessage = {
         id: messageId,
         chatId: finalChatId,
@@ -147,6 +165,9 @@ export class MessageCapturer {
         timestamp,
         isOutgoing,
         type: 'text', // Por enquanto apenas texto, expandir depois
+        replyToId,
+        quotedText,
+        quotedSender,
       };
 
       // Validar com Zod
@@ -567,6 +588,24 @@ export class MessageCapturer {
     // Gerar ID único
     const messageId = msg.id?._serialized || `historical-${chatId}-${timestamp.getTime()}-${Math.random()}`;
 
+    // Extrair metadados de reply (via backing fields __x_* ou getters)
+    const replyToId: string | undefined =
+      msg.__x_quotedStanzaID || msg.quotedStanzaID || undefined;
+    const quotedSender: string | undefined =
+      msg.__x_quotedParticipant?._serialized || msg.quotedParticipant?._serialized || undefined;
+    let quotedText: string | undefined;
+    try {
+      const qm = msg.__x_quotedMsg || msg.quotedMsg;
+      if (qm && typeof qm === 'object') {
+        const qBody = qm.body || qm.__x_body;
+        if (typeof qBody === 'string' && qBody.length > 0) {
+          quotedText = qBody.length > 500 ? qBody.slice(0, 500) : qBody;
+        }
+      }
+    } catch {
+      // quotedMsg pode ser objeto complexo não serializável
+    }
+
     const captured: CapturedMessage = {
       id: messageId,
       chatId: finalChatId,
@@ -576,6 +615,9 @@ export class MessageCapturer {
       timestamp,
       isOutgoing,
       type: msg.type || 'text',
+      replyToId,
+      quotedText,
+      quotedSender,
     };
 
     // Validar com Zod

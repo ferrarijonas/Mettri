@@ -10,7 +10,6 @@ export const AtendimentoModule: ModuleDefinition = {
   id: 'atendimento',
   name: 'Atendimento',
   // Sem parent (é módulo de nível superior)
-  icon: '💬',
   dependencies: [],
   // Filho padrão do container (não depender de ordem alfabética)
   defaultSubModuleId: 'atendimento.dashboard',

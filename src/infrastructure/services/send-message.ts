@@ -73,8 +73,13 @@ async function findChatMatchingPhoneInModels(Chat: any, phoneDigits: string): Pr
 
   for (const chats of lists) {
     for (const c of chats) {
+      const m = c as { id?: { _serialized?: string } | string };
       const sid: string =
-        (c?.id?._serialized ?? (typeof c?.id === 'string' ? c.id : '')) || '';
+        (m.id && typeof m.id === 'object' && '_serialized' in m.id
+          ? m.id._serialized
+          : typeof m.id === 'string'
+            ? m.id
+            : '') || '';
       if (!sid.endsWith('@c.us')) continue;
       const userDigits = digitsOnly(sid.split('@')[0] || '');
       if (!userDigits) continue;
@@ -82,6 +87,333 @@ async function findChatMatchingPhoneInModels(Chat: any, phoneDigits: string): Pr
     }
   }
   return null;
+}
+
+function readCurrentUserWid(User: any): string | null {
+  let currentUser: unknown = null;
+  try {
+    if (User) {
+      if (typeof User === 'function') {
+        currentUser = User();
+      } else if (typeof User.getMaybeMePnUser === 'function') {
+        currentUser = User.getMaybeMePnUser();
+      } else if (typeof User.getMaybeMeLidUser === 'function') {
+        currentUser = User.getMaybeMeLidUser();
+      }
+      if (currentUser && typeof currentUser === 'object') {
+        const u = currentUser as {
+          id?: { _serialized?: string };
+          _serialized?: string;
+          user?: string;
+          server?: string;
+        };
+        return (
+          u.id?._serialized ??
+          u._serialized ??
+          (u.user ? `${u.user}@${u.server || 'c.us'}` : null) ??
+          null
+        );
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function chatModelHasRequiredProps(chat: unknown): boolean {
+  if (!chat || typeof chat !== 'object') return false;
+  const c = chat as { id?: { isGroup?: unknown; isLid?: unknown; user?: unknown } };
+  return !!(
+    c.id &&
+    (typeof c.id.isGroup === 'function' || typeof c.id.isLid === 'function') &&
+    c.id.user
+  );
+}
+
+function createWidObject(WidFactory: any, wid: string): any {
+  if (!WidFactory) return null;
+  try {
+    if (typeof WidFactory === 'function') return WidFactory(wid);
+    if (typeof WidFactory.createWid === 'function') return WidFactory.createWid(wid);
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * Materializa chat no WA: find → openChatAt → espera → get/find de novo → scan por aliases.
+ * Usado após as estratégias “rápidas” falharem.
+ *
+ * Importante: **nunca** chamar `Chat.find` só com string `5511...@c.us` — versões recentes do WA
+ * esperam objeto WID e lançam `e.isLid is not a function` (throw síncrono, fora de `.catch`).
+ */
+async function tryMaterializeChatInWa(
+  Chat: any,
+  WidFactory: any,
+  Cmd: any,
+  wid: string,
+  phoneDigits: string
+): Promise<any> {
+  try {
+    const widObj = createWidObject(WidFactory, wid);
+    const widForFind = widObj?.user ? widObj : null;
+
+    if (widForFind && typeof Chat.find === 'function') {
+      let found: any = null;
+      try {
+        found = await Promise.resolve(Chat.find(widForFind)).catch(() => null);
+      } catch {
+        found = null;
+      }
+      if (found && chatModelHasRequiredProps(found)) return found;
+    }
+
+    if (widObj?.user && Cmd?.openChatAt) {
+      try {
+        Cmd.openChatAt({ id: widObj });
+        await new Promise(r => setTimeout(r, 3000));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    let chat: any = null;
+    try {
+      chat = typeof Chat.get === 'function' ? Chat.get(wid) : null;
+    } catch {
+      chat = null;
+    }
+    if (!chat && widForFind && typeof Chat.find === 'function') {
+      try {
+        chat = await Promise.resolve(Chat.find(widForFind)).catch(() => null);
+      } catch {
+        chat = null;
+      }
+    }
+    if (chat && chatModelHasRequiredProps(chat)) return chat;
+
+    const scanned = await findChatMatchingPhoneInModels(Chat, phoneDigits);
+    if (scanned && chatModelHasRequiredProps(scanned)) return scanned;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export type EnsureChatLoadedResult =
+  | { ok: true; chat: unknown }
+  | {
+      ok: false;
+      reason: 'not_registered' | 'not_found' | 'no_chat_module' | 'invalid_phone';
+      phoneDigits?: string;
+    };
+
+/**
+ * Fallback quando `Chat.get` / `find` / scan da lista já falharam: `QueryExist` (se existir) + materialização.
+ * Exportado para Respostas Agênticas pré-carregarem o chat no WA (ajuda captura; não grava MessageDB).
+ */
+export async function ensureChatLoaded(chatIdOrPhone: string): Promise<EnsureChatLoadedResult> {
+  const phoneDigits = normalizeInputToPhoneNumber(chatIdOrPhone);
+  if (!phoneDigits) {
+    return { ok: false, reason: 'invalid_phone' };
+  }
+
+  try {
+    await whatsappInterceptors.initialize();
+    const i = whatsappInterceptors;
+    const Chat = i.Chat;
+    const WidFactory = i.WidFactory;
+    const Cmd = i.Cmd;
+    const User = i.User;
+    const queryExist = i.QueryExist;
+
+    if (!Chat) {
+      return { ok: false, reason: 'no_chat_module' };
+    }
+
+    const currentUserWid = readCurrentUserWid(User);
+    const widsToTry = buildWidCandidates(phoneDigits, currentUserWid);
+
+    for (const wid of widsToTry) {
+      try {
+        if (typeof queryExist === 'function') {
+          let exists: unknown;
+          try {
+            exists = await Promise.resolve(queryExist(wid)).catch(() => undefined);
+          } catch {
+            exists = undefined;
+          }
+          if (exists === false) continue;
+        }
+        const chat = await tryMaterializeChatInWa(Chat, WidFactory, Cmd, wid, phoneDigits);
+        if (chat) {
+          return { ok: true, chat };
+        }
+      } catch {
+        /* próximo alias */
+      }
+    }
+
+    if (typeof queryExist === 'function' && widsToTry.length > 0) {
+      let allFalse = true;
+      for (const wid of widsToTry) {
+        let ex: unknown;
+        try {
+          ex = await Promise.resolve(queryExist(wid)).catch(() => undefined);
+        } catch {
+          ex = undefined;
+        }
+        if (ex !== false) {
+          allFalse = false;
+          break;
+        }
+      }
+      if (allFalse) {
+        return { ok: false, reason: 'not_registered', phoneDigits };
+      }
+    }
+
+    return { ok: false, reason: 'not_found', phoneDigits };
+  } catch {
+    return { ok: false, reason: 'not_found', phoneDigits };
+  }
+}
+
+/** Resolve modelo Chat do WA para um chatId @c.us (aliases + scan). */
+async function resolveChatModelForRetomar(chatIdParam: string): Promise<any> {
+  const phoneNumber = normalizeInputToPhoneNumber(chatIdParam);
+  if (!phoneNumber) return null;
+
+  await whatsappInterceptors.initialize();
+  const i = whatsappInterceptors;
+  const Chat = i.Chat;
+  const WidFactory = i.WidFactory;
+  const User = i.User;
+  if (!Chat) return null;
+
+  const currentUserWid = readCurrentUserWid(User);
+  const wids = buildWidCandidates(phoneNumber, currentUserWid);
+
+  for (const wid of wids) {
+    try {
+      const c = Chat.get?.(wid);
+      if (c) return c;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (typeof Chat.find === 'function') {
+    for (const wid of wids) {
+      try {
+        let widToFind: unknown = wid;
+        if (WidFactory?.createWid) {
+          try {
+            widToFind = WidFactory.createWid(wid);
+          } catch {
+            widToFind = wid;
+          }
+        }
+        const c = await Promise.resolve(Chat.find(widToFind)).catch(() => null);
+        if (c) return c;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  const scanned = await findChatMatchingPhoneInModels(Chat, phoneNumber);
+  if (scanned) return scanned;
+
+  const ensured = await ensureChatLoaded(chatIdParam);
+  if (ensured.ok) return ensured.chat;
+  return null;
+}
+
+function outgoingUnixFromMsgModel(m: unknown): number | null {
+  if (!m || typeof m !== 'object') return null;
+  const msg = m as {
+    fromMe?: boolean;
+    id?: { fromMe?: boolean };
+    __x_fromMe?: boolean;
+    t?: number;
+    __x_t?: number;
+  };
+  const fromMe = msg.fromMe === true || msg.id?.fromMe === true || msg.__x_fromMe === true;
+  if (!fromMe) return null;
+  const t = msg.t ?? msg.__x_t;
+  return typeof t === 'number' && t > 0 ? t : null;
+}
+
+/**
+ * Última mensagem enviada por nós neste chat, a partir do modelo WA (não usa MessageDB).
+ */
+async function extractLastOurOutgoingTimeFromChat(chat: unknown): Promise<Date | null> {
+  if (!chat || typeof chat !== 'object') return null;
+  const c = chat as {
+    lastMessage?: unknown;
+    __x_lastMessage?: unknown;
+    _lastMessage?: unknown;
+    ms?: { getModelsArray?: () => unknown; _models?: unknown[] };
+    msgs?: { getModelsArray?: () => unknown; _models?: unknown[] };
+  };
+
+  let best: number | null = null;
+  const bump = (u: number | null) => {
+    if (u != null && (best === null || u > best)) best = u;
+  };
+
+  bump(outgoingUnixFromMsgModel(c.lastMessage));
+  bump(outgoingUnixFromMsgModel(c.__x_lastMessage));
+  bump(outgoingUnixFromMsgModel(c._lastMessage));
+
+  const ms = c.ms || c.msgs;
+  if (ms && typeof ms === 'object') {
+    try {
+      let models: unknown[] = [];
+      const coll = ms as { getModelsArray?: () => unknown; _models?: unknown[] };
+      if (typeof coll.getModelsArray === 'function') {
+        const raw = coll.getModelsArray();
+        const arr = await Promise.resolve(raw);
+        if (Array.isArray(arr)) models = arr;
+      } else if (Array.isArray(coll._models)) {
+        models = coll._models;
+      }
+      let n = 0;
+      for (const m of models) {
+        if (n++ > 120) break;
+        bump(outgoingUnixFromMsgModel(m));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return best != null ? new Date(best * 1000) : null;
+}
+
+/**
+ * Para cada chatId, consulta o Store do WhatsApp e devolve a data da última mensagem enviada por nós.
+ * Usar só como fallback quando MessageDB + storage Retomar não têm dado (custo: 1 resolução de chat por id).
+ */
+export async function getLastOutgoingFromWhatsAppForChatIds(
+  chatIds: string[],
+): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>();
+  for (const chatId of chatIds) {
+    if (!chatId || !chatId.includes('@c.us')) continue;
+    try {
+      const chat = await resolveChatModelForRetomar(chatId);
+      if (!chat) continue;
+      const d = await extractLastOurOutgoingTimeFromChat(chat);
+      if (d && !Number.isNaN(d.getTime())) out.set(chatId, d);
+    } catch {
+      /* ignora por contacto */
+    }
+  }
+  return out;
 }
 
 export class SendMessageService {
@@ -264,10 +596,22 @@ export class SendMessageService {
         chat = await findChatMatchingPhoneInModels(chatModule, phoneNumber);
       }
 
+      // Estratégia 7: QueryExist + materializar chat (find + openChatAt + espera)
+      if (!chat) {
+        const ensured = await ensureChatLoaded(chatIdOrPhone);
+        if (ensured.ok) {
+          chat = ensured.chat;
+        } else if (ensured.reason === 'not_registered') {
+          throw new Error(
+            `Número não registado no WhatsApp: ${phoneNumber}. Verifique o telefone (formato: 11999999999, com ou sem DDI 55 e 9 do celular conforme o caso).`
+          );
+        }
+      }
+
       // Validação: Chat não encontrado (TestPanel linhas 2490-2495)
       if (!chat) {
         throw new Error(
-          `Chat não encontrado para ${phoneNumber} (tentámos ${widsToTry.length} formato(s) de número + busca na lista). O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: 11999999999 sem espaços ou caracteres especiais)`
+          `Chat não encontrado para ${phoneNumber} (tentámos ${widsToTry.length} formato(s) de número + busca na lista + materialização WA). O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: 11999999999 sem espaços ou caracteres especiais)`
         );
       }
 

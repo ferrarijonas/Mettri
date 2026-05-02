@@ -1,12 +1,49 @@
 # Mettri
 
-# 
+## Atendimento Agêntico
+
+- [x] Pedido onde o cliente não cita o que quer, só diz que quer esse, ou responde msg escrita por mim, tem que entender tbm. 
+  
+  - [ ] Já está implementado e documentado a fucnao de identificar o repply certo, agora tem que implementar pra isso fazer match com produto
+
+- [ ] Regex tem que ser genérico suficiente pra servir q vários todos tipos de negócio, como os grandes fazem isso? 
+
+
+
+
+
+- [x] Specs da **infraestrutura de llms**, toda criada, vai precisar costurar tudo depois
+
+- [x] Specs e inicio do **catálogo**, funcionado, já oferencendo saídas úteis consumíveis
+
+- [x] Specs e rascunho visual do **campanhas**, ainda em mock
+
+- [x] Specs e rascunho do **vitrine**, oferecendo saídas consumíveis
+
+- [ ] Melhorias no **cliente/cadastro**, ainda não concluídas, mas mto bem definidas
+
+- [x] Criar o **enriquecedor** que é o sistema que vai ouvir as conversas e gerenciar a memória curta e longa de cada cliente.
+
+Tarefas
+
+- [x] Criar a arquitetura do **ouvinte** que vai ouvir as conversas e manipular os dados 
+
+- [ ] Garantir que o cliente esteja sendo encontrado e cadastrado se não tem mach confiável. Já entender se é um novo cliente e comecar a popular o cadastro...
+  
+  - [x] Conferir estado do cadastro, se está como eu quero
+  
+  - [ ] Cliente novo já precisa mostrar que é, com sinal explícito e mostrar que já está automaticamente cadastrado agora, que não achou math com nada...
+  
+  - [ ] Entender quem vai popular o cadastro, se o que vai ser feito na hora, e tem lógica o que vai ser feito depois de pedido pronto
+
+- [ ] Garantir que **catálogo** esteja redondo, ao menos com preco e descricao e cruzamento com o site
 
 ### 
 
 ### Métricas no retomar
 
 - [ ] Perfeito, está exportando as frases que foram respondidas, estudar agora o próximo passo, o que vamos fazer com isso, se vira post sobre o painel de métricas e seu potencial ou se alimento o retomar...
+- [ ] 
 
 ---
 
@@ -46,11 +83,25 @@
 
 - [x] A ordem está correta agora, mas ficou com muita explicacao. Pode ficar mais simples primeiro, e depois, entender pq nada do kernel de capacidades funciona. E se as ideias que compreendem ele não estão defasadas, antigas....
 
-- [ ] Vou pedir pra simplificar e unificar as sanfonas ...
+- [x] Vou pedir pra simplificar e unificar as sanfonas ...
+
+- [ ] Simplifiquei as sanfonas, achou os problemas, unimos o WaEnrich com o KerneldeCapacidades, agora fazendo últimos ajuste na exibicão
+
+- [ ] 
 
 ---
 
 # Mettri
+
+## Agente Retomar
+
+- [ ] Frases estranhas, como Frases sem sentido, frases do tipo, sentimos sua falta por aqui, não combinam comigo.
+
+## Retomar
+
+- [ ] Alguns problemas com arquivo upado, e regras de envio, contornado a última que fixa uma data mínima para envio de msgs entre eu e o cliente, pra ele não receber msgs de fluxos difrentes em dias muito próximos...
+
+- [ ] 
 
 ## Máquina de estados
 
@@ -70,9 +121,15 @@
 
 - [x] estou desenhando a engenharia e preparando para criar o bot de atendimento..ou entender onde ele se encaixa ali...
 
-- [ ] Ele desenhou a primeira spec que já definir tudo, quase como que o gerente completo, mas ela está feia, um pouco confusa. Precisa revisar toda ela direitinho....
+- [x] Ele desenhou a primeira spec que já definir tudo, quase como que o gerente completo, mas ela está feia, um pouco confusa. Precisa revisar toda ela direitinho.
+
+- [ ] Tudo definino, especs definidas, vamos comecar a por em prática, o plano está em 
   
-  ---
+  - `ZenSpecKit/Mettri/MettriComercial-tarefas.md`
+
+- [ ] Precisamos garantir que os macths comecem acontecer. 
+
+- [ ] ---
 
 # Post Rag
 
@@ -85,10 +142,9 @@
 - [x] Enviei os arquivos pra ele, vou ver se é o que ele precisa ou se precisa de mais.
 - [x] Dados prontos, já tenho o que preciso para um primeiro post...
 - [x] Estou ajustando a forma que vamos mostrar os gráficos e como vamos relacionar visualmente posts que estão interligados por tema.
-- [ ] Já defini como costurar um post no outro, agora vou definir os gráficos
+- [x] Já defini como costurar um post no outro, agora vou definir os gráficos
 - [ ] Já comecei a imagens, precisa comecar os gráficos e depois postar..
-
----
+- [ ] ---
 
 ### Post avaliacao de resposta
 

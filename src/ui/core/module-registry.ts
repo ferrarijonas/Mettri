@@ -6,7 +6,7 @@
  */
 
 import type { EventBus } from './event-bus';
-import { ModuleUpdater } from '../../infrastructure/module-updater';
+import type { ModuleUpdater } from '../../infrastructure/module-updater';
 
 /**
  * Factory function para criar instância do painel
@@ -69,9 +69,9 @@ export interface PanelInstance {
  * Registry que gerencia todos os módulos da aplicação
  */
 export class ModuleRegistry {
-  private modules: Map<string, ModuleDefinition> = new Map();
-  private hierarchy: Map<string, string[]> = new Map(); // parent -> children[]
-  private loadedModules: Set<string> = new Set();
+  private modules = new Map<string, ModuleDefinition>();
+  private hierarchy = new Map<string, string[]>(); // parent -> children[]
+  private loadedModules = new Set<string>();
   private moduleUpdater: ModuleUpdater | null = null;
 
   /**

@@ -24,27 +24,27 @@ type ListsManagerLike = Pick<
   | 'getMembers'
 >;
 
-type RetomarSupportDeps = {
+interface RetomarSupportDeps {
   getAccountId?: () => Promise<string>;
   createListsManager?: (accountId: string) => Promise<ListsManagerLike> | ListsManagerLike;
   getContador?: (accountId: string, chatId: string) => Promise<number>;
-};
+}
 
-export type RetomarSupportEtiqueta = {
+export interface RetomarSupportEtiqueta {
   id: string;
   name: string;
   color: string;
   isDefault: boolean;
   memberCount: number;
   isMember: boolean;
-};
+}
 
-export type RetomarSupportSnapshot = {
+export interface RetomarSupportSnapshot {
   accountId: string;
   chatId: string;
   contador: number;
   etiquetas: RetomarSupportEtiqueta[];
-};
+}
 
 async function resolveAccountIdFromStorage(): Promise<string> {
   const bridge = new MettriBridgeClient(2500);

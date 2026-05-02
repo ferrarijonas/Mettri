@@ -138,7 +138,7 @@ export class HitTest {
    * @param maxDistance Distância máxima para buscar (em pixels)
    * @returns Elemento HTMLElement ou null se não encontrado
    */
-  getNearestElement(x: number, y: number, maxDistance: number = 50): HTMLElement | null {
+  getNearestElement(x: number, y: number, maxDistance = 50): HTMLElement | null {
     // Primeiro, tentar elemento exato
     let element = this.getElementAt(x, y);
     if (element) {

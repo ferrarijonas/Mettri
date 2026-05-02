@@ -8,11 +8,19 @@ export interface DirectoryClientDraft {
   nickname: string;
   address: string;
   whatsAppCandidateName?: string;
-  // De onde veio o nome atual
   nameSource?: 'manual' | 'import' | 'whatsapp';
   updatedAtIso: string;
+  preferenciasProduto?: string[];
+  aversoesProduto?: string[];
+  formaPagamentoPreferida?: string[];
+  enderecoEntrega?: string;
+  urgenciaEntrega?: string;
+  observacoesLogisticas?: string[];
+  preferenciasLogistica?: string[];
 }
 
+import type { EventBus } from '../../../ui/core/event-bus';
+import { emitPanelNavigate } from '../../../ui/core/panel-navigation';
 import { classifyNameCandidate } from '../name-likelihood';
 import type { ImportFileType, ImportMapping, ParsedTable } from '../import/import-engine';
 import { parseFileToTable, inferMappingFromHeaders, mapTableToCanonicalClients, getPreviewByMapping } from '../import/import-engine';
@@ -79,7 +87,7 @@ function displayName(c: DirectoryClientDraft): string {
   return c.phoneDigits ? `+${c.phoneDigits}` : 'Sem nome';
 }
 
-type ImportWizardState = {
+interface ImportWizardState {
   file: File;
   type: ImportFileType;
   table: ParsedTable;
@@ -91,17 +99,22 @@ type ImportWizardState = {
   error?: string;
   result?: { created: number; updated: number; skippedNoIdentity: number; nameApplied?: number; nameRejected?: number };
   running?: boolean;
-};
+}
 
 export class ClientesDirectoryPanel {
   private container: HTMLElement | null = null;
   private currentClientKey: string | null = null;
-  private searchQuery: string = '';
+  private searchQuery = '';
   private importWizard: ImportWizardState | null = null;
+  private eventBus: EventBus;
 
-  // MVP: manter cache em memória, mas persistir no IndexedDB via clientDB
   private clients: DirectoryClientDraft[] = [];
-  private isLoaded: boolean = false;
+  private isLoaded = false;
+  private openedFromPendingKey = false;
+
+  constructor(eventBus: EventBus) {
+    this.eventBus = eventBus;
+  }
 
   public async render(): Promise<HTMLElement> {
     const root = document.createElement('div');
@@ -109,6 +122,12 @@ export class ClientesDirectoryPanel {
     this.container = root;
     await this.ensureLoaded();
     this.renderListView();
+    const pendingKey = String(this.eventBus.data.pendingClientKey || '').trim();
+    if (pendingKey) {
+      delete this.eventBus.data.pendingClientKey;
+      this.openedFromPendingKey = true;
+      this.openClient(pendingKey);
+    }
     return root;
   }
 
@@ -328,6 +347,19 @@ export class ClientesDirectoryPanel {
       </div>
 
       <div class="rounded-xl border border-border/30 bg-secondary/10 p-3">
+        <div class="text-xs font-medium text-foreground">Perfil Operacional</div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div class="col-span-2">${this.renderInput('Preferências produto', 'preferenciasProduto', this.formatArray(client.preferenciasProduto))}</div>
+          <div class="col-span-2">${this.renderInput('Aversões', 'aversoesProduto', this.formatArray(client.aversoesProduto))}</div>
+          <div class="col-span-2">${this.renderInput('Forma de pagamento', 'formaPagamentoPreferida', this.formatArray(client.formaPagamentoPreferida))}</div>
+          <div class="col-span-2">${this.renderInput('Endereço de entrega', 'enderecoEntrega', client.enderecoEntrega || '')}</div>
+          <div>${this.renderUrgenciaSelect('Urgência', 'urgenciaEntrega', client.urgenciaEntrega || '')}</div>
+          <div>${this.renderInput('Prefs. logística', 'preferenciasLogistica', this.formatArray(client.preferenciasLogistica))}</div>
+          <div class="col-span-2">${this.renderTextarea('Observações logísticas', 'observacoesLogisticas', this.formatArray(client.observacoesLogisticas))}</div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-border/30 bg-secondary/10 p-3">
         <div class="text-xs font-medium text-foreground">Nome do WhatsApp (crachá)</div>
         <div class="mt-1 text-[11px] text-muted-foreground">
           Sugestão fraca: pode estar errado. Se estiver estranho, a gente ignora no envio.
@@ -336,9 +368,22 @@ export class ClientesDirectoryPanel {
           ${suggested ? this.escapeHtml(suggested) : '<span class="text-muted-foreground">Sem sugestão</span>'}
         </div>
       </div>
+
+      <div class="rounded-xl border border-border/30 bg-secondary/10 p-3">
+        <div class="flex items-center justify-between">
+          <div class="text-xs font-medium text-foreground">Compras Registradas</div>
+          <button type="button" class="h-7 px-2 rounded-lg border border-border/30 bg-secondary/20 text-[10px] text-foreground" data-action="mapear-compras">
+            Mapear compras
+          </button>
+        </div>
+        <div class="mt-2 text-[11px] text-muted-foreground" id="compras-list">
+          Carregando compras...
+        </div>
+      </div>
     `;
 
     this.wireDetailListeners(client.clientKey);
+    this.loadClientPurchases(client.clientKey);
   }
 
   private renderImportWizard(): void {
@@ -475,7 +520,7 @@ export class ClientesDirectoryPanel {
           ${(() => {
             if (headers.length === 0) return '<div class="text-[11px] text-muted-foreground">Não consegui ler cabeçalho/colunas.</div>';
             const preview = getPreviewByMapping({ table: state.table, mapping: state.mapping, maxRows: 5 });
-            const entries: Array<[string, string[]]> = [['Telefone', preview['Telefone'] || []], ['Nome completo', preview['Nome completo'] || []], ['Nome', preview['Nome'] || []], ['Sobrenome', preview['Sobrenome'] || []], ['Apelido', preview['Apelido'] || []], ['Endereço', preview['Endereço'] || []], ['Email', preview['Email'] || []]];
+            const entries: [string, string[]][] = [['Telefone', preview['Telefone'] || []], ['Nome completo', preview['Nome completo'] || []], ['Nome', preview['Nome'] || []], ['Sobrenome', preview['Sobrenome'] || []], ['Apelido', preview['Apelido'] || []], ['Endereço', preview['Endereço'] || []], ['Email', preview['Email'] || []]];
             return entries
               .filter(([, v]) => Array.isArray(v) && v.length > 0)
               .map(([label, vals]) => `<div class="text-[11px]"><span class="font-medium text-muted-foreground">${this.escapeHtml(label)}</span> → ${vals.map(v => this.escapeHtml(v)).join(', ')}</div>`)
@@ -543,7 +588,7 @@ export class ClientesDirectoryPanel {
       this.renderImportWizard();
     };
 
-    const mapFields: Array<keyof ImportMapping> = [
+    const mapFields: (keyof ImportMapping)[] = [
       'phone',
       'phoneAlt',
       'fullName',
@@ -754,8 +799,13 @@ export class ClientesDirectoryPanel {
     const backBtn = this.container.querySelector('[data-action="back"]') as HTMLButtonElement | null;
     if (backBtn) {
       backBtn.addEventListener('click', () => {
-        this.currentClientKey = null;
-        this.renderListView();
+        if (this.openedFromPendingKey) {
+          this.openedFromPendingKey = false;
+          emitPanelNavigate(this.eventBus, 'atendimento.dashboard');
+        } else {
+          this.currentClientKey = null;
+          this.renderListView();
+        }
       });
     }
 
@@ -784,6 +834,13 @@ export class ClientesDirectoryPanel {
         this.saveFromForm(clientKey);
       });
     }
+
+    const mapearBtn = this.container.querySelector('[data-action="mapear-compras"]') as HTMLButtonElement | null;
+    if (mapearBtn) {
+      mapearBtn.addEventListener('click', () => {
+        emitPanelNavigate(this.eventBus, 'cadastro.purchase-mapping');
+      });
+    }
   }
 
   private saveFromForm(clientKey: string): void {
@@ -810,7 +867,14 @@ export class ClientesDirectoryPanel {
     client.address = address;
     client.updatedAtIso = nowIso();
 
-    // Se o telefone mudou, atualizar a chave (MVP em memória)
+    client.preferenciasProduto = this.parseListField('preferenciasProduto');
+    client.aversoesProduto = this.parseListField('aversoesProduto');
+    client.formaPagamentoPreferida = this.parseListField('formaPagamentoPreferida');
+    client.enderecoEntrega = this.readInputValue('enderecoEntrega');
+    client.urgenciaEntrega = this.readSelectValue('urgenciaEntrega');
+    client.observacoesLogisticas = this.parseListField('observacoesLogisticas');
+    client.preferenciasLogistica = this.parseListField('preferenciasLogistica');
+
     if (phoneDigits && client.clientKey !== phoneDigits) {
       const existing = this.clients.find((c) => c.clientKey === phoneDigits);
       if (!existing) {
@@ -819,10 +883,21 @@ export class ClientesDirectoryPanel {
       }
     }
 
-    // Persistir em background (MVP)
     this.persistClient(client).catch(() => {});
 
     this.renderDetailView();
+  }
+
+  private parseListField(field: string): string[] | undefined {
+    const value = this.readInputValue(field);
+    if (!value.trim()) return undefined;
+    return value.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+  }
+
+  private readSelectValue(field: string): string {
+    if (!this.container) return '';
+    const el = this.container.querySelector(`[data-field="${field}"]`) as HTMLSelectElement | null;
+    return el ? String(el.value || '').trim() : '';
   }
 
   private readInputValue(field: string): string {
@@ -843,6 +918,34 @@ export class ClientesDirectoryPanel {
         />
       </label>
     `;
+  }
+
+  private renderUrgenciaSelect(label: string, field: string, value: string): string {
+    const options = [
+      { value: '', label: '—' },
+      { value: 'baixa', label: 'Baixa' },
+      { value: 'normal', label: 'Normal' },
+      { value: 'alta', label: 'Alta' },
+    ];
+    const optionsHtml = options
+      .map((o) => `<option value="${o.value}" ${o.value === value ? 'selected' : ''}>${o.label}</option>`)
+      .join('');
+    return `
+      <label class="flex flex-col gap-1">
+        <span class="text-[11px] text-muted-foreground">${this.escapeHtml(label)}</span>
+        <select
+          class="h-10 rounded-xl border border-border/30 bg-background px-3 text-xs text-foreground"
+          data-field="${this.escapeHtml(field)}"
+        >
+          ${optionsHtml}
+        </select>
+      </label>
+    `;
+  }
+
+  private formatArray(value: string[] | undefined): string {
+    if (!Array.isArray(value) || value.length === 0) return '';
+    return value.join(', ');
   }
 
   private renderTextarea(label: string, field: string, value: string): string {
@@ -868,6 +971,13 @@ export class ClientesDirectoryPanel {
       nickname: '',
       address: '',
       updatedAtIso: nowIso(),
+      preferenciasProduto: undefined,
+      aversoesProduto: undefined,
+      formaPagamentoPreferida: undefined,
+      enderecoEntrega: undefined,
+      urgenciaEntrega: undefined,
+      observacoesLogisticas: undefined,
+      preferenciasLogistica: undefined,
     };
   }
 
@@ -971,7 +1081,7 @@ export class ClientesDirectoryPanel {
               if (batch.length >= 50) {
                 // Não travar a UI com lotes muito grandes
                 // (Promise.allSettled é “caravana”: um erro não para o resto).
-                // eslint-disable-next-line no-await-in-loop
+                 
                 await flush();
               }
             }
@@ -1038,7 +1148,7 @@ export class ClientesDirectoryPanel {
         );
 
         if (enrichBatch.length >= 50) {
-          // eslint-disable-next-line no-await-in-loop
+           
           await flushEnrich();
         }
       }
@@ -1137,6 +1247,35 @@ export class ClientesDirectoryPanel {
       }, 10_000);
     } catch (error) {
       console.warn('[ClientesDirectoryPanel] Falha ao exportar clientes:', error);
+    }
+  }
+
+  private async loadClientPurchases(clientKey: string): Promise<void> {
+    if (!this.container) return;
+    const listEl = this.container.querySelector('#compras-list');
+    if (!listEl) return;
+
+    try {
+      const { orderDB } = await import('../../../storage/order-db');
+      const orders = await orderDB.listByClientKeyAndStatus(clientKey, 'closed', 20);
+      if (orders.length === 0) {
+        listEl.innerHTML = '<span class="text-muted-foreground">Nenhuma compra registrada</span>';
+        return;
+      }
+      const html = orders
+        .slice(0, 10)
+        .map((o) => {
+          const date = o.createdAtIso ? new Date(o.createdAtIso).toLocaleDateString('pt-BR') : '?';
+          const total = o.totalCents ? `R$ ${(o.totalCents / 100).toFixed(2)}` : o.itemsSummary || '—';
+          return `<div class="py-1 border-b border-border/20 last:border-0">
+            <span class="text-foreground">${date}</span> — <span class="text-muted-foreground">${this.escapeHtml(total)}</span>
+          </div>`;
+        })
+        .join('');
+      listEl.innerHTML = html;
+    } catch (error) {
+      console.warn('[ClientesDirectoryPanel] Falha ao carregar compras:', error);
+      listEl.innerHTML = '<span class="text-destructive">Erro ao carregar compras</span>';
     }
   }
 }

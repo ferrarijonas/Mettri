@@ -5,14 +5,14 @@
  */
 
 import { getIcon } from '../icons/lucide-icons';
-import { ModuleUpdater } from '../../infrastructure/module-updater';
+import type { ModuleUpdater } from '../../infrastructure/module-updater';
 
 export class SettingsModal {
   private overlay: HTMLElement | null = null;
   private modal: HTMLElement | null = null;
-  private isOpen: boolean = false;
+  private isOpen = false;
   private moduleUpdater: ModuleUpdater;
-  private autoUpdateEnabled: boolean = true;
+  private autoUpdateEnabled = true;
 
   constructor(moduleUpdater: ModuleUpdater) {
     this.moduleUpdater = moduleUpdater;

@@ -51,7 +51,7 @@ function escapeHtml(s: string): string {
 export class PurchaseMappingPanel {
   private container: HTMLElement | null = null;
   private session: MappingSession = createInitialSession();
-  private apiKey: string = '';
+  private apiKey = '';
   private onProgress?: (session: MappingSession) => void;
   private apiKeySaveState: 'idle' | 'saving' | 'success' | 'error' | 'no-bridge' = 'idle';
   private apiKeyErrorMessage: string | null = null;
@@ -415,7 +415,7 @@ export class PurchaseMappingPanel {
     }
     this.setStatus('SAMPLE_ANALYZING');
     try {
-      const transcripts: Array<{ chatName: string; transcript: string }> = [];
+      const transcripts: { chatName: string; transcript: string }[] = [];
       for (const chatId of s.selectedSampleChatIds) {
         const msgs = await getMessagesForChat(chatId, 50);
         const info = s.samplePool.find((c) => c.chatId === chatId);

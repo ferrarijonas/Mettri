@@ -19,16 +19,25 @@ import {
 } from './inactive-days';
 import { classifyNameCandidate } from '../../clientes/name-likelihood';
 import { MettriBridgeClient } from '../../../content/bridge-client';
-import { sendMessageService } from '../../../infrastructure/services';
+import {
+  sendMessageService,
+  getLastOutgoingFromWhatsAppForChatIds,
+  ensureChatLoaded,
+} from '../../../infrastructure/services';
 import { RateLimiter } from './rate-limiter';
 import { RetomarListsManager, type RetomarList } from './retomar-lists';
 import * as retomarContador from './retomar-contador';
+import { getLastRetomarOutgoingMap, setLastRetomarOutgoingAt } from './retomar-last-outgoing-store';
+import { mergeLastOutgoingMaps } from './merge-last-outgoing';
+import { verifyRetomarPreSend } from './retomar-send-gate';
 import {
   computeEligibleContactsDiagnostics,
   type LastActivityEntry,
+  type LastOutgoingEntry,
 } from './eligible-contacts-engine';
 import { splitAB } from './ab-split';
 import { suggestRedacaoRetomar, suggestText } from './ai-suggestion';
+import { formatAgenteRetomarPromptUpdatedLabel, AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO } from './agente-retomar-prompt';
 import { retomarContextResolver } from './retomar-context-resolver';
 import {
   retomarMetricsResolver,
@@ -108,8 +117,8 @@ export class RetomarPanel {
   private cadenceDays: number[] = [21, 42, 73, 116];
   private eligibleClients: InactiveClient[] = [];
   /** Cache de clientes por chatId para preservar nomes entre modos (evita alteração ao alternar). */
-  private clientsCache: Map<string, InactiveClient> = new Map();
-  private selectedClients: Set<string> = new Set();
+  private clientsCache = new Map<string, InactiveClient>();
+  private selectedClients = new Set<string>();
   /** Índice da faixa selecionada nos ciclos (0–3). */
   private selectedRangeIndex: number | null = null;
   private selectedInactiveDay: number | null = null;
@@ -122,18 +131,18 @@ export class RetomarPanel {
   };
 
   // Propriedades para novo design
-  private totalContacts: number = 0;
-  private eligibleCount: number = 0;
-  private periodFilters: Array<{
+  private totalContacts = 0;
+  private eligibleCount = 0;
+  private periodFilters: {
     range: string;
     count: number;
     selected: boolean;
     variant: 'outline' | 'filled';
-  }> = [];
-  private isFiltersExpanded: boolean = true;
-  private isContactsExpanded: boolean = true;
+  }[] = [];
+  private isFiltersExpanded = true;
+  private isContactsExpanded = true;
   private openMenuId: string | null = null;
-  private messageText: string = "";
+  private messageText = "";
   private closeMenusHandler: ((e: MouseEvent) => void) | null = null;
   private closeDropdownHandler: ((e: MouseEvent) => void) | null = null;
   private closeRelationDropdownHandler: ((e: MouseEvent) => void) | null = null;
@@ -142,20 +151,20 @@ export class RetomarPanel {
   /** Intervalo customizado em dias (modo Tipo de relação = Personalizado). Apenas UI. */
   private customRelationIntervalDays: number | null = null;
   /** Expansão do painel avançado de dias da régua no modo Personalizado. */
-  private isCustomCadenceExpanded: boolean = false;
+  private isCustomCadenceExpanded = false;
   /** Popover de configuração da régua em Ciclos de contato (engrenagem). */
-  private isChamadasConfigOpen: boolean = false;
+  private isChamadasConfigOpen = false;
 
   /** Tipo de relação selecionado (dropdown). */
   private selectedRelationType: RelationType = 'frequente';
   /** Dropdown "Baseado em" (fonte de atividade) aberto ou fechado. */
-  private activitySourceDropdownOpen: boolean = false;
+  private activitySourceDropdownOpen = false;
   /** Fonte da data de referência para afastamento. */
   private selectedActivitySource: ActivitySource = 'last-message';
-  private relationTypeDropdownOpen: boolean = false;
+  private relationTypeDropdownOpen = false;
 
   private testContact: { phone: string; name: string } | null = null;
-  private testModeEnabled: boolean = false;
+  private testModeEnabled = false;
   private bridge = new MettriBridgeClient(2500);
   private sendButtonClickHandler: ((e: MouseEvent) => void) | null = null;
 
@@ -172,7 +181,7 @@ export class RetomarPanel {
   private readonly STORAGE_KEY_PAUSED = 'retomarIsPaused';
 
   /** accountId para contador e listas (definido em loadConfig). */
-  private accountId: string = 'default';
+  private accountId = 'default';
 
   /** Snapshot da lista XLSX importada (fonte last-purchase-import). */
   private purchaseImportSnapshot: PurchaseImportSnapshot | null = null;
@@ -188,17 +197,17 @@ export class RetomarPanel {
   ];
 
   /** Painel do ciclo: lista de pessoas expandida ou só resumo. */
-  private cyclePeopleExpanded: boolean = false;
+  private cyclePeopleExpanded = false;
   /** Painel do ciclo: bloco Métricas (este ciclo) expandido. */
-  private cycleMetricsExpanded: boolean = false;
+  private cycleMetricsExpanded = false;
   /** Modo de envio no painel do ciclo: Só A, Só B ou A/B (50%–50%). */
   private cycleSendMode: 'A' | 'B' | 'AB' = 'A';
 
   /** Payload A/B por chatId — preenchido no modo A/B para que processQueue saiba o texto e variant de cada contato. */
-  private sendingPayloadByChatId: Map<string, { text: string; variant: 'A' | 'B' }> = new Map();
+  private sendingPayloadByChatId = new Map<string, { text: string; variant: 'A' | 'B' }>();
 
   /** Período selecionado nas métricas do ciclo (em dias). */
-  private cycleMetricsPeriodDays: number = 7;
+  private cycleMetricsPeriodDays = 7;
   /** Cache do bloco Métricas (este ciclo) após leitura do messageDB. */
   private cycleMetricsView:
     | null
@@ -206,11 +215,11 @@ export class RetomarPanel {
     | { kind: 'error'; message: string }
     | {
         kind: 'ok';
-        columns: Array<{ label: 'A' | 'B'; metrics: RetomarMetricsResult }>;
+        columns: { label: 'A' | 'B'; metrics: RetomarMetricsResult }[];
       } = null;
 
   /** Métricas agregadas no cartão "Retomar conversas" (todos os ciclos, A+B). */
-  private retomarSummaryPeriodDays: number = 7;
+  private retomarSummaryPeriodDays = 7;
   private retomarSummaryView:
     | null
     | { kind: 'loading' }
@@ -218,7 +227,7 @@ export class RetomarPanel {
     | { kind: 'ok'; metrics: RetomarMetricsResult } = null;
 
   /** Bloco Respostas Agênticas (independente do acordeão de Ciclos de contato). */
-  private isAgenticSectionExpanded: boolean = true;
+  private isAgenticSectionExpanded = true;
   private selectedAgenticRangeIndex: number | null = null;
   private readonly agenticHiddenChatIds = new Set<string>();
   private readonly agenticChecked = new Set<string>();
@@ -230,8 +239,8 @@ export class RetomarPanel {
   // Sistema de listas
   private listsManager: RetomarListsManager | null = null;
   private lists: RetomarList[] = [];
-  private listsExpanded: boolean = false;
-  private creatingList: boolean = false;
+  private listsExpanded = false;
+  private creatingList = false;
   private listMenuOpenId: string | null = null;
   /** Modo etiqueta: id da lista selecionada (Bloqueados/CNPJ) ou null = modo dia. */
   private selectedListId: string | null = null;
@@ -434,7 +443,8 @@ export class RetomarPanel {
   private async loadInactiveClients(): Promise<void> {
     const now = new Date();
     const lastActivityByChat = await this.buildLastActivityByChat(this.selectedActivitySource);
-    const lastOutgoingByContact = await messageDB.getLastOutgoingByContact();
+    const idbLastOutgoing = await messageDB.getLastOutgoingByContact();
+    const retomarOutgoingStored = await getLastRetomarOutgoingMap(this.accountId);
     let skipOutgoingForDebug = false;
     try {
       skipOutgoingForDebug =
@@ -443,7 +453,30 @@ export class RetomarPanel {
     } catch {
       skipOutgoingForDebug = false;
     }
-    const lastOutgoingForEngine = skipOutgoingForDebug ? new Map() : lastOutgoingByContact;
+
+    let lastOutgoingForEngine = new Map<string, LastOutgoingEntry>();
+    if (!skipOutgoingForDebug) {
+      const needWa: string[] = [];
+      for (const chatId of lastActivityByChat.keys()) {
+        const hasIdb = idbLastOutgoing.has(chatId);
+        const hasSt = Object.prototype.hasOwnProperty.call(retomarOutgoingStored, chatId);
+        if (!hasIdb && !hasSt && chatId.endsWith('@c.us')) needWa.push(chatId);
+      }
+      const waCap = 200;
+      let waMap = new Map<string, Date>();
+      if (needWa.length > 0) {
+        try {
+          waMap = await getLastOutgoingFromWhatsAppForChatIds(needWa.slice(0, waCap));
+        } catch (e) {
+          console.warn('[RETOMAR] Fallback WA (última enviada):', e);
+        }
+      }
+      lastOutgoingForEngine = mergeLastOutgoingMaps(
+        idbLastOutgoing,
+        retomarOutgoingStored,
+        waMap,
+      );
+    }
     const contadorByChat = await retomarContador.getContadorMap(this.accountId);
     const chatIdsInLists = this.getChatIdsInListsSet();
 
@@ -458,7 +491,7 @@ export class RetomarPanel {
     // Métrica simples (contatos com data de referência disponível na fonte escolhida)
     this.totalContacts = lastActivityByChat.size;
 
-    let clients: InactiveClient[] = [];
+    const clients: InactiveClient[] = [];
 
     const { eligible: eligibleFromEngine, stats: eligibilityStats } = computeEligibleContactsDiagnostics({
       now,
@@ -1600,9 +1633,12 @@ export class RetomarPanel {
    * Bloco colapsável Respostas Agênticas (abaixo de Ciclos de contato; acordeão independente).
    */
   private renderAgenticSection(): string {
+    const agenticPromptHint = formatAgenteRetomarPromptUpdatedLabel();
+    const agenticPromptTitle = this.escapeHtml(AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO);
+    const agenticPromptLine = this.escapeHtml(agenticPromptHint);
     return `
       <div class="mettri-agentic-section-wrap space-y-1 mb-0 mt-1">
-        <div class="flex items-center justify-between py-2.5 border-b border-border/50 min-w-0">
+        <div class="py-2.5 border-b border-border/50 min-w-0 space-y-0.5">
           <button
             class="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors"
             id="retomar-agentic-section-toggle"
@@ -1613,6 +1649,7 @@ export class RetomarPanel {
               <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+          <p class="text-[10px] text-muted-foreground leading-tight m-0" title="Última modificação do ficheiro no build (UTC): ${agenticPromptTitle}">${agenticPromptLine}</p>
         </div>
         ${this.isAgenticSectionExpanded ? `
           <div id="retomar-agentic-chamadas" class="mettri-chamadas-content">
@@ -1623,7 +1660,7 @@ export class RetomarPanel {
     `;
   }
 
-  private getAgenticChamadasWithCounts(): Array<{
+  private getAgenticChamadasWithCounts(): {
     id: string;
     label: string;
     day: number;
@@ -1631,12 +1668,12 @@ export class RetomarPanel {
     selected: boolean;
     campaignLabel: string | null;
     rangeIndex: number;
-  }> {
+  }[] {
     const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
     const n = Math.min(ranges.length, CHAMADAS_CONFIG.length);
     if (n === 0) return [];
 
-    const result: Array<{
+    const result: {
       id: string;
       label: string;
       day: number;
@@ -1644,7 +1681,7 @@ export class RetomarPanel {
       selected: boolean;
       campaignLabel: string | null;
       rangeIndex: number;
-    }> = [];
+    }[] = [];
 
     for (let i = 0; i < n; i++) {
       const range = ranges[i];
@@ -1829,6 +1866,7 @@ export class RetomarPanel {
       const client = this.getAgenticCycleClients().find(c => c.chatId === chatId);
       const label = client?.firstName || client?.phone || chatId;
       try {
+        await ensureChatLoaded(chatId);
         const contexts = await retomarContextResolver({
           chatIds: [chatId],
           accountId: this.accountId,
@@ -3368,7 +3406,7 @@ export class RetomarPanel {
    * Retorna lista de ciclos com contagem e seleção (para o bloco Ciclos de contato).
    * Ciclo i (i < n-1) usa cadenceDays[i]; última linha sempre "Última tentativa" com último dia.
    */
-  private getChamadasWithCounts(): Array<{
+  private getChamadasWithCounts(): {
     id: string;
     label: string;
     day: number;
@@ -3376,12 +3414,12 @@ export class RetomarPanel {
     selected: boolean;
     campaignLabel: string | null;
     rangeIndex: number;
-  }> {
+  }[] {
     const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
     const n = Math.min(ranges.length, CHAMADAS_CONFIG.length);
     if (n === 0) return [];
 
-    const result: Array<{
+    const result: {
       id: string;
       label: string;
       day: number;
@@ -3389,7 +3427,7 @@ export class RetomarPanel {
       selected: boolean;
       campaignLabel: string | null;
       rangeIndex: number;
-    }> = [];
+    }[] = [];
 
     for (let i = 0; i < n; i++) {
       const range = ranges[i];
@@ -4025,6 +4063,24 @@ export class RetomarPanel {
         await this.saveQueueState();
         continue;
       }
+
+      if (!this.testModeEnabled) {
+        const gate = await verifyRetomarPreSend({
+          accountId: this.accountId,
+          chatId,
+          pendingRangeIndex: this.pendingChamadaIndex ?? 0,
+          relationType: this.selectedRelationType ?? 'frequente',
+          customRelationIntervalDays: this.customRelationIntervalDays,
+        });
+        if (!gate.ok) {
+          this.sendingProgress.skipped++;
+          this.logSkip(chatId, gate.reason);
+          this.sendingQueue.shift();
+          this.updateProgressUI();
+          await this.saveQueueState();
+          continue;
+        }
+      }
       
       // Verificar rate limit
       const check = this.rateLimiter.canSend();
@@ -4043,9 +4099,13 @@ export class RetomarPanel {
       }
 
       try {
-        await this.sendToClient(chatId);
-        this.sendingProgress.sent++;
-        this.rateLimiter.recordSent();
+        const sentOk = await this.sendToClient(chatId);
+        if (sentOk) {
+          this.sendingProgress.sent++;
+          this.rateLimiter.recordSent();
+        } else {
+          this.sendingProgress.errors++;
+        }
       } catch (error) {
         this.sendingProgress.errors++;
         this.logError(error);
@@ -4176,8 +4236,9 @@ export class RetomarPanel {
   /**
    * Envia mensagem para um cliente específico.
    * Se houver payload A/B, usa texto e variant do payload; senão, usa messageText.
+   * @returns true se enviou e persistiu; false se falhou (erro já logado).
    */
-  private async sendToClient(chatId: string): Promise<void> {
+  private async sendToClient(chatId: string): Promise<boolean> {
     const client = this.eligibleClients.find(c => c.chatId === chatId);
     if (!client) {
       this.addLog('error', `Cliente não encontrado: ${chatId}`);
@@ -4190,6 +4251,7 @@ export class RetomarPanel {
 
     try {
       await this.sendRawToChatId(chatId, message);
+      await setLastRetomarOutgoingAt(this.accountId, chatId, new Date());
 
       client.status = 'sent';
       client.generatedMessage = message;
@@ -4225,8 +4287,10 @@ export class RetomarPanel {
 
       this.addLog('success', `${client.firstName || client.phone || 'Sem nome'} - Enviado (${variant})`);
       this.updateUnifiedFlow();
+      return true;
     } catch (error) {
       this.addLog('error', `${client.firstName || client.phone || 'Sem nome'} - Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      return false;
     }
   }
 
@@ -4236,7 +4300,7 @@ export class RetomarPanel {
    */
   private getEtiquetaListsForDisplay(): RetomarList[] {
     // Listas padrão sempre exibidas primeiro
-    const defaultIds: Array<{ id: string; color: string }> = [
+    const defaultIds: { id: string; color: string }[] = [
       { id: 'never-send', color: '--tag-color-6' },
       { id: 'exclusivos', color: '--tag-color-2' },
       { id: 'inativos', color: '--tag-color-5' },

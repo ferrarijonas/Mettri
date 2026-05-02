@@ -1,4 +1,4 @@
-# RAG (Sugestão com histórico)
+# RAG
 
 ---
 
@@ -61,13 +61,13 @@ UI (ação rag:generate)
 Mettri ativo + nova mensagem inbound do cliente no chat ativo do WhatsApp, com modo "gerar sugestão automático" ligado (detalhe de UI, evento e escopo **sem** exigir painel Atendimento visível → spec de atendimento)
 ```
 
-| Programa                    | Recebe                                                                                                                                    | Faz                                     | Manda para             |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------------------- |
+| Programa                    | Recebe                                                                                                                                                                                                     | Faz                                     | Manda para             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------------------- |
 | `orquestrador_consulta_rag` | **Origem do gatilho:** manual (`rag:generate`) ou automática (toggle + Mettri aberto — ver atendimento). **Entrada de dados:** contexto da conversa (`messages`, `k`, etc.) — mesma assinatura conceitual. | Orquestra consulta, geração e avaliação | UI (sugestão)          |
-| `embed_consulta`            | texto (1)                           | Gera vetor da conversa atual            | `buscar`               |
-| `buscar`                    | vetor + k                           | Similaridade no índice, top K           | `prompt+GPT`           |
-| `prompt+GPT`                | conversa + chunks                   | Monta prompt, chama modelo              | `avaliar_sugestao_rag` |
-| `avaliar_sugestao_rag`      | conversa + chunks + saída do modelo | Avalia sugestão com LLM-as-judge        | UI (via orquestrador)  |
+| `embed_consulta`            | texto (1)                                                                                                                                                                                                  | Gera vetor da conversa atual            | `buscar`               |
+| `buscar`                    | vetor + k                                                                                                                                                                                                  | Similaridade no índice, top K           | `prompt+GPT`           |
+| `prompt+GPT`                | conversa + chunks                                                                                                                                                                                          | Monta prompt, chama modelo              | `avaliar_sugestao_rag` |
+| `avaliar_sugestao_rag`      | conversa + chunks + saída do modelo                                                                                                                                                                        | Avalia sugestão com LLM-as-judge        | UI (via orquestrador)  |
 
 ---
 

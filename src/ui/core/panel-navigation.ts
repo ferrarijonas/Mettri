@@ -2,9 +2,9 @@ import type { EventBus } from './event-bus';
 
 export const PANEL_NAVIGATE_EVENT = 'panel:navigate' as const;
 
-export type PanelNavigatePayload = {
+export interface PanelNavigatePayload {
   moduleId: string;
-};
+}
 
 function normalizeModuleId(moduleId: string): string {
   return moduleId.trim();

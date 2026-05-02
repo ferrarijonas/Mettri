@@ -120,6 +120,29 @@
   --progress-text: oklch(0.65 0.02 155) !important;
 }
 
+/*
+ * <select> nativo no Chrome/Edge: sem color-scheme o popup da lista usa tema claro
+ * (fundo branco gigante, opções sombreadas). Isto alinha o “menu do sistema” ao tema do painel.
+ */
+#mettri-panel {
+  color-scheme: light;
+}
+
+#mettri-panel.dark {
+  color-scheme: dark;
+}
+
+#mettri-panel select {
+  background-color: var(--input);
+  color: var(--foreground);
+  accent-color: var(--primary);
+}
+
+#mettri-panel select option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
 @theme inline {
   --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
   --font-mono: "SF Mono", "Geist Mono", monospace;
@@ -264,6 +287,12 @@
 #mettri-panel .mettri-atendimento-etiqueta-menu {
   background: var(--popover);
   color: var(--popover-foreground);
+}
+
+/* Comercial: grelha de etapas (7 colunas) em painel estreito */
+#mettri-panel .mettri-comercial-pipeline-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 /* Fluxo unificado: permitir que dropdowns (ex.: tipo de relação) não sejam cortados */

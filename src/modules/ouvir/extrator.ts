@@ -1,0 +1,631 @@
+import { MettriBridgeClient } from '../../content/bridge-client'
+import type {
+  CampoExtraido,
+  CampoConfianca,
+  ExtratorInput,
+  ExtratorOutput,
+  LlmBudgetState,
+} from './types'
+
+const STORAGE_KEY_API = 'mettri:openai:apiKey'
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
+const MODEL = 'gpt-4o-mini'
+const MAX_LLM_CALLS_PER_DAY = 100
+const MIN_MESSAGE_LENGTH_FOR_LLM = 10
+
+const budgetMap = new Map<string, LlmBudgetState>()
+
+function hoje(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function checkBudget(chatId: string): boolean {
+  const key = `${chatId}:${hoje()}`
+  const state = budgetMap.get(key)
+  if (!state) return true
+  return state.chamadasHoje < MAX_LLM_CALLS_PER_DAY
+}
+
+function incrementBudget(chatId: string): void {
+  const key = `${chatId}:${hoje()}`
+  const existing = budgetMap.get(key)
+  if (existing) {
+    existing.chamadasHoje++
+  } else {
+    budgetMap.set(key, { chatId, data: hoje(), chamadasHoje: 1 })
+  }
+}
+
+function normalizeMessage(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function classificarConfianca(from: number, to: number, value: number): CampoConfianca {
+  if (value >= to) return 'alta'
+  if (value >= from) return 'media'
+  return 'baixa'
+}
+
+function extractTelefone(text: string): CampoExtraido | null {
+  const m = text.match(/(\d{2})\s*9?\d{8}/)
+  if (!m) return null
+  return {
+    campo: 'telefone',
+    valor: m[0],
+    confianca: 'alta',
+    fonte: 'regex:telefone',
+    evidencias: [m[0]],
+  }
+}
+
+function extractCep(text: string): CampoExtraido | null {
+  const m = text.match(/\d{5}-?\d{3}/)
+  if (!m) return null
+  return {
+    campo: 'enderecoEntrega',
+    valor: `CEP ${m[0]}`,
+    confianca: 'alta',
+    fonte: 'regex:cep',
+    evidencias: [m[0]],
+  }
+}
+
+function extractPix(text: string): CampoExtraido | null {
+  const m = text.match(/[\w.-]+@[\w.-]+/)
+  if (!m) return null
+  return {
+    campo: 'formaPagamentoPreferida',
+    valor: 'PIX',
+    confianca: 'alta',
+    fonte: 'regex:pix',
+    evidencias: [m[0]],
+  }
+}
+
+function extractFormaPagamento(text: string): CampoExtraido | null {
+  const patterns = [
+    /\bpix\b/i,
+    /\bcrédito\b/i,
+    /\bdébito\b/i,
+    /\bdinheiro\b/i,
+    /\bboleto\b/i,
+    /\btransferência\b/i,
+  ]
+  for (const p of patterns) {
+    const m = text.match(p)
+    if (m) {
+      const v = m[0].toLowerCase()
+      return {
+        campo: 'formaPagamentoPreferida',
+        valor: v === 'pix' ? 'PIX' : v.charAt(0).toUpperCase() + v.slice(1),
+        confianca: 'alta',
+        fonte: 'regex:forma_pagamento',
+        evidencias: [m[0]],
+      }
+    }
+  }
+  return null
+}
+
+function extractUrgencia(text: string): CampoExtraido | null {
+  const alta = /\b(agora|hoje|urgente|já|é para hoje)\b/i
+  const media = /\b(amanhã|depois de amanhã|essa semana|quinta|sexta|sábado|domingo|segunda|terça|quarta)\b/i
+  if (alta.test(text)) {
+    return {
+      campo: 'urgenciaEntrega',
+      valor: 'alta',
+      confianca: 'alta',
+      fonte: 'regex:urgencia',
+      evidencias: ['urgência alta'],
+    }
+  }
+  if (media.test(text)) {
+    return {
+      campo: 'urgenciaEntrega',
+      valor: 'media',
+      confianca: 'media',
+      fonte: 'regex:urgencia',
+      evidencias: ['urgência média'],
+    }
+  }
+  return null
+}
+
+function extractEndereco(text: string): CampoExtraido | null {
+  const sinais = /\b(endereço|entregar|rua|avenida|travessa|praça|alameda)\b/i
+  if (sinais.test(text)) {
+    const sentences = text.split(/[.!?\n]+/).filter(s => sinais.test(s))
+    if (sentences.length > 0) {
+      return {
+        campo: 'enderecoEntrega',
+        valor: sentences[0].trim(),
+        confianca: classificarConfianca(0.3, 0.7, 0.5),
+        fonte: 'regex:endereco',
+        evidencias: [sentences[0].trim()],
+      }
+    }
+  }
+  return null
+}
+
+function extractLogistica(text: string): CampoExtraido | null {
+  const sinais = /\b(portaria|apto|apartamento|bloco|andar|sem acesso|interfone|campainha)\b/i
+  if (sinais.test(text)) {
+    const sentences = text.split(/[.!?\n]+/).filter(s => sinais.test(s))
+    if (sentences.length > 0) {
+      const logItems: string[] = []
+      const m = text.match(/(?:portaria|apto|apartamento|bloco|andar|sem acesso|interfone)\s*[\w\d\s]+/gi)
+      if (m) m.forEach(i => logItems.push(i.trim()))
+      return {
+        campo: 'observacoesLogisticas',
+        valor: logItems.length > 0 ? logItems : [sentences[0].trim()],
+        confianca: 'media',
+        fonte: 'regex:logistica',
+        evidencias: logItems.length > 0 ? logItems : [sentences[0].trim()],
+      }
+    }
+  }
+  return null
+}
+
+function extractNome(text: string): CampoExtraido | null {
+  const patterns = [
+    /(?:meu nome é|me chamo|me chamou)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)?)/i,
+    /(?:aqui é|é o|é a|da\s+)\s*([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)?)/i,
+  ]
+  for (const p of patterns) {
+    const m = text.match(p)
+    if (m && m[1]) {
+      return {
+        campo: 'nome',
+        valor: m[1].trim(),
+        confianca: 'media',
+        fonte: 'regex:nome',
+        evidencias: [m[0].trim()],
+      }
+    }
+  }
+  const solto = text.match(/(?:^|\s)([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)?)(?:\s|$)/)
+  if (solto && solto[1] && solto[1].split(' ').length <= 2) {
+    return {
+      campo: 'nome',
+      valor: solto[1].trim(),
+      confianca: 'baixa',
+      fonte: 'regex:nome_solto',
+      evidencias: [solto[1].trim()],
+    }
+  }
+  return null
+}
+
+function limparProduto(texto: string): string {
+  return texto
+    .replace(/^(um|uma|uns|umas|o|a|os|as|de|do|da|dos|das)\s+/i, '')
+    .replace(/\s+(por favor|pfv|pf|obrigado|obrigada)$/i, '')
+    .trim()
+}
+
+/** Padrões de filler/hesitação comuns em transcrições de áudio */
+const FILLER_WORDS = new Set([
+  'ahn', 'hmm', 'aham', 'uhum', 'hum', 'ah', 'oh', 'eh',
+  'sim', 'nao', 'ok', 'tá', 'então', 'bom', 'entao',
+  'ver', 'saber', 'coisa', 'querer', 'pedir', 'falar',
+  'olha', 'olhe', 'veja', 'dizer', 'fazer', 'poder',
+  'sabe', 'soube', 'viu', 'vi', 'ter', 'tem', 'te',
+  'assim', 'depois', 'antes', 'agora', 'sempre', 'so',
+])
+
+const FILLER_STARTS = [
+  'qte pedir', 'qte', 'te pedir', 'te perguntar', 'uma coisa',
+  'quero ver', 'deixa eu ver', 'deixa eu pensar', 'vou te falar',
+  'tipo assim', 'como é que é', 'como é', 'vou te perguntar',
+  'vou te contar', 'sabe o que', 'entendeu', 'cê entendeu', 'entende',
+  'é o seguinte', 'olha só', 'então', 'ahn', 'hmm', 'hum',
+]
+
+/** Produto extraído com quantidade opcional */
+interface ProdutoComQtd {
+  nome: string
+  qtd: number | null
+  evidencia: string
+}
+
+function isFiller(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (t.length <= 2) return true
+  if (FILLER_WORDS.has(t)) return true
+  for (const start of FILLER_STARTS) {
+    if (t.startsWith(start)) return true
+  }
+  return false
+}
+
+/** Mapa de números por extenso para dígitos. */
+const NUM_EXTENSO: Record<string, number> = {
+  um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5,
+  seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12,
+  treze: 13, quatorze: 14, catorze: 14, quinze: 15, dezesseis: 16,
+  dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30,
+  quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80,
+  noventa: 90, cem: 100, duzentos: 200, trezentos: 300, quatrocentos: 400,
+  quinhentos: 500, seiscentos: 600, setecentos: 700, oitocentos: 800,
+  novecentos: 900, mil: 1000,
+}
+
+/** Tenta extrair quantidade do início do texto. Suporta dígitos ("10 de abobra") e extenso ("dois de abobora"). */
+function tryExtrairQtdTexto(texto: string): { qtd: number | null; resto: string } {
+  const t = texto.trim().toLowerCase()
+  // Tenta dígito primeiro: "10 de abobra" → qtd=10, resto="abobra"
+  const digito = t.match(/^(\d+)\s*(?:de\s+)?(.+)$/)
+  if (digito) return { qtd: parseInt(digito[1], 10), resto: digito[2].trim() }
+  // Tenta número por extenso: "dois de abobora" → qtd=2, resto="abobora"
+  const partes = t.split(/\s+/)
+  if (partes.length > 0) {
+    const prim = partes[0].replace(/,$/, '')
+    const num = NUM_EXTENSO[prim]
+    if (num !== undefined) {
+      let resto = partes.slice(1).join(' ')
+      resto = resto.replace(/^de\s+/i, '')
+      return { qtd: num, resto }
+    }
+  }
+  return { qtd: null, resto: texto }
+}
+
+/** Extrai padrões "N de produto" ou "N produto" em toda a string (global). */
+function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
+  const results: ProdutoComQtd[] = []
+  // Números em dígitos: "10 de abobra", "5 multigraos", "1 100% integral"
+  const re = /(\d+)\s*(?:de\s+)?([\w%ºª]+(?:\s+[\w%ºª]+){0,4}?)(?=\s*[,;.!?¿¡]|\s+e\s+|\s+para\s+|\s+pra\s+|$)/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    const nome = limparProduto(m[2].trim())
+    if (nome.length > 2 && !isFiller(nome) && !/^\d+$/.test(nome)) {
+      const qtd = parseInt(m[1], 10)
+      const already = results.some(r => r.nome === nome && r.qtd === qtd)
+      if (!already) results.push({ nome, qtd, evidencia: m[0].trim() })
+    }
+  }
+  return results
+}
+
+/** Extrai produtos usando padrões de intenção de compra, coletando TODOS os matches. */
+function extractProdutosPorIntencao(text: string): ProdutoComQtd[] {
+  const results: ProdutoComQtd[] = []
+  const patterns = [
+    /(?:gosto de|gostaria de|quero|vou querer|vou pedir|pedir|quisesse)\s+(.+?)(?:\.|,|;|$| para| pra| por favor|\?)/gi,
+    /(?:queria)\s+(.+?)(?:\.|,|;|$| para| pra| por favor|\?)/gi,
+    /(?:você tem|vocês tem|tu tem|vende|tem como)\s+(.+?)(?:\.|,|;|\?|$)/gi,
+    /(?:quanto é|qual o preço|qual é o preço|qual o valor|qual é o valor|preço do|preço da|valor do|valor da)\s+(.+?)(?:\.|,|;|\?|$)/gi,
+    /(.+?)(?:está disponível|tá disponível|tem disponível|tem em estoque)\s*(?:\?|\.|$)/gi,
+  ]
+  for (const p of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = p.exec(text)) !== null) {
+      const raw = match[1].trim()
+      if (isFiller(raw)) continue
+      const partes = raw.split(/\s+e\s+/).map(s => limparProduto(s)).filter(s => s.length > 2 && !isFiller(s))
+      for (const parte of partes) {
+        // Tenta extrair quantidade por extenso (ex: "dois de abobora" → "abobora" qtd=2)
+        const { qtd, resto } = tryExtrairQtdTexto(parte)
+        const nomeFinal = qtd !== null ? `${resto} (${qtd}x)` : parte
+        const already = results.some(r => r.nome === nomeFinal)
+        if (!already) results.push({ nome: nomeFinal, qtd, evidencia: match[0].trim() })
+      }
+    }
+  }
+  return results
+}
+
+function normalizarChaveProduto(nome: string): string {
+  // Remove "(Nx)" se tiver
+  const limpo = nome.replace(/\s*\(\d+x\)\s*/i, '')
+  return limpo
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim()
+}
+
+function extractPreferenciasProduto(text: string): CampoExtraido | null {
+  const comQtd = extractProdutosComQuantidade(text)
+  const porIntencao = extractProdutosPorIntencao(text)
+
+  // Mescla deduplicando por nome normalizado; prefere entradas com quantidade
+  const mapa = new Map<string, ProdutoComQtd>()
+  for (const item of comQtd) {
+    mapa.set(normalizarChaveProduto(item.nome), item)
+  }
+  for (const item of porIntencao) {
+    const key = normalizarChaveProduto(item.nome)
+    const existente = mapa.get(key)
+    if (!existente) {
+      mapa.set(key, item)
+    } else if (item.qtd !== null && existente.qtd === null) {
+      mapa.set(key, item) // preferir quem tem qtd
+    }
+  }
+
+  if (mapa.size === 0) {
+    // Fallback: extrator genérico (texto curto sem gatilho, ex: "1 100% integral e 5 Multigrãos")
+    const genérico = text.match(/^(.{4,60}?)\s*(?:\?|\.|,|!|$)/)
+    if (genérico && genérico[1]) {
+      const candidato = limparProduto(genérico[1].trim())
+      if (candidato.length > 3 && !isFiller(candidato)) {
+        return {
+          campo: 'preferenciasProduto',
+          valor: [candidato],
+          confianca: 'baixa',
+          fonte: 'regex:mencao_generica',
+          evidencias: [genérico[0].trim()],
+        }
+      }
+    }
+    return null
+  }
+
+  const produtos = Array.from(mapa.values())
+  const temQtd = produtos.some(p => p.qtd !== null)
+  return {
+    campo: 'preferenciasProduto',
+    valor: produtos.map(p => {
+      if (p.qtd === null) return p.nome
+      if (/\(\d+x\)$/i.test(p.nome.trim())) return p.nome
+      return `${p.nome} (${p.qtd}x)`
+    }),
+    confianca: temQtd ? 'media' : 'baixa',
+    fonte: temQtd ? 'regex:produtos_com_qtd' : 'regex:produtos_intencao',
+    evidencias: produtos.map(p => p.evidencia).filter(Boolean),
+  }
+}
+
+function extractAversoesProduto(text: string): CampoExtraido | null {
+  const patterns = [
+    /(?:não gosto|não quero|odeio|dispenso|detesto|não curto)\s+(?:de\s+)?(.+?)(?:\.|,|;|$|\?)/i,
+    /sem\s+(.+?)(?:\.|,|;|$|\?)/i,
+    /(?:pode\s+)?(?:tirar|remover|retirar|sem)\s+(.+?)(?:\.|,|;|$|\?|por favor)/i,
+  ]
+  const aversoes: string[] = []
+  const evidencias: string[] = []
+  for (const p of patterns) {
+    const m = text.match(p)
+    if (m && m[1]) {
+      aversoes.push(m[1].trim())
+      evidencias.push(m[0].trim())
+    }
+  }
+  if (aversoes.length > 0) {
+    return {
+      campo: 'aversoesProduto',
+      valor: aversoes,
+      confianca: classificarConfianca(0.3, 0.7, aversoes.length > 1 ? 0.8 : 0.4),
+      fonte: 'regex:aversoes',
+      evidencias,
+    }
+  }
+  return null
+}
+
+const regexExtractors: Array<(text: string) => CampoExtraido | null> = [
+  extractTelefone,
+  extractCep,
+  extractPix,
+  extractFormaPagamento,
+  extractUrgencia,
+  extractEndereco,
+  extractLogistica,
+  extractNome,
+  extractPreferenciasProduto,
+  extractAversoesProduto,
+]
+
+const TODOS_CAMPOS = [
+  'nome',
+  'preferenciasProduto',
+  'aversoesProduto',
+  'enderecoEntrega',
+  'formaPagamentoPreferida',
+  'urgenciaEntrega',
+  'observacoesLogisticas',
+  'telefone',
+]
+
+async function callLlm(
+  mensagem: string,
+  bridge: MettriBridgeClient,
+  apiKey: string,
+): Promise<Record<string, unknown> | null> {
+  const systemPrompt =
+    'Você é um extrator de dados de perfil de cliente a partir de mensagens do WhatsApp. ' +
+    'Extraia os campos solicitados e retorne APENAS um JSON válido, sem marcação, sem explicações. ' +
+    'Não invente informações que não estejam na mensagem.'
+
+  const userPrompt =
+    `Mensagem do cliente:\n"${mensagem}"\n\n` +
+    'Extraia os seguintes campos opcionais deste JSON:\n' +
+    '{\n' +
+    '  "nome": "string | null",\n' +
+    '  "preferenciasProduto": "string[]",\n' +
+    '  "aversoesProduto": "string[]",\n' +
+    '  "enderecoEntrega": "string | null",\n' +
+    '  "formaPagamentoPreferida": "string[]",\n' +
+    '  "urgenciaEntrega": "string | null",\n' +
+    '  "observacoesLogisticas": "string[]",\n' +
+    '  "confianca": "baixa" | "media" | "alta"\n' +
+    '}\n\n' +
+    'Regras:\n' +
+    '- "confianca" geral da extração: alta se informação clara e completa, media se parcial, baixa se incerta.\n' +
+    '- Não preencher campos não mencionados (deixar null ou []).\n' +
+    '- "preferenciasProduto" inclui produtos mencionados com intenção de compra.\n' +
+    '- "observacoesLogisticas" inclui instruções de entrega, horários, portaria, etc.'
+
+  const body = {
+    model: MODEL,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0,
+    max_tokens: 300,
+  }
+
+  try {
+    const result = await bridge.netFetch({
+      url: OPENAI_URL,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!result.ok) {
+      console.warn(`[extrator] OpenAI ${result.status}: ${result.text}`)
+      return null
+    }
+
+    const data = JSON.parse(result.text) as {
+      choices?: { message?: { content?: string } }[]
+    }
+    const content = data.choices?.[0]?.message?.content?.trim()
+    if (!content) {
+      console.warn('[extrator] OpenAI respondeu sem conteúdo')
+      return null
+    }
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.warn('[extrator] Resposta não contém JSON:', content.substring(0, 100))
+      return null
+    }
+
+    return JSON.parse(jsonMatch[0]) as Record<string, unknown>
+  } catch (error) {
+    console.warn('[extrator] Erro na chamada LLM:', error)
+    return null
+  }
+}
+
+function penalizarConfianca(original: CampoConfianca): CampoConfianca {
+  const ordem: CampoConfianca[] = ['alta', 'media', 'baixa', 'desconhecido']
+  const idx = ordem.indexOf(original)
+  if (idx >= 0 && idx < ordem.length - 1) return ordem[idx + 1]
+  return 'desconhecido'
+}
+
+async function extractWithLlm(
+  mensagem: string,
+  chatId: string,
+  regexCampos: CampoExtraido[],
+): Promise<{ camposExtraidos: CampoExtraido[]; llmUsado: boolean }> {
+  const camposCapturados = new Set(regexCampos.map(c => c.campo))
+  const camposRestantes = TODOS_CAMPOS.filter(c => !camposCapturados.has(c))
+
+  if (camposRestantes.length === 0) {
+    return { camposExtraidos: regexCampos, llmUsado: false }
+  }
+
+  if (mensagem.length < MIN_MESSAGE_LENGTH_FOR_LLM) {
+    return { camposExtraidos: regexCampos, llmUsado: false }
+  }
+
+  if (!checkBudget(chatId)) {
+    console.log(`[extrator] Teto diário atingido para ${chatId}, pulando LLM`)
+    return { camposExtraidos: regexCampos, llmUsado: false }
+  }
+
+  const bridge = new MettriBridgeClient(30_000)
+
+  let apiKey = ''
+  try {
+    const obj = await bridge.storageGet([STORAGE_KEY_API])
+    apiKey = typeof obj[STORAGE_KEY_API] === 'string' ? (obj[STORAGE_KEY_API] as string) : ''
+  } catch {
+    return { camposExtraidos: regexCampos, llmUsado: false }
+  }
+
+  if (!apiKey) {
+    console.log('[extrator] API key não configurada')
+    return { camposExtraidos: regexCampos, llmUsado: false }
+  }
+
+  incrementBudget(chatId)
+
+  const llmResult = await callLlm(mensagem, bridge, apiKey)
+  if (!llmResult) {
+    return { camposExtraidos: regexCampos, llmUsado: false }
+  }
+
+  const llmConfianca = (llmResult.confianca as string) || 'baixa'
+  const llmCampos: CampoExtraido[] = []
+
+  for (const campo of TODOS_CAMPOS) {
+    if (camposCapturados.has(campo)) continue
+    const valor = llmResult[campo]
+    if (valor === null || valor === undefined) continue
+    if (Array.isArray(valor) && valor.length === 0) continue
+    if (typeof valor === 'string' && !valor.trim()) continue
+
+    const confPena = penalizarConfianca(llmConfianca as CampoConfianca)
+    llmCampos.push({
+      campo,
+      valor: Array.isArray(valor) ? (valor as string[]) : String(valor),
+      confianca: confPena,
+      fonte: 'llm',
+      evidencias: ['extraído via LLM'],
+    })
+  }
+
+  const camposExtraidos = [...regexCampos, ...llmCampos]
+  return { camposExtraidos, llmUsado: true }
+}
+
+export async function extrator(input: ExtratorInput): Promise<ExtratorOutput> {
+  const normalized = normalizeMessage(input.mensagem)
+
+  const regexCampos: CampoExtraido[] = []
+  for (const extractor of regexExtractors) {
+    const result = extractor(normalized)
+    if (result) {
+      const existing = regexCampos.find(c => c.campo === result.campo)
+      if (existing) {
+        if (result.confianca === 'alta' || existing.confianca === 'desconhecido') {
+          Object.assign(existing, result)
+        }
+      } else {
+        regexCampos.push(result)
+      }
+    }
+  }
+
+  let urgencia: 'alta' | 'media' | 'baixa' = 'baixa'
+  const urgField = regexCampos.find(c => c.campo === 'urgenciaEntrega')
+  if (urgField) {
+    if (urgField.valor === 'alta') urgencia = 'alta'
+    else if (urgField.valor === 'media') urgencia = 'media'
+  }
+
+  const { camposExtraidos, llmUsado } = await extractWithLlm(
+    normalized,
+    input.chatId,
+    regexCampos,
+  )
+
+  const camposCapturados = new Set(camposExtraidos.map(c => c.campo))
+  const camposRestantes = TODOS_CAMPOS.filter(c => !camposCapturados.has(c))
+
+  return {
+    campos: camposExtraidos,
+    urgencia,
+    usaLLM: llmUsado,
+    camposRestantes,
+  }
+}
+
+export function resetBudget(): void {
+  budgetMap.clear()
+}

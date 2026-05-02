@@ -11,9 +11,9 @@ import { ClientesDirectoryPanel } from './directory-panel';
 
 const createDirectoryPanel: PanelFactory = async (
   container: HTMLElement,
-  _eventBus: EventBus
+  eventBus: EventBus
 ): Promise<PanelInstance> => {
-  const panel = new ClientesDirectoryPanel();
+  const panel = new ClientesDirectoryPanel(eventBus);
 
   return {
     async render() {

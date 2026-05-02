@@ -9,7 +9,7 @@ export const CadastroModule: ModuleDefinition = {
   name: 'Cadastro',
   icon: '📋',
   dependencies: [],
-  defaultSubModuleId: 'cadastro.purchase-mapping',
+  defaultSubModuleId: 'cadastro.cliente-profile',
   panelFactory: () => {
     throw new Error('CadastroModule é apenas um container, não tem UI própria');
   },

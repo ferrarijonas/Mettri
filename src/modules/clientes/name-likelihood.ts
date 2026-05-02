@@ -1,4 +1,4 @@
-export type NameHeuristicFlags = {
+export interface NameHeuristicFlags {
   hasLink: boolean;
   hasAt: boolean;
   endsWithDigit: boolean;
@@ -7,13 +7,13 @@ export type NameHeuristicFlags = {
   tooFewLetters: boolean;
   tooManyDigits: boolean;
   tooManySymbols: boolean;
-};
+}
 
-export type NameLikelihood = {
+export interface NameLikelihood {
   cleaned: string;
   score: number; // 0..100
   flags: NameHeuristicFlags;
-};
+}
 
 export type NameCandidateKind = 'person' | 'business' | 'noise';
 
@@ -169,7 +169,7 @@ export function scoreLikelyPersonName(raw: string): NameLikelihood {
   return { cleaned, score, flags };
 }
 
-export function isLikelyPersonName(raw: string, minScore: number = 60): boolean {
+export function isLikelyPersonName(raw: string, minScore = 60): boolean {
   return scoreLikelyPersonName(raw).score >= minScore;
 }
 

@@ -41,14 +41,14 @@ function newPurchaseId(): string {
 
 export type PurchaseSource = 'MANUAL' | 'AI_DETECTED';
 
-export type AddPurchasePayload = {
+export interface AddPurchasePayload {
   chatId: string;
   purchaseDate: Date;
   value?: number;
   items?: string[];
   notes?: string;
   source?: PurchaseSource;
-};
+}
 
 export class PurchaseDB {
   private db: IDBDatabase | null = null;
@@ -201,6 +201,36 @@ export class PurchaseDB {
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve();
     });
+  }
+
+  async listActiveByChatId(chatId: string): Promise<ManualPurchaseRecord[]> {
+    const cid = String(chatId ?? '').trim();
+    if (!cid) return [];
+
+    const db = await this.ensureReady();
+
+    const results = await new Promise<ManualPurchaseRecord[]>((resolve, reject) => {
+      const list: ManualPurchaseRecord[] = [];
+      const tx = db.transaction([STORE_PURCHASES], 'readonly');
+      const store = tx.objectStore(STORE_PURCHASES);
+      const index = store.index('chatId_status');
+      const req = index.openCursor(IDBKeyRange.only([cid, 'ACTIVE']));
+
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const cursor = req.result as IDBCursorWithValue | null;
+        if (!cursor) return resolve(list);
+        try {
+          list.push(ManualPurchaseRecordSchema.parse(cursor.value));
+        } catch {
+          // ignore corrompidos
+        }
+        cursor.continue();
+      };
+    });
+
+    results.sort((a, b) => b.purchaseDateIso.localeCompare(a.purchaseDateIso));
+    return results;
   }
 
   async getLastActiveByChatId(chatId: string): Promise<ManualPurchaseRecord | null> {

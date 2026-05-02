@@ -9,7 +9,8 @@
  *   await ThemeManager.restore('wa-web-2026');     // Restaura tema salvo
  */
 
-import { ThemeLoader, ThemeName } from './theme-loader';
+import type { ThemeName } from './theme-loader';
+import { ThemeLoader } from './theme-loader';
 
 export class ThemeManager {
   private static readonly STORAGE_KEY = 'mettri-theme-preferences';

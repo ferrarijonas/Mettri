@@ -21,9 +21,7 @@ export interface RetomarList {
   updatedAt: number;
 }
 
-interface ListMembers {
-  [listId: string]: string[]; // chatId[]
-}
+type ListMembers = Record<string, string[]>;
 
 export class RetomarListsManager {
   private bridge: MettriBridgeClient;

@@ -8,7 +8,7 @@
  * do WhatsApp Web e acessar chrome.storage.local do service worker.
  */
 
-import { MettriBridgeClient } from '../../../content/bridge-client';
+import type { MettriBridgeClient } from '../../../content/bridge-client';
 import {
   buildAgenteRetomarMessages,
   type AgenteRetomarPromptFill,
@@ -17,6 +17,28 @@ import {
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
 const STORAGE_KEY_API = 'mettri:openai:apiKey';
+
+/**
+ * Remove bloco de raciocínio interno e mantém apenas a mensagem final.
+ * Aceita variações com/sem acento em "raciocínio".
+ */
+export function extractVisibleRetomarMessage(raw: string): string {
+  const text = (raw || '').trim();
+  if (!text) return '';
+
+  const withoutThought = text
+    .replace(/<racioc[ií]nio>\s*[\s\S]*?\s*<\/racioc[ií]nio>\s*/gi, '')
+    .trim();
+
+  if (withoutThought) return withoutThought;
+
+  return text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !/^<\s*\/?\s*racioc[ií]nio\s*>$/i.test(line))
+    .pop() ?? '';
+}
 
 async function getApiKey(bridge: MettriBridgeClient): Promise<string> {
   try {
@@ -85,12 +107,12 @@ export async function suggestText(
   }
 
   const data = JSON.parse(result.text) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) throw new Error('OpenAI respondeu sem conteúdo');
 
-  return content;
+  return extractVisibleRetomarMessage(content);
 }
 
 /** Parâmetros do prompt em `prompts/agente_retomar.md`. */
@@ -139,7 +161,7 @@ export async function suggestRedacaoRetomar(
   }
 
   const data = JSON.parse(result.text) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) throw new Error('OpenAI respondeu sem conteúdo');

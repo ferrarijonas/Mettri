@@ -21,12 +21,12 @@ export class HistoryPanel {
   private currentContactId: string | null = null;
   private contacts: ContactGroup[] = [];
   private contactMessages: CapturedMessage[] = [];
-  private searchQuery: string = '';
+  private searchQuery = '';
   private filterDate: 'all' | 'today' | 'week' | 'month' = 'all';
   private filterType: 'all' | 'received' | 'sent' = 'all';
   private sortBy: 'recent' | 'oldest' | 'most-messages' = 'recent';
   private orderListener: ChatOrderListener | null = null;
-  private enabled: boolean = false;
+  private enabled = false;
 
   constructor(config?: HistoryPanelConfig) {
     this.enabled = config?.enabled === true;

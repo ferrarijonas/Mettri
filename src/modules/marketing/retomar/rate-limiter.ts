@@ -1,12 +1,12 @@
 /**
  * RateLimiter
  *
- * Controla limites de envio: 50/hora, 200/dia.
- * Gera delays aleatórios e pausas ocasionais para evitar detecção.
+ * Limites conservadores sem travar operação média: 120/h, 800/dia.
+ * Delays aleatórios e pausas ocasionais para não parecer bot.
  */
 
-const LIMIT_PER_HOUR = 50;
-const LIMIT_PER_DAY = 200;
+const LIMIT_PER_HOUR = 120;
+const LIMIT_PER_DAY = 800;
 const DELAY_MIN_MS = 2000;
 const DELAY_MAX_MS = 11000;
 const RANDOM_PAUSE_INTERVAL = 10;

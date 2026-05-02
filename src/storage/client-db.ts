@@ -8,7 +8,7 @@ import { z } from 'zod';
  */
 
 const DB_NAME_BASE = 'mettri-clients-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_CLIENTS = 'clients';
 
 export const ClientRecordSchema = z.object({
@@ -23,6 +23,9 @@ export const ClientRecordSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   nickname: z.string().optional(),
+  email: z.string().email().optional(),
+  cpfCnpj: z.string().optional(),
+  dataNascimento: z.string().optional(),
   // Endereço: texto livre (mínimo internacional)
   addressFreeform: z.string().optional(),
   // Compatibilidade: UI antiga usa address
@@ -284,7 +287,7 @@ export class ClientDB {
     });
   }
 
-  async listAll(limit: number = 5000): Promise<ClientRecord[]> {
+  async listAll(limit = 5000): Promise<ClientRecord[]> {
     const db = await this.ensureReady();
 
     return await new Promise((resolve, reject) => {

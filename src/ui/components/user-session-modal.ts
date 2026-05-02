@@ -10,16 +10,16 @@ import { messageDB } from '../../storage/message-db';
 import { MettriBridgeClient } from '../../content/bridge-client';
 import { LocalBatchExporter } from '../../infrastructure/local-batch-exporter';
 
-type ExportStateV1 = {
+interface ExportStateV1 {
   version: 1;
   lastSuccessIso?: string;
   pending?: boolean;
-};
+}
 
 export class UserSessionModal {
   private overlay: HTMLElement | null = null;
   private modal: HTMLElement | null = null;
-  private isOpen: boolean = false;
+  private isOpen = false;
   private bridge = new MettriBridgeClient(2500);
 
   constructor() {
@@ -315,7 +315,7 @@ Banco de dados: mettri-db-${session.wid.replace(/[@.]/g, '_')}
   /**
    * Mostra toast de feedback.
    */
-  private showToast(message: string, isError: boolean = false): void {
+  private showToast(message: string, isError = false): void {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-sm z-[10001] ${
       isError ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground'

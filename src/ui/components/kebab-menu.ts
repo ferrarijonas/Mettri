@@ -4,7 +4,8 @@
  * Componente de menu dropdown com glassmorphism, baseado no design v0.
  */
 
-import { getIcon, LucideIcons } from '../icons/lucide-icons';
+import type { LucideIcons } from '../icons/lucide-icons';
+import { getIcon } from '../icons/lucide-icons';
 
 export interface KebabMenuOption {
   label: string;
@@ -16,7 +17,7 @@ export interface KebabMenuOption {
 export class KebabMenu {
   private button: HTMLElement | null = null;
   private dropdown: HTMLElement | null = null;
-  private isOpen: boolean = false;
+  private isOpen = false;
   private closeHandler: ((e: MouseEvent) => void) | null = null;
   private buttonClickHandler: ((e: MouseEvent) => void) | null = null;
   private readonly buttonSelector: string;

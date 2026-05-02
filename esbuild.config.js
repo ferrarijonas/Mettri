@@ -1,5 +1,13 @@
 import * as esbuild from 'esbuild';
-import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'fs';
 import path from 'path';
 import postcss from 'postcss';
 import tailwindcss from '@tailwindcss/postcss';
@@ -78,6 +86,23 @@ if (existsSync('src/ui/theme/themes')) {
   }
 }
 
+/** `prompts/agente_retomar.md`: default (texto) + mtime ISO no mesmo load que o conteúdo. */
+const agenteRetomarMdPlugin = {
+  name: 'agente-retomar-md',
+  setup(build) {
+    build.onLoad({ filter: /agente_retomar\.md$/ }, args => {
+      const text = readFileSync(args.path, 'utf-8');
+      const iso = statSync(args.path).mtime.toISOString();
+      return {
+        contents:
+          `export default ${JSON.stringify(text)};\n` +
+          `export const AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO = ${JSON.stringify(iso)};\n`,
+        loader: 'js',
+      };
+    });
+  },
+};
+
 // Build configuration
 const buildOptions = {
   bundle: true,
@@ -87,6 +112,7 @@ const buildOptions = {
   format: 'iife',
   /** prompts/agente_retomar.md e outros .md importados como string */
   loader: { '.md': 'text' },
+  plugins: [agenteRetomarMdPlugin],
 };
 
 // Content script
@@ -137,6 +163,8 @@ async function buildModules() {
     { id: 'clientes.history', entry: 'src/modules/clientes/history/history-module.ts' },
     { id: 'clientes.directory', entry: 'src/modules/clientes/directory/directory-module.ts' },
     { id: 'atendimento.dashboard', entry: 'src/modules/atendimento/dashboard/dashboard-module.ts' },
+    { id: 'pedidos', entry: 'src/modules/pedidos/pedidos-module.ts' },
+    { id: 'pedidos.dashboard', entry: 'src/modules/pedidos/dashboard/dashboard-module.ts' },
     { id: 'infrastructure.tests', entry: 'src/modules/infrastructure/tests/tests-module.ts' },
   ];
 

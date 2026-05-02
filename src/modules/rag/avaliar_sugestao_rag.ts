@@ -155,7 +155,7 @@ export async function avaliar_sugestao_rag(
   }
 
   const data = JSON.parse(result.text) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
 
   const content = data.choices?.[0]?.message?.content?.trim();

@@ -2,12 +2,24 @@
  * Carrega e preenche o prompt baseline do agente Retomar (`prompts/agente_retomar.md`).
  */
 
-import agenteRetomarRaw from '../../../../prompts/agente_retomar.md';
+import agenteRetomarRaw, {
+  AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO,
+} from '../../../../prompts/agente_retomar.md';
+
+export { AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO };
+
+/** Rótulo curto para o cabeçalho Respostas Agênticas (data do ficheiro no build). */
+export function formatAgenteRetomarPromptUpdatedLabel(): string {
+  const d = new Date(AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO);
+  if (Number.isNaN(d.getTime())) return '';
+  const when = d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  return `agente_retomar.md · atualizado ${when}`;
+}
 
 /** Só cabeçalhos markdown em linha própria (evita confundir com `**## USER**` no texto introdutório). */
 const SECTION_HEADERS = /^## (SYSTEM|USER|OUTPUT)\s*$/gm;
 
-export type AgenteRetomarPromptFill = {
+export interface AgenteRetomarPromptFill {
   firstName: string;
   /** 1–4 (igual ao contador Retomar / retomarMeta.cycleIndex). */
   cycleIndex: number;
@@ -17,13 +29,13 @@ export type AgenteRetomarPromptFill = {
   lastRetomarSentText: string;
   /** Histórico recente intercalado para o modelo calibrar tom. */
   conversationThread: string;
-};
+}
 
 /**
  * Extrai corpo das secções SYSTEM e USER (cabeçalho = linha exatamente `## NOME`).
  */
 export function parseAgenteRetomarMarkdown(md: string): { system: string; userTemplate: string } {
-  const headers: Array<{ name: string; headerStart: number; bodyStart: number }> = [];
+  const headers: { name: string; headerStart: number; bodyStart: number }[] = [];
   SECTION_HEADERS.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = SECTION_HEADERS.exec(md)) !== null) {

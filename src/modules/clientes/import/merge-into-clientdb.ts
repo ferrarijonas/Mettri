@@ -2,11 +2,11 @@ import { clientDB, normalizePhoneDigitsWithAliases, digitsOnly } from '../../../
 import type { CanonicalClient } from './canonical';
 import { classifyNameCandidate, cleanCandidateName } from '../name-likelihood';
 
-export type MergeOptions = {
+export interface MergeOptions {
   overwrite?: boolean; // default false
-};
+}
 
-export type MergeResult = {
+export interface MergeResult {
   created: number;
   updated: number;
   skippedNoIdentity: number;
@@ -14,9 +14,9 @@ export type MergeResult = {
   nameApplied: number;
   /** Linhas com nome no arquivo mas rejeitado (classify=noise, antes do fallback). */
   nameRejected: number;
-};
+}
 
-function uniqStrings(values: Array<string | undefined | null>): string[] {
+function uniqStrings(values: (string | undefined | null)[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const v of values) {

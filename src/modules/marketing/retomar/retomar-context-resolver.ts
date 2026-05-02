@@ -10,7 +10,7 @@ const BASE64ISH = /[A-Za-z0-9+/=]{40,}/;
 
 const CONVERSATION_THREAD_MAX = 20;
 
-export type RetomarResolvedContext = {
+export interface RetomarResolvedContext {
   chatId: string;
   chatName: string;
   contextText: string;
@@ -18,7 +18,7 @@ export type RetomarResolvedContext = {
   attendantText?: string;
   /** Até 20 mensagens de texto legíveis, mais recentes primeiro no DB; aqui em ordem cronológica. */
   conversationThread: string;
-};
+}
 
 function isLegibleText(text: string): boolean {
   const t = text.trim();

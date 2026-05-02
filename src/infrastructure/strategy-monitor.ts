@@ -53,9 +53,9 @@ interface StrategyReport {
  * - Taxa de sucesso de cada estratégia
  */
 export class StrategyMonitor {
-  private static stats: Map<string, ModuleStats> = new Map();
-  private static enabled: boolean = true;
-  private static debugMode: boolean = false;
+  private static stats = new Map<string, ModuleStats>();
+  private static enabled = true;
+  private static debugMode = false;
 
   /**
    * Habilita ou desabilita o monitoramento.
@@ -254,9 +254,9 @@ export class StrategyMonitor {
   /**
    * Obtém lista de todas as estratégias redundantes.
    */
-  static getRedundantStrategies(): Array<{ module: string; strategies: number[] }> {
+  static getRedundantStrategies(): { module: string; strategies: number[] }[] {
     const report = this.getReport();
-    const redundant: Array<{ module: string; strategies: number[] }> = [];
+    const redundant: { module: string; strategies: number[] }[] = [];
 
     for (const [moduleName, moduleData] of Object.entries(report.modules)) {
       if (moduleData.neverUsed.length > 0) {

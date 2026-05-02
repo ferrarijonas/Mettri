@@ -2,11 +2,11 @@ import { CanonicalClientSchema, type CanonicalClient } from './canonical';
 
 export type ImportFileType = 'csv' | 'tsv' | 'xlsx' | 'json' | 'vcf' | 'unknown';
 
-export type ParsedTable = {
+export interface ParsedTable {
   headers: string[];
   rows: string[][];
   delimiter?: string; // para csv/tsv
-};
+}
 
 export type ImportFieldId =
   | 'phone'
@@ -258,7 +258,7 @@ export function getPreviewByMapping(params: {
     (x): x is number => typeof x === 'number'
   );
 
-  const fields: Array<{ id: ImportFieldId; label: string }> = [
+  const fields: { id: ImportFieldId; label: string }[] = [
     { id: 'phone', label: 'Telefone' },
     { id: 'phoneAlt', label: 'Telefone 2 (fallback)' },
     { id: 'fullName', label: 'Nome completo' },

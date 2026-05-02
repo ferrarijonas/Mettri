@@ -79,13 +79,13 @@ export interface LayerScanResult {
  */
 export interface PhoneNumberTestResult {
   phoneNumber: string;
-  steps: Array<{
+  steps: {
     step: string;
     selectorId: string;
     success: boolean;
     error?: string;
     elementFound?: boolean;
-  }>;
+  }[];
   overallSuccess: boolean;
   duration: number; // ms
 }

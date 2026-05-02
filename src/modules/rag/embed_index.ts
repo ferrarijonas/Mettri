@@ -1,4 +1,4 @@
-import { MettriBridgeClient } from '../../content/bridge-client';
+import type { MettriBridgeClient } from '../../content/bridge-client';
 import {
   EMBEDDING_DIMENSION,
   EMBEDDING_MAX_BATCH,
@@ -123,7 +123,7 @@ export async function embed_index(
     }
 
     const data = JSON.parse(result.text) as {
-      data?: Array<{ embedding: number[]; index: number }>;
+      data?: { embedding: number[]; index: number }[];
     };
 
     const embeddings = (data.data ?? []).map((item) => item.embedding);
