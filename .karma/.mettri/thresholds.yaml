@@ -1,0 +1,35 @@
+version: "2.0"
+
+# Gates de qualidade
+gates:
+  lint_max_warnings: 0
+  typecheck_max_errors: 0
+  min_coverage_pct: 70
+  max_consecutive_failures: 3
+
+# Work-in-progress
+wip:
+  enter_threshold: 3
+  exit_threshold: 1
+  histerese: true
+  por_dominio: 1
+
+# Contexto (respiração)
+contexto:
+  compact_at_pct: 85
+  reload_after_compact: true
+
+# Timeouts
+timeouts:
+  tarefa_max_min: 90
+  heartbeat_max_min: 15
+  stale_claim_min: 30
+
+# Auto-cura
+backoff:
+  base_ms: 10000
+  max_ms: 300000
+  multiplicador: 2
+
+# N4 — escalação humana
+whatsapp: "+55 34 99277-591"

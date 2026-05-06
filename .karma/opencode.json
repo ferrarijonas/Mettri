@@ -1,0 +1,38 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "deepseek-v4-pro",
+  "small_model": "deepseek-v4-flash",
+  "compaction": { "auto": true, "prune": true, "reserved": 10000 },
+  "instructions": [".mettri/identidade.md"],
+  "agent": {
+    "build": { "prompt": "{file:./.opencode/agents/karma-build.md}" },
+    "plan": { "prompt": "{file:./.opencode/agents/karma-plan.md}", "permission": { "edit": "deny", "bash": "deny" } },
+    "implementador": {
+      "description": "Lê briefing.md → implementa → gate-runner → trail.md",
+      "mode": "subagent",
+      "hidden": true,
+      "prompt": "{file:./.opencode/agents/implementador.md}",
+      "permission": { "edit": "allow", "bash": "allow", "read": "allow", "glob": "allow", "grep": "allow" }
+    },
+    "avaliador": {
+      "description": "Verifica spec vs código vs sabotagens — adversarial, tenta quebrar",
+      "mode": "subagent",
+      "hidden": true,
+      "prompt": "{file:./.opencode/agents/avaliador.md}",
+      "permission": { "edit": "deny", "bash": { "git diff": "allow", "npm test": "allow", "npm run lint": "allow", "npm run type-check": "allow", "npm run build": "allow", "npm run test:unit": "allow", "npm run test:unit -- --coverage": "allow", "*": "deny" }, "read": "allow", "glob": "allow", "grep": "allow" }
+    },
+    "sonhador": {
+      "description": "Consolida trails → memory.md + detecta padrões cross-tarefa",
+      "mode": "subagent",
+      "hidden": true,
+      "prompt": "{file:./.opencode/agents/sonhador.md}",
+      "permission": { "edit": { ".mettri/**": "allow" }, "bash": "deny", "read": "allow", "glob": "allow", "grep": "allow" }
+    }
+  },
+  "permission": {
+    "edit": "allow",
+    "bash": "allow",
+    "skill": "allow",
+    "task": "allow"
+  }
+}

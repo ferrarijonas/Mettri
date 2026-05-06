@@ -1,0 +1,62 @@
+version: "2.0"
+
+# Agentes registrados no sistema
+agentes:
+  - id: karma
+    tipo: orquestrador
+    descricao: "Agente principal — Karma orquestrador"
+
+# Domínios com controle de lock
+dominios:
+  ATENDIMENTO:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  MARKETING:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  CATALOGO:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  CADASTRO:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  RAG:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  PEDIDOS:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  CLIENTES:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  OPORTUNIDADES:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+  INFRAESTRUTURA:
+    lock: null
+    lease_inicio: null
+    heartbeat: null
+    tarefa: null
+
+# Controle global
+wip_global: 3
+stale_timeout_min: 30
+
+# Histórico de tarefas concluídas
+historico: []

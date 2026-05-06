@@ -40,9 +40,8 @@ legacy/
 # Dev tools / AI assistants
 .cursor/
 .specify/memory/
-.karma/
 KARMA/
-.mettri/
+/.mettri/
 Specs/
 
 # Temporary uploads
