@@ -8,7 +8,7 @@
  * TODO: Restaurar logs completos após conta carregar com sucesso
  */
 
-import { WhatsAppInterceptors } from './whatsapp-interceptors';
+import type { WhatsAppInterceptors } from './whatsapp-interceptors';
 
 export interface UserSession {
   wid: string; // Ex: "5511987654321@c.us"

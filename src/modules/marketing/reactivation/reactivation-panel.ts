@@ -38,7 +38,7 @@ export class ReactivationPanel {
   private container: HTMLElement | null = null;
   private cadenceDays: number[] = [21, 35, 56, 84];
   private eligibleClients: InactiveClient[] = [];
-  private selectedClients: Set<string> = new Set();
+  private selectedClients = new Set<string>();
   private selectedInactiveDay: number | null = null;
   private logs: LogEntry[] = [];
   private stats = {
@@ -49,23 +49,23 @@ export class ReactivationPanel {
   };
 
   // Propriedades para novo design
-  private totalContacts: number = 0;
-  private eligibleCount: number = 0;
-  private periodFilters: Array<{
+  private totalContacts = 0;
+  private eligibleCount = 0;
+  private periodFilters: {
     range: string;
     count: number;
     selected: boolean;
     variant: 'outline' | 'filled';
-  }> = [];
-  private isFiltersExpanded: boolean = true;
-  private isContactsExpanded: boolean = true;
+  }[] = [];
+  private isFiltersExpanded = true;
+  private isContactsExpanded = true;
   private openMenuId: string | null = null;
-  private messageText: string = "";
+  private messageText = "";
   private closeMenusHandler: ((e: MouseEvent) => void) | null = null;
   private closeDropdownHandler: ((e: MouseEvent) => void) | null = null;
 
   private testContact: { phone: string; name: string } | null = null;
-  private testModeEnabled: boolean = false;
+  private testModeEnabled = false;
   private bridge = new MettriBridgeClient(2500);
   private sendButtonClickHandler: ((e: MouseEvent) => void) | null = null;
 
@@ -252,36 +252,6 @@ export class ReactivationPanel {
       digits = '55' + d;
     }
     return `${digits}@c.us`;
-  }
-
-  /**
-   * Converte telefone para chatId (formato WhatsApp: 5511999999999@c.us).
-   */
-  private phoneToChatId2(phone: string): string {
-    const safeName = String(name || '').trim();
-    const safePhone = typeof phone === 'string' ? String(phone).trim() : '';
-    let result: string;
-
-    // Se não temos nome confiável, não deixar “Olá !”.
-    if (!safeName) {
-      // 1) remover saudações comuns que dependem do {{name}}
-      const withoutNameGreeting = template
-        .replace(/Olá\s*{{\s*name\s*}}\s*!/gi, 'Olá!')
-        .replace(/Oi\s*{{\s*name\s*}}\s*!/gi, 'Oi!')
-        .replace(/Olá\s*{{\s*name\s*}}\s*/gi, 'Olá ')
-        .replace(/Oi\s*{{\s*name\s*}}\s*/gi, 'Oi ')
-        .replace(/{{\s*name\s*}}/g, '');
-
-      // 2) limpeza de espaços duplicados
-      result = withoutNameGreeting.replace(/\s{2,}/g, ' ').replace(/\s+([!?.,])/g, '$1').trim();
-    } else {
-      result = template.replace(/{{\s*name\s*}}/g, safeName);
-    }
-
-    if (safePhone) {
-      result = result.replace(/{{\s*phone\s*}}/g, safePhone);
-    }
-    return result;
   }
 
   /**

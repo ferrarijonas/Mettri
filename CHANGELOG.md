@@ -1,5 +1,16 @@
 # Changelog - Mettri WhatsApp Copiloto CRM
 
+## [Unreleased] - 2026-02-08
+
+### Marketing - Retomar (Etiquetas)
+- Etiquetas Bloqueados e CNPJ integradas ao painel Retomar.
+- Modo dia (selecao por dias inativos) e modo etiqueta (membros por lista).
+- Kebab: adicionar a etiqueta (modo dia), remover/mover (modo etiqueta).
+- Listas customizadas (Nova lista), renomear e excluir para todas as listas.
+- Cache de nomes e recarga de elegiveis ao alterar listas; botoes de periodo preservados.
+
+---
+
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 
 ---

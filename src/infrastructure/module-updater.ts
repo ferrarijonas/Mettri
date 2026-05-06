@@ -46,12 +46,16 @@ export class ModuleUpdater {
   private isChecking = false;
   private isUpdating = false;
 
-  constructor(baseUrl?: string, checkIntervalMinutes: number = 1440) {
+  constructor(baseUrl?: string, checkIntervalMinutes = 1440) {
     // Por padrão: GitHub Pages do mesmo repo (branch gh-pages, deploy deste workflow)
     this.baseUrl = baseUrl || 'https://ferrarijonas.github.io/Mettri';
     this.checkInterval = checkIntervalMinutes * 60 * 1000;
     try {
-      this.currentVersion = (typeof chrome !== 'undefined' && chrome?.runtime?.getManifest?.())?.version ?? '0.0.0';
+      const manifest =
+        typeof chrome !== 'undefined' && typeof chrome.runtime?.getManifest === 'function'
+          ? chrome.runtime.getManifest()
+          : null;
+      this.currentVersion = manifest?.version ?? '0.0.0';
     } catch {
       this.currentVersion = '0.0.0';
     }

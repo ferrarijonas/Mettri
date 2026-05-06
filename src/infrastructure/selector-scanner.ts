@@ -32,7 +32,7 @@ export class SelectorScanner {
    * Rastreamento de seletores já atribuídos a targets durante uma sessão de varredura.
    * CSS selector -> selectorId (target.id)
    */
-  private usedSelectors: Map<string, string> = new Map();
+  private usedSelectors = new Map<string, string>();
 
   constructor() {
     this.generator = new SelectorGenerator();
@@ -2020,13 +2020,13 @@ export class SelectorScanner {
    */
   async testWithPhoneNumber(phoneNumber: string): Promise<import('../types/selector-scanner').PhoneNumberTestResult> {
     const startTime = Date.now();
-    const steps: Array<{
+    const steps: {
       step: string;
       selectorId: string;
       success: boolean;
       error?: string;
       elementFound?: boolean;
-    }> = [];
+    }[] = [];
 
     // Normalizar número (remover espaços, traços, etc)
     const normalizedPhone = phoneNumber.replace(/\D/g, '');

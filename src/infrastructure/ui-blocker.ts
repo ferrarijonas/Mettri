@@ -10,11 +10,11 @@
 export class UIBlocker {
   private overlay: HTMLElement | null = null;
   private isBlocked = false;
-  private eventHandlers: Array<{
+  private eventHandlers: {
     element: HTMLElement | Document;
     event: string;
     handler: EventListener;
-  }> = [];
+  }[] = [];
 
   /**
    * Bloqueia a UI com overlay e bloqueio de eventos.

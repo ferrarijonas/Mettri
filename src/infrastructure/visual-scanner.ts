@@ -20,9 +20,9 @@ export class VisualScanner {
   private coordinateMapper: CoordinateMapper;
   private interactionTester: InteractionTester;
   private debugOverlay: VisualDebugOverlay;
-  private debugMode: boolean = false;
+  private debugMode = false;
 
-  constructor(debugMode: boolean = false) {
+  constructor(debugMode = false) {
     this.imageAnalyzer = new ImageAnalyzer();
     this.coordinateMapper = new CoordinateMapper();
     this.interactionTester = new InteractionTester();

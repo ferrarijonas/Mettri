@@ -1,0 +1,374 @@
+/**
+ * Sync Progress Page Styles
+ * Active sync, progress, queue, history
+ */
+
+/* Active Sync Section */
+.sync-active-section {
+  padding: 20px;
+}
+
+.sync-status-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.sync-status-icon {
+  color: var(--wa-green);
+}
+
+.sync-status-icon.spinning svg {
+  animation: spin 1.5s linear infinite;
+}
+
+.sync-status-info {
+  text-align: center;
+}
+
+.sync-status-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 2px;
+}
+
+.sync-status-detail {
+  font-size: 12px;
+  color: var(--gray);
+}
+
+/* Progress Bar */
+.sync-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--gray-lighter);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.sync-progress-fill {
+  height: 100%;
+  background: var(--wa-green);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  min-width: 2%;
+}
+
+.sync-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--gray);
+  text-align: left;
+}
+
+.sync-stop-btn {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.sync-stop-btn:hover {
+  background: var(--red-light);
+}
+
+/* Sync Details Accordion */
+.sync-details-accordion {
+  padding-top: 16px;
+  text-align: left;
+}
+
+.sync-details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+  padding: 0;
+  user-select: none;
+}
+
+.sync-details-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.sync-details-toggle .chevron {
+  transition: transform 0.2s ease;
+  color: var(--gray);
+}
+
+.sync-details-accordion[open] .sync-details-toggle .chevron {
+  transform: rotate(180deg);
+}
+
+.sync-details-content {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Section Headers */
+.sync-section-header {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Active Chats Section (multiple in-progress) */
+.sync-active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sync-active-item {
+  background: var(--wa-green-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--wa-green);
+}
+
+.sync-active-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sync-active-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.sync-active-batch {
+  font-size: 10px;
+  color: var(--wa-green);
+  font-weight: 500;
+}
+
+.sync-active-item-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sync-active-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(37, 211, 102, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sync-active-fill {
+  height: 100%;
+  background: var(--wa-green);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.sync-active-count {
+  font-size: 10px;
+  color: var(--gray);
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Queue Section */
+.sync-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sync-queue-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.sync-queue-name {
+  color: var(--black);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.sync-queue-count {
+  color: var(--gray);
+  flex-shrink: 0;
+}
+
+.sync-queue-more {
+  font-size: 11px;
+  color: var(--gray);
+  text-align: center;
+  padding: 4px;
+}
+
+/* Job Info */
+.sync-job-info {
+  background: var(--gray-lighter);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sync-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.sync-info-row:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.sync-info-label {
+  color: var(--gray);
+}
+
+.sync-info-value {
+  color: var(--black);
+  font-weight: 500;
+  font-size: 11px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.sync-info-value.sync-error {
+  color: var(--red);
+}
+
+/* Empty Sync State */
+.sync-empty-section {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.sync-empty-icon {
+  color: var(--wa-green);
+  margin-bottom: 12px;
+}
+
+.sync-empty-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+  margin-bottom: 4px;
+}
+
+.sync-empty-hint {
+  font-size: 12px;
+  color: var(--gray);
+}
+
+/* Sync History Section */
+.sync-history-section {
+  border-top: 1px solid var(--border);
+  padding: 16px;
+}
+
+.sync-history-header {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.sync-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sync-history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.sync-history-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 50%;
+  background: var(--gray-lighter);
+  color: var(--gray);
+}
+
+.sync-history-icon.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.sync-history-icon.failed {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.sync-history-info {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sync-history-count {
+  font-size: 12px;
+  color: var(--black);
+}
+
+.sync-history-time {
+  font-size: 11px;
+  color: var(--gray);
+}
+
+.sync-history-empty {
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray);
+  padding: 16px 0;
+}

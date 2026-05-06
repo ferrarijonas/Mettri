@@ -1,0 +1,69 @@
+/**
+ * Base Styles
+ * Variables, reset, animations, body
+ */
+
+@font-face {
+  font-family: Outfit;
+  src: url(../Outfit/static/Outfit-Regular.ttf);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+:root {
+  --wa-green: #25d366;
+  --wa-green-dark: #1da851;
+  --wa-green-light: #e8f5e9;
+  --black: #333;
+  --gray: #666;
+  --gray-light: #999;
+  --gray-lighter: #f5f5f5;
+  --white: #fff;
+  --border: #ddd;
+  --red: #dc3545;
+  --red-light: #ffebee;
+  --success: #28a745;
+  --success-light: #d4edda;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  font-size: 14px;
+  color: var(--black);
+  background: var(--white);
+  width: 380px;
+  min-height: 480px;
+  max-height: 600px;
+  overflow: hidden;
+}
+
+/* Animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Loading State */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}

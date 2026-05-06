@@ -1,0 +1,231 @@
+/**
+ * Custom Integration Page Styles
+ * Config section, sync action
+ */
+
+/* Config Section */
+.config-section {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-card {
+  background: var(--gray-lighter);
+  border-radius: 12px;
+  padding: 16px;
+  position: relative;
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.config-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+}
+
+.config-icon.active {
+  background: var(--wa-green-light);
+  color: var(--wa-green);
+}
+
+.config-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--black);
+  flex: 1;
+}
+
+.config-desc {
+  font-size: 11px;
+  color: var(--gray);
+  margin-top: 2px;
+}
+
+.config-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  font-size: 13px;
+  color: var(--black);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.config-input:hover {
+  border-color: var(--gray);
+}
+
+.config-input:focus {
+  border-color: var(--wa-green);
+  box-shadow: 0 0 0 2px var(--wa-green-light);
+}
+
+.config-input::placeholder {
+  color: var(--gray-light);
+}
+
+.config-test-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--wa-green);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.config-test-btn:hover:not(:disabled) {
+  background: var(--wa-green-dark);
+}
+
+.config-test-btn:disabled {
+  background: var(--gray-light);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.config-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-info {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sync Action Section */
+.sync-action-section {
+  padding: 20px 16px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.last-sync-info {
+  font-size: 11px;
+  color: var(--gray);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-history-link {
+  color: var(--wa-green);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.view-history-link:hover {
+  text-decoration: underline;
+}
+
+.sync-link {
+  background: none;
+  border: none;
+  color: var(--gray);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.sync-link:hover {
+  color: var(--wa-green);
+  background: var(--wa-green-light);
+}
+
+/* Coming Soon */
+.coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--gray);
+}
+
+.coming-soon svg {
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.coming-soon h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 6px;
+}
+
+.coming-soon p {
+  font-size: 13px;
+  color: var(--gray);
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Subsection Titles (inside accordions) */
+.subsection {
+  margin-bottom: 16px;
+}
+
+.subsection:last-child {
+  margin-bottom: 0;
+}
+
+.subsection-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gray-lighter);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

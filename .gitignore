@@ -36,3 +36,62 @@ legacy/
 # Chrome extension unpacked
 *.crx
 *.pem
+
+# Dev tools / AI assistants
+.cursor/
+.specify/memory/
+
+# Temporary uploads
+.tmp.driveupload/
+
+# Windows Explorer metadata
+desktop.ini
+
+# Local data files (do not commit customer lists)
+Lista-Clientes*.xlsx
+wa-sync-found-files.txt
+Clientes Inativos.xlsx
+
+# Build outputs (generated)
+background.js
+background.js.map
+content.js
+content.js.map
+content-bridge.js
+content-bridge.js.map
+inject.js
+inject.js.map
+panel.css
+rag-fonte-test.js
+rag-fonte-test.js.map
+
+# Debug / screenshots
+screenshot-*.png
+mettri-*.png
+*.snap.md
+extensions-snap.md
+page-state.md
+
+# Session / temp docs
+session-*.md
+whatsapp-*.json
+whatsapp-*.md
+whatsapp-design-tokens.md
+whatsapp-snapshot.md
+
+# Dev config
+.opencode/
+.playwright-mcp/
+.opencode.json
+opencode.json
+.zen_state.json
+chrome-extensions.yml
+
+# Test automation scripts (dev-only)
+scripts/*.mjs
+tests/automation/*.mjs
+tests/automation/*.ts
+
+# Design notes (local)
+DESIGN.md
+rag-test.html

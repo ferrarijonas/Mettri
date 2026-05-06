@@ -1,37 +1,35 @@
 # 🤖 METTRI4 - Project Manifesto (2026)
 
-##  FLUXO DE TRABALHO (AGENTS)
-1. Arquiteto: Define o plano em @current_task_spec.md.
-2. Produção: Codifica baseado na spec. **Proibido desviar do plano.**
-3. Testes: Valida com testes unitários/E2E.
-4. Refatoração: Aplica Clean Code e DRY.
-5. Documentação: Só atua após 3/4. Atualiza @progress.md e remove a spec.
+## FLUXO (AGENTS)
+1) Arquiteto: plano em @current_task_spec.md (sem “inventar” no meio).
+2) Produção: codificar **só** o que está na spec.
+3) Testes: unit/E2E.
+4) Refatoração: DRY/Clean.
+5) Docs: atualizar @progress.md e remover a spec.
 
 ## LEAN/TPS (OBRIGATÓRIO)
-- **Jidoka:** Se quebrar, parar TUDO e corrigir. Nenhuma feature nova enquanto houver bug.
-- **Just-in-Time:** Só implementar o necessário AGORA. Nada especulativo.
-- **Kaizen:** Cada commit melhora algo. Nunca pior, nunca igual.
-- **Genchi Genbutsu:** Testar no WhatsApp REAL, não em mocks.
-- **Muda:** Código morto = deletar. Abstração sem uso = simplificar.
-- **Poka-yoke:** TypeScript strict, Zod, fallback selectors.
+- **Jidoka**: quebrou → parar e corrigir (sem feature nova com bug aberto).
+- **JIT**: só o necessário agora (nada especulativo).
+- **Genchi**: testar no WhatsApp real.
+- **Muda**: código morto/abstração sem uso → remover.
 
 ## TECH STACK & PADRÕES (OBRIGATÓRIO)
-- **Strict Typing:** TypeScript 5.x+ em TUDO. Proibido usar `any`.
-- **Linting:** Siga rigorosamente o ESLint/Prettier do projeto. Código que não passa no lint é considerado erro de build.
-- **Functional Architecture:** Prefira funções puras e imutabilidade.
+- **TS strict**: proibido `any`. Preferir funções puras/imutabilidade.
+- **Lint**: ESLint/Prettier = “falhou” é bug.
+
+## UI / TOKENS
+- UI sem hardcode visual (ver `ENGINEERING_CONTRACT.md`).
 
 ## TESTES E DESENVOLVIMENTO
-- **Para testar extensão no WhatsApp:** Use Chrome normal (aberto manualmente)
-- **MCP/Playwright:** NÃO funcionam bem com WhatsApp Web (detecção de automação bloqueia carregamento)
-- **Playwright/MCP:** Podem ser usados apenas para validar estrutura básica (manifest, arquivos), não para testar WhatsApp
+- WhatsApp: testar em Chrome normal (manual). Automação (MCP/Playwright) é bloqueada.
 
 ## MEMÓRIA DO PROJETO
-- Consultar SEMPRE: @project_context.md (O que é), @tech_stack.md (Como), @progress.md (Onde estamos).
+- Consultar: @project_context.md / @tech_stack.md / @progress.md
 
-## GESTÃO DE ENGENHARIA (GITHUB)
-Para manter o padrão Sênior de visibilidade e organização:
+## GIT (PADRÃO)
+- Conventional Commits; sem commit direto na `main`; PR obrigatório; @progress.md alinhado ao GitHub.
 
-1. **Commits:** Seguir estritamente o padrão Conventional Commits.
-2. **Pull Requests:** Toda funcionalidade nova deve passar por um PR, contendo a descrição do que foi alterado e o link para a Issue correspondente.
-3. **Branches:** Nunca commitar direto na `main`. Usar branches descritivas (ex: `feature/message-capturer`).
-4. **Transparência:** Toda atualização no `@progress.md` deve estar sempre alinhada 1:1 com as Milestones e issues do GitHub. Nenhuma entrega pode ser considerada concluída sem que ambos os rastros (arquivo e GitHub) estejam sincronizados.
+## 🚨 LOBISOMEM (ANTI-OVER-ENGINEERING)
+- **Ativa**: `Lobisomem:`/`🚨` (manual) ou quando houver heurística/abstração/automação prematura/irreversível (auto).
+- **Resposta**: bloco `🚨 LOBISOMEM` com 4 itens: Risco / Mais burra / Decisão humana / Reversão.
+- **Código (se preciso)**: `// 🚨 LOBISOMEM: <decisão humana> (reversão: <como desfazer>)` → resolver e remover.

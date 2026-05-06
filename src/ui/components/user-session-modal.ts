@@ -10,16 +10,16 @@ import { messageDB } from '../../storage/message-db';
 import { MettriBridgeClient } from '../../content/bridge-client';
 import { LocalBatchExporter } from '../../infrastructure/local-batch-exporter';
 
-type ExportStateV1 = {
+interface ExportStateV1 {
   version: 1;
   lastSuccessIso?: string;
   pending?: boolean;
-};
+}
 
 export class UserSessionModal {
   private overlay: HTMLElement | null = null;
   private modal: HTMLElement | null = null;
-  private isOpen: boolean = false;
+  private isOpen = false;
   private bridge = new MettriBridgeClient(2500);
 
   constructor() {
@@ -28,14 +28,16 @@ export class UserSessionModal {
 
   /**
    * Abre o modal com informações da sessão do usuário.
+   * @param session - Dados da sessão (ou null se conta não detectada).
+   * @param container - Onde anexar o overlay (ex.: shadow root do painel). Se não for passado, usa document.body (pode ficar sem estilos em extensão).
    */
-  show(session: UserSession | null): void {
+  show(session: UserSession | null, container?: ShadowRoot | HTMLElement): void {
     if (this.isOpen) {
       this.close();
       return;
     }
 
-    this.createModal(session);
+    this.createModal(session, container);
     this.isOpen = true;
   }
 
@@ -56,8 +58,9 @@ export class UserSessionModal {
 
   /**
    * Cria o modal com informações da sessão.
+   * Anexa o overlay em container (ex.: shadow root) para herdar os estilos do painel; senão usa document.body.
    */
-  private createModal(session: UserSession | null): void {
+  private createModal(session: UserSession | null, container?: ShadowRoot | HTMLElement): void {
     // Overlay
     const overlay = document.createElement('div');
     overlay.className = 'fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center';
@@ -159,7 +162,8 @@ export class UserSessionModal {
     }
 
     overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    const parent = container ?? document.body;
+    parent.appendChild(overlay);
 
     this.overlay = overlay;
     this.modal = modal;
@@ -311,7 +315,7 @@ Banco de dados: mettri-db-${session.wid.replace(/[@.]/g, '_')}
   /**
    * Mostra toast de feedback.
    */
-  private showToast(message: string, isError: boolean = false): void {
+  private showToast(message: string, isError = false): void {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-sm z-[10001] ${
       isError ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground'

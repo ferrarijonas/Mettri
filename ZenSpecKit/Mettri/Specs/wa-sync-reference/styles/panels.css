@@ -1,0 +1,67 @@
+/**
+ * Panel Styles
+ * Loading, activation, not-whatsapp panels
+ */
+
+/* Panels */
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+  padding: 40px 20px;
+  background: var(--white);
+}
+
+.panel-content {
+  text-align: center;
+  max-width: 280px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.panel-content svg {
+  color: var(--wa-green);
+  margin-bottom: 20px;
+}
+
+.panel-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 12px;
+}
+
+.panel-content p {
+  font-size: 14px;
+  color: var(--gray);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+/* Loading Panel */
+.loading-panel .panel-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.__loader-spinner {
+  border: 3px solid var(--gray-lighter);
+  border-top: 3px solid var(--wa-green);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+.loading-head {
+  color: var(--wa-green);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.loading-desc {
+  color: var(--gray);
+  font-size: 13px;
+}

@@ -6,12 +6,13 @@ import { whatsappInterceptors as interceptorsWrapper } from '../infrastructure/w
 import { UserSessionManager } from '../infrastructure/user-session-manager';
 import { MettriBridgeClient } from './bridge-client';
 import { ModuleUpdater } from '../infrastructure/module-updater';
+import type { CapturedMessage } from '../types';
 
 class MettriApp {
   private panel: MettriPanel | null = null;
   private capturer: MessageCapturer | null = null;
   private isInitialized = false;
-  private bridge = new MettriBridgeClient(2500);
+  private bridge = new MettriBridgeClient(60000);
 
   constructor() {
     console.log('[MettriApp] Inicializando no contexto MAIN (acesso direto)');
@@ -143,13 +144,33 @@ class MettriApp {
     this.capturer?.stop();
     this.isInitialized = false;
   }
+
+  /** Força o reprocessamento de uma mensagem pelo pipeline do Ouvinte. Usado para testes/debug. */
+  public async triggerPipeline(message: { text: string; chatId: string; isOutgoing?: boolean }): Promise<boolean> {
+    if (!this.panel || !this.isInitialized) return false;
+    const msg: CapturedMessage = {
+      id: `test_${Date.now()}`,
+      chatId: message.chatId,
+      chatName: '',
+      sender: message.chatId,
+      text: message.text,
+      timestamp: new Date(),
+      isOutgoing: message.isOutgoing ?? false,
+      type: 'text',
+    };
+    this.panel.addMessage(msg);
+    return true;
+  }
 }
 
 // Initialize when DOM is ready
+let appInstance: MettriApp | null = null;
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    new MettriApp();
+    appInstance = new MettriApp();
+    (window as any).__METTRI_INTERNAL__ = { app: appInstance };
   });
 } else {
-  new MettriApp();
+  appInstance = new MettriApp();
+  (window as any).__METTRI_INTERNAL__ = { app: appInstance };
 }
