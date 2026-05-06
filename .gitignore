@@ -40,6 +40,10 @@ legacy/
 # Dev tools / AI assistants
 .cursor/
 .specify/memory/
+.karma/
+KARMA/
+.mettri/
+Specs/
 
 # Temporary uploads
 .tmp.driveupload/
@@ -74,16 +78,18 @@ page-state.md
 
 # Session / temp docs
 session-*.md
+wa-*.md
+chat-*.md
 whatsapp-*.json
 whatsapp-*.md
 whatsapp-design-tokens.md
 whatsapp-snapshot.md
 
 # Dev config
-.opencode/
+/.opencode/
 .playwright-mcp/
 .opencode.json
-opencode.json
+/opencode.json
 .zen_state.json
 chrome-extensions.yml
 
