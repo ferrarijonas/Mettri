@@ -15,20 +15,13 @@ function formatPhoneLabel(phoneDigits: string | null): string {
   // Metáfora: se tem poucos dígitos, não é telefone, é “código interno”.
   if (digits.length < 10) return '—';
 
-  // Heurística BR simples: +55 DDD 9XXXX-XXXX ou XXXX-XXXX
+  // BR: remover +55, mostrar só dígitos
   if (digits.startsWith('55') && digits.length >= 12 && digits.length <= 13) {
-    const ddi = '+55';
-    const ddd = digits.slice(2, 4);
-    const rest = digits.slice(4);
-    if (rest.length === 9) {
-      return `${ddi} ${ddd} ${rest.slice(0, 5)}-${rest.slice(5)}`;
-    }
-    if (rest.length === 8) {
-      return `${ddi} ${ddd} ${rest.slice(0, 4)}-${rest.slice(4)}`;
-    }
+    return digits.slice(2);
   }
 
-  return `+${digits}`;
+  // Internacional: manter DDI mas sem +
+  return digits;
 }
 
 export function pickStrongDisplayName(record: ClientRecord | null, fallbackWhatsAppName: string, phoneDigits: string | null): string {
