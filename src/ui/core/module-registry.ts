@@ -291,11 +291,20 @@ export class ModuleRegistry {
   }
 
   /**
-   * Carrega módulo do cache remoto (se disponível)
+   * Carrega módulo do cache remoto (se disponível e auto-update ativo)
    */
   private async loadRemoteModule(id: string): Promise<string | null> {
     if (!this.moduleUpdater) {
       return null;
+    }
+
+    // Só usa cache remoto SE auto-update estiver ativado
+    // Senão, módulo local (fresh do build) tem prioridade
+    try {
+      const enabled = await this.moduleUpdater.isAutoUpdateEnabled();
+      if (!enabled) return null;
+    } catch {
+      // Se falhou, assume true (comportamento antigo)
     }
 
     try {
