@@ -6,7 +6,7 @@ import { digitsOnly } from '../../../storage/client-db';
 import { customerProfileDB } from '../../../storage/customer-profile-db';
 import { catalogoDB } from '../../../storage/catalogo-db';
 import { whatsappInterceptors } from '../../../infrastructure/whatsapp-interceptors';
-import type { AtendimentoViewModel, FunilEtapa, PedidoItemAuto, ProximaAcao, VitrineItemUi, IntencaoTipo, PedidoResumoVm, MetricaClienteVm } from './view-model';
+import type { AtendimentoViewModel, FunilEtapa, PedidoItemAuto, ProximaAcao, VitrineItemUi, IntencaoTipo, PedidoResumoVm, MetricaClienteVm, SugestaoAmbiguidadeVm } from './view-model';
 import { criarClienteContextoVitrine, fornecerFichaClienteParaAtendimento } from '../../cadastro';
 import {
   buildClientBadges,
@@ -582,6 +582,8 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null;
 
   const metricaCliente = calcularMetricasCliente(historicoPedidos);
 
+  const sugestaoAmbiguidade = buildSugestaoAmbiguidade(perfil);
+
   return {
     kind: 'ready',
     customer: {
@@ -649,6 +651,14 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null;
     pedido,
     /** Vitrine inline (recomendações) */
     vitrine,
+    /** Sugestão de produto por ambiguidade */
+    sugestaoAmbiguidade,
+    /** Debug info do Ouvinte (para testes E2E) */
+    ouvinteDebug: {
+      ultimaMensagemProcessada: (perfil as any)?.ultimaMensagemProcessada,
+      camposExtraidos: perfil?.preferenciasProduto?.map(v => ({ campo: 'preferenciasProduto', valor: v, confianca: perfil?.camposConfianca?.preferenciasProduto || 'media' })),
+      sugestaoPendente: sugestaoAmbiguidade ?? undefined,
+    },
     /** Pendências de confirmação */
     pendentesConfirmacao: perfil?.pendentesConfirmacao ?? [],
     /** Próxima ação: o que está pendente no funil */
@@ -875,6 +885,26 @@ function extrairProdutosDeTexto(texto: string): string[] {
   }
   if (resultados.length > 0) return [...new Set(resultados)]
 
+  // Tier 3: padrões de OFERTA do atendente (não só compra)
+  const offerPatterns = [
+    /(?:hoje|temos|agora|nesse\s+momento|nessa\s+hora)\s+(?:tem|que|vai|dispõe|disponível)\s+(.+?)(?:\.|,|;|$| e | com |$)/gi,
+    /(?:tenho|tenha)\s+(?:disponível|à\s+venda)\s+(.+?)(?:\.|,|;|$| e )/gi,
+    /(?:no\s+cardápio|tem\s+no\s+cardápio)\s+(?:hoje|agora)?\s*(.+?)(?:\.|,|;|$| e )/gi,
+  ]
+  for (const re of offerPatterns) {
+    let m: RegExpExecArray | null
+    while ((m = re.exec(t)) !== null) {
+      if (m[1]) {
+        const raw = m[1].trim()
+        const partes = raw.split(/\s+e\s+/)
+        for (const parte of partes) {
+          resultados.push(...extrairProdutoDeChunk(parte))
+        }
+      }
+    }
+  }
+  if (resultados.length > 0) return [...new Set(resultados)]
+
   return []
 }
 
@@ -1029,5 +1059,21 @@ function buildProximaAcao(perfil: any): ProximaAcao | null {
     return { label: 'Confirmar prazo', sugestaoTexto: 'Para quando você precisa? Hoje ou outro dia?' }
   }
   return { label: 'Fechar pedido', sugestaoTexto: 'Tudo certo! Posso confirmar o pedido?' }
+}
+
+function buildSugestaoAmbiguidade(perfil: any): SugestaoAmbiguidadeVm | null {
+  const sugestoes = perfil?.sugestoesPendentes
+  if (!sugestoes || sugestoes.length === 0) return null
+
+  const s = sugestoes[0]
+  return {
+    nome: s.nome,
+    qtd: s.qtd,
+    nomeExtraido: s.nomeExtraido,
+    confianca: s.confianca,
+    metodo: s.metodo,
+    evidencia: s.evidencia,
+    fraseContexto: `Cliente disse "${s.evidencia.length > 40 ? s.evidencia.slice(0, 40) + '...' : s.evidencia}"`,
+  }
 }
 

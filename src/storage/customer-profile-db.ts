@@ -35,12 +35,23 @@ const OuvinteCamposSchema = z.object({
   camposConfianca: CamposConfiancaSchema.optional(),
 });
 
+const SugestaoProdutoPendenteSchema = z.object({
+  nome: z.string().min(1),
+  qtd: z.number().positive(),
+  nomeExtraido: z.string().min(1),
+  confianca: z.enum(['alta', 'media', 'baixa']),
+  metodo: z.enum(['reply', 'ultimo_produto', 'llm']),
+  evidencia: z.string().min(1),
+  criadoEm: z.string().datetime(),
+});
+
 export const CustomerOperationalProfileSchema = z.object({
   chatId: z.string().min(1),
   segmentos: z.array(z.string()),
   confiancaPerfil: z.number().min(0).max(1),
   nomeConfiavel: z.string().optional(),
   cadastroUtil: z.boolean().optional(),
+  sugestoesPendentes: z.array(SugestaoProdutoPendenteSchema).optional(),
   comportamento: z
     .object({
       janelaAtiva: OperationalWindowSchema.optional(),
