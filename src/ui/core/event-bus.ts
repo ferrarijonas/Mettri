@@ -7,7 +7,8 @@
 export type EventHandler<T = unknown> = (data: T) => void;
 
 export class EventBus {
-  private handlers: Map<string, Set<EventHandler>> = new Map();
+  private handlers = new Map<string, Set<EventHandler>>();
+  public readonly data: Record<string, unknown> = {};
 
   /**
    * Registra um handler para um evento

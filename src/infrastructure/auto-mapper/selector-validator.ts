@@ -296,7 +296,7 @@ export class SelectorValidator {
    * @param iterations Número de iterações
    * @returns true se seletor é estável
    */
-  async validateStability(selector: string, iterations: number = 3): Promise<boolean> {
+  async validateStability(selector: string, iterations = 3): Promise<boolean> {
     const results: boolean[] = [];
 
     for (let i = 0; i < iterations; i++) {

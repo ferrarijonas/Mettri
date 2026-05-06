@@ -1,0 +1,106 @@
+﻿# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Test results and coverage
+coverage/
+test-results/
+playwright-report/
+tests/results/
+
+# Reference code (external projects - biggest token savers)
+wa-sync-reference/
+whatsapp-copilot-crm/
+legacy/
+
+# Documentation (historical/outdated - adjust if you need specific docs)
+docs/
+ANALISE-PANORAMA.md
+AUDITORIA_CODIGO.md
+CARREGAR-EXTENSAO.md
+CHANGELOG.md
+HISTORICO_SIMPLES.md
+IMPORT_CLIENTES.md
+INTEGRACAO-UI.md
+PLANO-ATUAL-RESUMO.md
+PLANO-RESOLVER-CONTEXTO.md
+progress.md
+tech_stack.md
+TESTE-RAPIDO.md
+TESTE-WORLD-MAIN.md
+TESTE.md
+INSTRUCOES-CARREGAR.txt
+
+# Scripts (utility/analysis scripts)
+scripts/
+*.ps1
+*.sh
+*.mjs
+
+# Test HTML files
+test-extension.html
+test-manifest.html
+tests/unit-tests.html
+tests/integration-tests.html
+tests/index.html
+generate-icons.html
+
+# Data files and plans
+plans/
+*.xlsx
+*.csv
+*.json.backup
+*.backup
+panel.css.backup
+panel-v0.css.backup
+
+# Configuration files (large/lock files)
+package-lock.json
+*.lock
+
+# Assets (images/icons)
+assets/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+console-output.md
+wa-sync-found-files.txt
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Chrome extension files
+*.crx
+*.pem
+
+# Temporary files
+1
+
+# Python files (if any)
+*.py
+*.pyc
+__pycache__/
+
+# Generated/utility files
+create_icons.py
+create-icons.js

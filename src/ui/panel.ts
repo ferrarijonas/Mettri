@@ -11,6 +11,8 @@ import { MettriBridgeClient } from '../content/bridge-client';
 import { LocalBatchExporter } from '../infrastructure/local-batch-exporter';
 import { ActiveChatService } from '../infrastructure/active-chat-service';
 import { ModuleUpdater } from '../infrastructure/module-updater';
+import { registerRagAutoListeners } from '../modules/atendimento/rag-mettri-controller';
+import { registerOuvinteListeners } from '../modules/ouvir';
 
 type PanelSettings = Record<string, unknown> & {
   historyEnabled?: unknown;
@@ -35,17 +37,19 @@ export class MettriPanel {
   private disposePanelNavigate: (() => void) | null = null;
   private enviarMenu: KebabMenu | null = null;
   private clientesMenu: KebabMenu | null = null;
-  private currentModuleId: string = 'atendimento.dashboard'; // Módulo padrão
+  private currentModuleId = 'atendimento.dashboard'; // Módulo padrão
   private userSessionModal: UserSessionModal | null = null;
   private settingsModal: SettingsModal | null = null;
   private moduleUpdater: ModuleUpdater | null = null;
-  private isDarkMode: boolean = false; // Estado do dark mode
+  private isDarkMode = false; // Estado do dark mode
   private userSession: UserSession | null = null; // Sessão do usuário atual
   private capturer: MessageCapturer | null = null;
   private bridge = new MettriBridgeClient(2500);
-  private historyEnabled: boolean = false; // Toggle do Histórico (persistido)
+  private historyEnabled = false; // Toggle do Histórico (persistido)
   private exporter: LocalBatchExporter | null = null;
   private activeChat: ActiveChatService | null = null;
+  private squeezeStyle: HTMLStyleElement | null = null;
+  private layoutGuardHandle: number | null = null;
   private state: PanelState = {
     isVisible: true,
     isCapturing: false,
@@ -57,14 +61,16 @@ export class MettriPanel {
     // Inicializar Plugin System
     this.registry = new ModuleRegistry();
     this.eventBus = new EventBus();
+    registerRagAutoListeners(this.eventBus);
+    registerOuvinteListeners(this.eventBus);
     this.init();
   }
 
   private async init(): Promise<void> {
     this.ensureShadowRoot();
     this.injectBaseStyles();
-    this.createNavBar();
     this.createSidebar();
+    this.createNavBar();
     this.createToggleButton();
     this.userSessionModal = new UserSessionModal();
     
@@ -116,7 +122,7 @@ export class MettriPanel {
   private createNavBar(): void {
     const navbar = document.createElement('div');
     navbar.id = 'mettri-navbar';
-    navbar.className = 'fixed top-0 right-0 w-14 h-screen bg-primary flex flex-col items-center py-3 gap-1';
+    navbar.className = 'w-14 h-full bg-primary flex flex-col items-center py-3 gap-1 flex-shrink-0';
 
     navbar.innerHTML = `
       <!-- Toggle Sidebar Button -->
@@ -129,6 +135,21 @@ export class MettriPanel {
       <!-- Module: Atendimento -->
       <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="atendimento" title="Atendimento">
         <span class="w-5 h-5">${getIcon('MessageSquare')}</span>
+      </button>
+
+      <!-- Module: Catalogo -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="catalogo" title="Catalogo">
+        <span class="w-5 h-5">${getIcon('Tag')}</span>
+      </button>
+
+      <!-- Module: Vitrine -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="vitrine" title="Vitrine">
+        <span class="w-5 h-5">${getIcon('BarChart3')}</span>
+      </button>
+
+      <!-- Module: Campanhas -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="campanhas" title="Campanhas — gestão e simulador de ofertas">
+        <span class="w-5 h-5">${getIcon('Play')}</span>
       </button>
 
       <!-- Module: Clientes / Histórico -->
@@ -144,6 +165,16 @@ export class MettriPanel {
       <!-- Module: Marketing / Reativação -->
       <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="marketing" title="Marketing - Enviar">
         <span class="w-5 h-5">${getIcon('Megaphone')}</span>
+      </button>
+
+      <!-- Module: Cadastro / Mapear compras -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="cadastro" title="Cadastro - Mapear compras já existentes">
+        <span class="w-5 h-5">${getIcon('ClipboardList')}</span>
+      </button>
+
+      <!-- Module: Pedidos -->
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="pedidos" title="Pedidos">
+        <span class="w-5 h-5">${getIcon('Package')}</span>
       </button>
 
       <div class="flex-1"></div>
@@ -189,7 +220,7 @@ export class MettriPanel {
   private createSidebar(): void {
     const sidebar = document.createElement('div');
     sidebar.id = 'mettri-panel';
-    sidebar.className = 'fixed top-0 right-14 w-[300px] h-full glass flex flex-col z-[9999]';
+    sidebar.className = 'w-[300px] h-full glass flex flex-col z-[9999] flex-shrink-0';
 
     // Título inicial será atualizado quando módulo carregar
     sidebar.innerHTML = `
@@ -263,6 +294,7 @@ export class MettriPanel {
 
     // Adjust WhatsApp layout
     this.adjustWhatsAppLayout();
+    this.startLayoutGuard();
 
     // Setup event listeners
     this.setupEventListeners();
@@ -609,9 +641,14 @@ export class MettriPanel {
   private mapModuleId(navbarModuleId: string): string {
     const mapping: Record<string, string> = {
       'atendimento': 'atendimento.dashboard',
+      'catalogo': 'catalogo.dashboard',
+      'vitrine': 'vitrine.dashboard',
+      'campanhas': 'campanhas.dashboard',
       'clientes': 'clientes.directory',
       'infraestrutura': 'infrastructure.tests', // PanelShell vai ativar o primeiro filho
       'marketing': 'marketing.enviar',
+      'cadastro': 'cadastro.purchase-mapping',
+      'pedidos': 'pedidos.dashboard',
     };
     return mapping[navbarModuleId] || navbarModuleId;
   }
@@ -620,15 +657,10 @@ export class MettriPanel {
    * Toggle sidebar (mostrar/ocultar)
    */
   private toggleSidebar(): void {
-    if (this.container) {
-      const isVisible = this.container.style.display !== 'none';
-      if (isVisible) {
-        this.container.style.display = 'none';
-        this.adjustWhatsAppLayout();
-      } else {
-        this.container.style.display = 'flex';
-        this.adjustWhatsAppLayout();
-      }
+    if (this.state.isVisible) {
+      this.hide();
+    } else {
+      this.show();
     }
   }
 
@@ -684,16 +716,25 @@ export class MettriPanel {
     const titleMap: Record<string, string> = {
       'atendimento': 'Atendimento',
       'atendimento.dashboard': 'Atendimento',
+      'catalogo': 'Catalogo',
+      'catalogo.dashboard': 'Catalogo',
+      'vitrine': 'Vitrine',
+      'vitrine.dashboard': 'Vitrine',
+      'campanhas': 'Campanhas',
+      'campanhas.dashboard': 'Campanhas',
       'clientes': 'Clientes',
       'clientes.directory': 'Clientes',
       'clientes.history': 'Histórico',
       'infraestrutura': 'Sentinela',
       'infraestrutura.tests': 'Sentinela',
-      'marketing': 'Enviar',
-      'marketing.enviar': 'Enviar',
-      'marketing.enviar.retomar': 'Enviar',
-      'marketing.enviar.responder': 'Enviar',
-      'marketing.enviar.divulgar': 'Enviar',
+      'marketing': 'Studio Mettri',
+      'marketing.enviar': 'Studio Mettri',
+      'marketing.enviar.retomar': 'Studio Mettri',
+      'marketing.enviar.responder': 'Studio Mettri',
+      'marketing.enviar.divulgar': 'Studio Mettri',
+      'cadastro': 'Cadastro',
+      'cadastro.cliente-profile': 'Perfil do cliente',
+      'cadastro.purchase-mapping': 'Mapear compras já existentes',
     };
 
     const parts = moduleId.split('.');
@@ -733,6 +774,7 @@ export class MettriPanel {
     toggle.id = 'mettri-toggle';
     toggle.innerHTML = 'M';
     toggle.title = 'Abrir Mettri';
+    toggle.style.display = 'none';
 
     toggle.addEventListener('click', () => {
       this.show();
@@ -741,21 +783,70 @@ export class MettriPanel {
     this.shadowContainer?.appendChild(toggle);
   }
 
-  private adjustWhatsAppLayout(): void {
-    // Find WhatsApp main container and adjust width
-    // NavBar (56px) + Sidebar (300px) = 356px
-    const appWrapper = document.querySelector('#app');
-    if (appWrapper instanceof HTMLElement) {
-      const sidebarWidth = this.container && this.container.style.display !== 'none' ? 300 : 0;
-      appWrapper.style.width = `calc(100% - ${56 + sidebarWidth}px)`; // 56px = NavBar width
+  /**
+   * Injeta CSS no <head> da página para forçar estreitamento do WhatsApp
+   * com !important, garantindo que o painel não sobreponha o conteúdo.
+   */
+  private ensureSqueezeStyle(): HTMLStyleElement {
+    if (this.squeezeStyle) return this.squeezeStyle;
+    const style = document.createElement('style');
+    style.id = 'mettri-squeeze-style';
+    style.textContent = `
+      html.mettri-open #app {
+        width: calc(100% - 356px) !important;
+        max-width: calc(100% - 356px) !important;
+      }
+    `;
+    document.head.appendChild(style);
+    this.squeezeStyle = style;
+    return style;
+  }
+
+  private applySqueezeInline(): void {
+    const app = document.querySelector<HTMLElement>('#app');
+    if (app) {
+      app.style.setProperty('width', 'calc(100% - 356px)', 'important');
+      app.style.setProperty('max-width', 'calc(100% - 356px)', 'important');
     }
   }
 
+  private resetSqueezeInline(): void {
+    const app = document.querySelector<HTMLElement>('#app');
+    if (app) {
+      app.style.removeProperty('width');
+      app.style.removeProperty('max-width');
+    }
+  }
+
+  private adjustWhatsAppLayout(): void {
+    this.ensureSqueezeStyle();
+    document.documentElement.classList.add('mettri-open');
+    this.applySqueezeInline();
+  }
+
   private resetWhatsAppLayout(): void {
-    // Quando sidebar fecha, só NavBar fica (56px)
-    const appWrapper = document.querySelector('#app');
-    if (appWrapper instanceof HTMLElement) {
-      appWrapper.style.width = 'calc(100% - 56px)'; // Apenas NavBar
+    document.documentElement.classList.remove('mettri-open');
+    this.resetSqueezeInline();
+  }
+
+  private startLayoutGuard(): void {
+    if (this.layoutGuardHandle) return; // Already running
+    const guard = (): void => {
+      if (this.state.isVisible) {
+        // Agressivamente reaplica os estilos em todo frame
+        this.applySqueezeInline();
+        if (this.hostEl) this.hostEl.style.width = '356px';
+        document.documentElement.classList.add('mettri-open');
+      }
+      this.layoutGuardHandle = requestAnimationFrame(guard);
+    };
+    this.layoutGuardHandle = requestAnimationFrame(guard);
+  }
+
+  private stopLayoutGuard(): void {
+    if (this.layoutGuardHandle) {
+      cancelAnimationFrame(this.layoutGuardHandle);
+      this.layoutGuardHandle = null;
     }
   }
 
@@ -779,7 +870,7 @@ export class MettriPanel {
     if (this.container) {
       this.container.style.display = 'none';
       this.state.isVisible = false;
-      this.resetWhatsAppLayout();
+      this.resetWhatsAppLayout(); // Limpa imediatamente
 
       const toggle = document.querySelector('#mettri-toggle');
       toggle?.classList.remove('panel-open');
@@ -796,7 +887,8 @@ export class MettriPanel {
     if (this.container) {
       this.container.style.display = 'flex';
       this.state.isVisible = true;
-      this.adjustWhatsAppLayout();
+      if (this.hostEl) this.hostEl.style.width = '356px';
+      this.adjustWhatsAppLayout(); // Aplicação imediata para evitar flicker
 
       const toggle = document.querySelector('#mettri-toggle');
       toggle?.classList.add('panel-open');
@@ -995,10 +1087,11 @@ export class MettriPanel {
 
   /**
    * Mostra modal de configurações da conta.
+   * Passa o shadow root para o modal ser anexado dentro do painel e herdar os estilos (evita modal invisível).
    */
   private showUserSessionModal(): void {
-    if (this.userSessionModal) {
-      this.userSessionModal.show(this.userSession);
+    if (this.userSessionModal && this.shadow) {
+      this.userSessionModal.show(this.userSession, this.shadow);
     }
   }
 
@@ -1017,11 +1110,13 @@ export class MettriPanel {
       const existingContainer = this.shadow.querySelector('#mettri-shadow-container');
       if (existingContainer instanceof HTMLDivElement) {
         this.shadowContainer = existingContainer;
+        this.applyContainerFlexStyles(existingContainer);
       } else {
         const container = document.createElement('div');
         container.id = 'mettri-shadow-container';
         this.shadow.appendChild(container);
         this.shadowContainer = container;
+        this.applyContainerFlexStyles(container);
       }
       window.__mettriShadowRoot = this.shadow;
       return;
@@ -1041,6 +1136,8 @@ export class MettriPanel {
     this.hostEl = host;
     this.shadow = shadow;
     this.shadowContainer = container;
+
+    this.applyContainerFlexStyles(container);
 
     // Ponte para outros módulos (ex: ThemeLoader) encontrarem o ShadowRoot
     window.__mettriShadowRoot = shadow;
@@ -1064,15 +1161,23 @@ export class MettriPanel {
     this.shadow.appendChild(link);
   }
 
+  private applyContainerFlexStyles(container: HTMLDivElement): void {
+    container.style.display = 'flex';
+    container.style.flexDirection = 'row';
+    container.style.justifyContent = 'flex-end';
+    container.style.height = '100%';
+    container.style.pointerEvents = 'auto';
+  }
+
   /**
    * Mantém o host do Shadow DOM "sempre por cima" e sem interferir no layout.
    */
   private applyHostSafetyStyles(host: HTMLDivElement): void {
     host.style.position = 'fixed';
     host.style.top = '0';
-    host.style.left = '0';
-    host.style.width = '0';
-    host.style.height = '0';
+    host.style.right = '0';
+    host.style.width = this.state.isVisible ? '356px' : '56px';
+    host.style.height = '100%';
     host.style.zIndex = '2147483647';
   }
 }

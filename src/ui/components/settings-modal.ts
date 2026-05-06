@@ -5,14 +5,14 @@
  */
 
 import { getIcon } from '../icons/lucide-icons';
-import { ModuleUpdater } from '../../infrastructure/module-updater';
+import type { ModuleUpdater } from '../../infrastructure/module-updater';
 
 export class SettingsModal {
   private overlay: HTMLElement | null = null;
   private modal: HTMLElement | null = null;
-  private isOpen: boolean = false;
+  private isOpen = false;
   private moduleUpdater: ModuleUpdater;
-  private autoUpdateEnabled: boolean = true;
+  private autoUpdateEnabled = true;
 
   constructor(moduleUpdater: ModuleUpdater) {
     this.moduleUpdater = moduleUpdater;
@@ -78,7 +78,11 @@ export class SettingsModal {
     modal.style.backgroundColor = 'var(--mettri-bg, #ffffff)';
     modal.style.color = 'var(--mettri-text, #0A1014)';
 
-    const currentVersion = (typeof chrome !== 'undefined' && chrome?.runtime?.getManifest?.())?.version ?? '—';
+    const manifest =
+      typeof chrome !== 'undefined' && typeof chrome.runtime?.getManifest === 'function'
+        ? chrome.runtime.getManifest()
+        : null;
+    const currentVersion = manifest?.version ?? '—';
     const updateVersion = await this.getUpdateVersion();
     const lastChecked = await this.getLastChecked();
 

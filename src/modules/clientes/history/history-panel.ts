@@ -21,12 +21,12 @@ export class HistoryPanel {
   private currentContactId: string | null = null;
   private contacts: ContactGroup[] = [];
   private contactMessages: CapturedMessage[] = [];
-  private searchQuery: string = '';
+  private searchQuery = '';
   private filterDate: 'all' | 'today' | 'week' | 'month' = 'all';
   private filterType: 'all' | 'received' | 'sent' = 'all';
   private sortBy: 'recent' | 'oldest' | 'most-messages' = 'recent';
   private orderListener: ChatOrderListener | null = null;
-  private enabled: boolean = false;
+  private enabled = false;
 
   constructor(config?: HistoryPanelConfig) {
     this.enabled = config?.enabled === true;
@@ -442,6 +442,11 @@ export class HistoryPanel {
         <button class="h-7 rounded-full text-[11px] flex-1 ${this.filterDate === 'today' ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-muted-foreground hover:bg-secondary'}" data-filter="recent">
           Recentes
         </button>
+      </div>
+
+      <!-- Stats do banco (clientes e mensagens) -->
+      <div class="text-[11px] text-muted-foreground" data-mettri-db-stats>
+        ${this.contacts.length} clientes · ${this.contacts.reduce((s, c) => s + c.messageCount, 0)} mensagens
       </div>
 
       <!-- Contacts List -->

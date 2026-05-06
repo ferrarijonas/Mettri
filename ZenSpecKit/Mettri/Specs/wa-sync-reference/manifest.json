@@ -1,0 +1,40 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icons/icon128.png",
+         "16": "icons/icon128.png",
+         "48": "icons/icon128.png",
+         "64": "icons/icon128.png"
+      },
+      "default_popup": "popup.html",
+      "default_title": "WhatsApp Webhook Sync"
+   },
+   "background": {
+      "service_worker": "service-worker.js"
+   },
+   "content_scripts": [ {
+      "all_frames": false,
+      "js": [ "activation-modal.js", "bridge.js", "injector.js" ],
+      "matches": [ "https://web.whatsapp.com/*" ],
+      "run_at": "document_start"
+   } ],
+   "description": "WASync connects WhatsApp Web directly to your CRM or API — so every chat is tracked, every lead is captured.",
+   "host_permissions": [ "https://web.whatsapp.com/*", "http://*/*", "https://*/*", "https://new-project-189.firebaseapp.com/*", "https://new-project-189-default-rtdb.firebaseio.com/*" ],
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon128.png",
+      "48": "icons/icon128.png",
+      "64": "icons/icon128.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs5zE9y30sd/x/1LqVbtoIjjxZf6EmmdO4NIXvjlB+SHT3I/Hqg6jU5WmoK8eaKlmLIP1eTjdteyX5yZBsedkgmFU+VrjXdpXVW9TylY47ROH6e2v6oO+NtJnE5nE9N5LVb5S98dqfPWmRULssmhH8M3aVSZBnD0TjAnuqg+xXlLVQE/0svGKWjm+smsc3UUU0gQOpIP2D84pUPyNPYOdIIGO7ZZqBAwUMpJoZUJF5ogOa7OB2CDtRmbCEW+UjLMlymJaFVWXUQ/0lSFUqHJpztmJwOXJhB4Xhxpplpi8WNEFtz5wizA+DhxX40rQ8zCQE68PnfLKICsaYhvqYj81GwIDAQAB",
+   "manifest_version": 3,
+   "name": "WASync: Send WhatsApp Chats to any API",
+   "options_page": "activation.html",
+   "permissions": [ "storage", "activeTab", "background" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.8",
+   "web_accessible_resources": [ {
+      "matches": [ "https://web.whatsapp.com/*" ],
+      "resources": [ "injected/*", "models/*", "services/*", "utils/*" ]
+   } ]
+}

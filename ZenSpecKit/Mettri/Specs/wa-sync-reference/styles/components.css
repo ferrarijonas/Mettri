@@ -1,0 +1,617 @@
+/**
+ * Component Styles
+ * Buttons, inputs, toggles, badges, status elements
+ */
+
+/* Buttons */
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  text-decoration: none;
+
+}
+
+.btn-primary {
+  background: var(--wa-green);
+  color: var(--white);
+  border: 1px solid var(--wa-green);
+}
+
+.btn-primary:hover {
+  background: var(--wa-green-dark);
+  border-color: var(--wa-green-dark);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary.btn-highlight {
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.5);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 107, 53, 0);
+  }
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--black);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--gray-lighter);
+  border-color: var(--gray-light);
+}
+
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+
+.btn-icon {
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--gray-lighter);
+  color: var(--black);
+}
+
+.btn-block {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Back Button */
+.btn-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  background: var(--gray-lighter);
+  color: var(--black);
+}
+
+/* Status Badge */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: var(--gray-lighter);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray);
+  transition: all 0.2s ease;
+}
+
+.status-badge.active {
+  background: var(--wa-green-light);
+  color: var(--wa-green-dark);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gray-light);
+}
+
+.status-badge.active .status-dot {
+  background: var(--wa-green);
+}
+
+/* Input Group */
+.input-group {
+  margin-bottom: 12px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--black);
+  margin-bottom: 6px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--black);
+  background: var(--white);
+  transition: border-color 0.2s ease;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--wa-green);
+}
+
+.input-group input::placeholder {
+  color: var(--gray-light);
+}
+
+/* Toggle Group */
+.toggle-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+}
+
+.toggle-description {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border);
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--white);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--wa-green);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(18px);
+}
+
+/* Links */
+.link {
+  color: var(--wa-green);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--wa-green-dark);
+  text-decoration: underline;
+}
+
+/* Hint Text */
+.hint-text {
+  font-size: 11px;
+  color: var(--gray-light);
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  color: var(--gray);
+  text-align: center;
+}
+
+.empty-state svg {
+  margin-bottom: 12px;
+  opacity: 0.25;
+}
+
+.empty-state p {
+  font-size: 13px;
+}
+
+/* Status Icon */
+.status-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* Checkbox Group */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.checkbox-item:hover {
+  background: var(--gray-lighter);
+}
+
+.checkbox-item input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--wa-green);
+}
+
+.checkbox-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.checkbox-label strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+}
+
+.checkbox-label small {
+  font-size: 11px;
+  color: var(--gray);
+  font-weight: 400;
+}
+
+/* Radio Group */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.radio-item:hover {
+  background: var(--gray-lighter);
+}
+
+.radio-item input[type="radio"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--wa-green);
+}
+
+.radio-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.radio-label strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+}
+
+.radio-label small {
+  font-size: 11px;
+  color: var(--gray);
+  font-weight: 400;
+}
+
+/* Custom Fields List */
+.custom-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow: visible;
+}
+
+.custom-field-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow: visible;
+}
+
+.custom-field-item input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.custom-field-item input:focus {
+  outline: none;
+  border-color: var(--wa-green);
+}
+
+.custom-field-item .btn-remove {
+  padding: 6px;
+  border: 1px solid #e0e0e0;
+  background: #f5f5f5;
+  color: #666;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  min-width: 28px;
+  min-height: 28px;
+  flex-shrink: 0;
+}
+
+.custom-field-item .btn-remove:hover {
+  background: #fee2e2;
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Textarea Styles */
+textarea.config-input {
+  border: 1px solid var(--border);
+  resize: vertical;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  transition: border-color 0.2s ease;
+}
+
+textarea.config-input:hover {
+  border-color: var(--gray-light);
+}
+
+textarea.config-input:focus {
+  border-color: var(--wa-green);
+}
+
+/* Accordion Styles */
+.accordion {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  background: var(--gray-lighter);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.accordion-header:hover {
+  background: var(--gray-light);
+}
+
+.accordion-header .chevron {
+  transition: transform 0.2s ease;
+}
+
+.accordion[open] .accordion-header .chevron {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  padding: 16px;
+  background: var(--white);
+}
+
+/* Input with action button */
+.input-with-action {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.input-with-action .config-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.input-with-action .btn {
+  padding: 8px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Input hints */
+.input-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--gray);
+  margin-top: 6px;
+}
+
+.input-hint a {
+  color: var(--wa-green);
+  text-decoration: none;
+}
+
+.input-hint a:hover {
+  text-decoration: underline;
+}
+
+/* Code input (monospace textarea) */
+.code-input {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Compact checkbox group */
+.checkbox-group.compact .checkbox-item {
+  padding: 10px 0;
+}
+
+/* Text-style button */
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--wa-green);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-text:hover {
+  text-decoration: underline;
+}
+
+/* Subsection header with action */
+.subsection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.subsection-header .subsection-title {
+  margin-bottom: 0;
+}
+
+/* Sticky save footer */
+.save-footer {
+  padding: 12px 20px;
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+}
+
+.save-footer .btn-block {
+  width: 100%;
+}
+
+/* Save button states */
+.save-footer .btn.has-changes {
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+  border-color: #FF6B35;
+}
+
+.save-footer .btn.saved {
+  background: #10b981;
+  border-color: #10b981;
+}
+

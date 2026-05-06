@@ -1,0 +1,51 @@
+export { fonte, type FonteOptions } from './fonte';
+export {
+  agrupar_por_turno,
+  type ConversationChunk,
+  type ConversationTurnSize,
+} from './agrupar_por_turno';
+export {
+  logRagExperimentEvent,
+  readRagExperimentStats,
+  readRagExperimentStatsForDashboard,
+  collectRagExperimentEventsForExport,
+  buildRagExperimentExportDocumentV1,
+  downloadRagExperimentExportJson,
+  RAG_JUDGE_RUBRIC_SUMMARY_FOR_EXPORT,
+  type RagExperimentLogEvent,
+  type RagExperimentStats,
+  type RagExperimentStatsDashboardBundle,
+  type RagExperimentExportDocumentV1,
+  type RagExperimentSeriesBlock,
+  type RagJudgeScores,
+} from './experiment_logger';
+export {
+  orquestrador_indexacao_rag,
+  type OrquestradorIndexacaoOptions,
+} from './orquestrador_indexacao_rag';
+export {
+  embed_index,
+  type EmbedIndexItem,
+  sliceIntoBatches,
+  validateEmbeddingDimensions,
+  zipChunksWithVectors,
+} from './embed_index';
+export { embed_consulta } from './embed_consulta';
+export { cosineSimilarity } from './similarity';
+export type { VectorIndex, VectorIndexQueryResult } from './vectorIndex';
+export { VectorIndexIDB, vectorIndexIDB } from './vectorIndexIDB';
+export { guardar } from './guardar';
+export { buscar } from './buscar';
+export { generateRagSuggestion, buildRagPrompt } from './prompt_gpt';
+export {
+  avaliar_sugestao_rag,
+  type AvaliacaoResult,
+  type AvaliarSugestaoFn,
+} from './avaliar_sugestao_rag';
+export {
+  orquestrador_consulta_rag,
+  type OrquestradorConsultaOptions,
+  type OrquestradorConsultaResult,
+  type PromptGptFn,
+  type RagConsultaDebugInfo,
+} from './orquestrador_consulta_rag';

@@ -72,7 +72,7 @@ export class WebhookService {
   /**
    * Envia mensagem para webhook (padrão WA-Sync).
    */
-  public async sendMessage(message: CapturedMessage, eventType: string = 'message'): Promise<void> {
+  public async sendMessage(message: CapturedMessage, eventType = 'message'): Promise<void> {
     if (!this.isEnabled()) {
       return;
     }
@@ -192,7 +192,7 @@ export class WebhookService {
    * Envia mensagens em batches (padrão WA-Sync).
    * Processa em lotes de 50 mensagens com delay de 2s entre batches.
    */
-  public async sendBatch(messages: CapturedMessage[], batchSize: number = 50): Promise<void> {
+  public async sendBatch(messages: CapturedMessage[], batchSize = 50): Promise<void> {
     if (!this.isEnabled()) {
       return;
     }
