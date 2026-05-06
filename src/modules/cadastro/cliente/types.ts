@@ -20,6 +20,16 @@ export interface CamposConfianca {
   observacoesLogisticas?: CampoConfianca;
 }
 
+export interface SugestaoProdutoPendente {
+  nome: string;
+  qtd: number;
+  nomeExtraido: string;
+  confianca: 'alta' | 'media' | 'baixa';
+  metodo: 'reply' | 'ultimo_produto' | 'llm';
+  evidencia: string;
+  criadoEm: string;
+}
+
 export interface OuvinteCampos {
   aversoesProduto?: string[];
   enderecoEntrega?: string;
@@ -48,6 +58,7 @@ export interface CustomerOperationalSignals {
   formaPagamentoPreferida?: string[];
   observacoesLogisticas?: string[];
   enderecoEntrega?: string;
+  sugestoesPendentes?: SugestaoProdutoPendente[];
 }
 
 export interface PurchaseSummary {

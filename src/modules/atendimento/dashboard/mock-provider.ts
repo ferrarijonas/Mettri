@@ -192,6 +192,7 @@ export async function getAtendimentoViewModelMock(): Promise<AtendimentoViewMode
     historicoPedidos: [],
     metricaCliente: { ticketMedioCentavos: 0, frequencia: '—', totalPedidos: 0 },
     pendentesConfirmacao: [],
+    sugestaoAmbiguidade: null,
   };
 }
 

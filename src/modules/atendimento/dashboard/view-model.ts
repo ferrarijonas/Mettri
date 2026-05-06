@@ -104,6 +104,23 @@ export interface MetricaClienteVm {
   totalPedidos: number;
 }
 
+export interface SugestaoAmbiguidadeVm {
+  nome: string;
+  qtd: number;
+  nomeExtraido: string;
+  confianca: 'alta' | 'media' | 'baixa';
+  metodo: 'reply' | 'ultimo_produto' | 'llm';
+  evidencia: string;
+  fraseContexto: string;
+}
+
+/** Debug info do Ouvinte (exibido na UI para verificação) */
+export interface OuvinteDebugVm {
+  ultimaMensagemProcessada?: string;
+  camposExtraidos?: Array<{ campo: string; valor: string; confianca: string }>;
+  sugestaoPendente?: SugestaoAmbiguidadeVm;
+}
+
 export type AtendimentoViewModel =
   | {
       kind: 'noChat';
@@ -153,6 +170,10 @@ export type AtendimentoViewModel =
       };
       /** Vitrine inline */
       vitrine: VitrineItemUi[];
+      /** Sugestão de produto por ambiguidade (resolvida via reply/último produto/LLM) */
+      sugestaoAmbiguidade: SugestaoAmbiguidadeVm | null;
+      /** Debug info do Ouvinte (para testes E2E) */
+      ouvinteDebug?: OuvinteDebugVm;
       /** Pendências de confirmação (ex: produto com qtd conflitante) */
       pendentesConfirmacao: {
         campo: string;

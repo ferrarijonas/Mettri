@@ -330,6 +330,8 @@ export class AtendimentoPanel {
           ${this.renderPedidoUnificado()}
           ${this.renderPendenciasPedido()}
           ${this.renderDetalhesPedido()}
+          ${this.renderSugestaoAmbiguidade()}
+          ${this.renderOuvinteDebug()}
           ${this.renderVitrineInline()}
           <div class="flex gap-2 mt-2">
             <button type="button" class="${ATD_BTN_9_PRI_WIDE}" data-action="order:send-resume">Enviar resumo no WhatsApp</button>
@@ -1010,6 +1012,73 @@ export class AtendimentoPanel {
             <div class="text-[10px] text-foreground/80 mt-px truncate">${r.value ? this.escapeHtml(r.value) : '<span class="text-muted-foreground/40 italic">—</span>'}</div>
           </div>
         `).join('')}
+      </div>
+    `
+  }
+
+  private renderSugestaoAmbiguidade(): string {
+    if (!this.vm || this.vm.kind !== 'ready') return ''
+    const sug = this.vm.sugestaoAmbiguidade
+    if (!sug) return ''
+
+    const metodoLabel: Record<string, string> = {
+      reply: 'Inferido por reply',
+      ultimo_produto: 'Inferido do contexto',
+      llm: 'Inferido por IA ??? pode estar errado',
+    }
+    const confiancaBorda = sug.confianca === 'alta' ? 'border-green-500/40'
+      : sug.confianca === 'media' ? 'border-amber-500/40'
+      : 'border-orange-500/40'
+    const confiancaFundo = sug.confianca === 'alta' ? 'bg-green-500/[0.04]'
+      : sug.confianca === 'media' ? 'bg-amber-500/[0.04]'
+      : 'bg-orange-500/[0.06]'
+
+    return `
+      <div class="mt-2 rounded-lg border ${confiancaBorda} ${confiancaFundo} p-2">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-500/80">Sugest??o autom??tica</span>
+          <span class="h-px flex-1 bg-border/20"></span>
+        </div>
+        <div class="text-[10px] text-muted-foreground mb-1.5">${this.escapeHtml(sug.fraseContexto)}</div>
+        <div class="flex items-center justify-between gap-2 py-1 border-b border-border/10">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-[12px] font-medium text-foreground/85">??? ${this.escapeHtml(sug.nomeExtraido)}</span>
+          </div>
+          <span class="text-[9px] text-muted-foreground/60 shrink-0 italic">${metodoLabel[sug.metodo]}</span>
+        </div>
+        <div class="flex gap-1.5 mt-2">
+          <button type="button"
+            class="h-6 px-2.5 rounded text-[10px] font-medium bg-green-600/20 text-green-500 border border-green-500/30 transition-colors hover:bg-green-600/30"
+            data-action="ambiguidade:confirmar"
+          >Confirmar</button>
+          <button type="button"
+            class="h-6 px-2.5 rounded text-[10px] font-medium bg-red-600/10 text-red-400 border border-red-500/30 transition-colors hover:bg-red-600/20"
+            data-action="ambiguidade:recusar"
+          >Recusar</button>
+        </div>
+      </div>
+    `
+  }
+
+  private renderOuvinteDebug(): string {
+    if (!this.vm || this.vm.kind !== 'ready') return ''
+    const debug = this.vm.ouvinteDebug
+    if (!debug) return ''
+
+    const ultMsg = debug.ultimaMensagemProcessada
+    const campos = debug.camposExtraidos
+
+    if (!ultMsg && (!campos || campos.length === 0)) return ''
+
+    return `
+      <div class="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/[0.03] p-2">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-blue-500/80">???? Debug Ouvinte</span>
+          <span class="h-px flex-1 bg-border/20"></span>
+        </div>
+        ${ultMsg ? `<div class="text-[11px] text-muted-foreground mb-1">??ltima msg: <span class="text-blue-400 font-mono">${this.escapeHtml(ultMsg.substring(0, 50))}${ultMsg.length > 50 ? '...' : ''}</span></div>` : ''}
+        ${campos && campos.length > 0 ? `<div class="text-[10px] text-muted-foreground">Campos extra??dos: ${campos.map(c => `${c.campo}=${c.valor.substring(0, 20)}`).join(', ')}</div>` : ''}
+        ${debug.sugestaoPendente ? `<div class="text-[10px] text-amber-400 mt-1">?????? Sugest??o pendente: ${debug.sugestaoPendente.nomeExtraido}</div>` : ''}
       </div>
     `
   }

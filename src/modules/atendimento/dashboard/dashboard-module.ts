@@ -10,6 +10,8 @@ import { getAtendimentoViewModel, getActiveChatIdDirect } from './provider';
 import { emitPanelNavigate } from '../../../ui/core/panel-navigation';
 import { orderDB } from '../../../storage/order-db';
 import { purchaseDB } from '../../../storage/purchase-db';
+import { customerProfileDB } from '../../../storage/customer-profile-db';
+import { atualizarPerfilOperacionalCliente } from '../../cadastro/cliente/atualizar-perfil-operacional-cliente';
 import { resolveClientByChatId } from './client-resolver';
 import { clientDB } from '../../../storage/client-db';
 import { MettriBridgeClient } from '../../../content/bridge-client';
@@ -564,6 +566,40 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
           );
         }
         return;
+      }
+
+      if (actionId === 'ambiguidade:confirmar') {
+        const chatId = String(currentChatId || '').trim()
+        if (!chatId) return
+        const perfil = await customerProfileDB.getByChatId(chatId)
+        const sugestoes = perfil?.sugestoesPendentes
+        if (!sugestoes || sugestoes.length === 0) return
+        await atualizarPerfilOperacionalCliente({
+          chatId,
+          sinais: {
+            preferenciasProduto: [sugestoes[0].nomeExtraido],
+            sugestoesPendentes: [],
+            lastRecomputeReason: 'turn_end',
+            lastRecomputeAtIso: new Date().toISOString(),
+          },
+        })
+        await rerender()
+        return
+      }
+
+      if (actionId === 'ambiguidade:recusar') {
+        const chatId = String(currentChatId || '').trim()
+        if (!chatId) return
+        await atualizarPerfilOperacionalCliente({
+          chatId,
+          sinais: {
+            sugestoesPendentes: [],
+            lastRecomputeReason: 'turn_end',
+            lastRecomputeAtIso: new Date().toISOString(),
+          },
+        })
+        await rerender()
+        return
       }
 
       console.log('[Atendimento] action:', actionId);

@@ -6,11 +6,13 @@ import { extrator } from './extrator'
 import { validadorCatalogo, type ValidadorDeps } from './validador-catalogo'
 import { sinaisRelease } from './sinais-release'
 import { decisorUpdate } from './decisor-update'
+import { resolverAmbiguidade } from './ambiguidade'
 import type {
   ThrottleState,
   CursorState,
   OuvirProfileUpdatedEvent,
   DecisaoUpdate,
+  CampoExtraido,
 } from './types'
 
 const THROTTLE_INTERVAL_MS = 5000
@@ -19,6 +21,16 @@ const THROTTLE_WINDOW_MS = 60000
 
 const throttleMap = new Map<string, ThrottleState>()
 const cursorMap = new Map<string, CursorState>()
+
+/** Ring buffer: últimas 10 mensagens por chatId (ambas direções). */
+const chatHistory = new Map<string, Array<{ text: string; isOutgoing: boolean }>>()
+
+function pushHistory(chatId: string, text: string, isOutgoing: boolean): void {
+  const hist = chatHistory.get(chatId) || []
+  hist.push({ text, isOutgoing })
+  if (hist.length > 10) hist.shift()
+  chatHistory.set(chatId, hist)
+}
 
 function checkThrottle(chatId: string, timestamp: number): boolean {
   const state = throttleMap.get(chatId)
@@ -50,6 +62,11 @@ function checkCursor(chatId: string, timestamp: number): boolean {
   }
   cursorMap.set(chatId, { chatId, ultimaMensagemProcessada: timestamp })
   return true
+}
+
+/** Verifica se extrator achou preferenciasProduto na mensagem. */
+function achouProduto(campos: CampoExtraido[]): boolean {
+  return campos.some(c => c.campo === 'preferenciasProduto')
 }
 
 function convertDecisoesParaSinais(decisoes: DecisaoUpdate[]): CustomerOperationalSignals {
@@ -115,7 +132,6 @@ export function registerOuvinteListeners(
           return
         }
 
-        if (msg.isOutgoing) return
         if (msg.type !== 'text') return
 
         const text = String(msg.text ?? '').trim()
@@ -133,6 +149,10 @@ export function registerOuvinteListeners(
           console.log('[ouvinte] pulando (grupo)')
           return
         }
+
+        // Atualiza ring buffer com TODAS as mensagens (inclusive outgoing)
+        // antes de qualquer filtro de direção, para dar contexto ao resolver de ambiguidade
+        pushHistory(chatId, text, msg.isOutgoing)
 
         const timestamp = msg.timestamp instanceof Date ? msg.timestamp.getTime() : Date.now()
 
@@ -154,8 +174,61 @@ export function registerOuvinteListeners(
           usaLLM: extratorOutput.usaLLM,
         })
 
-        if (extratorOutput.campos.length === 0) {
-          console.log('[ouvinte] extrator não encontrou campos')
+        // Se extrator não achou preferenciasProduto, tenta resolver ambiguidade
+        let sugestaoPendente: CustomerOperationalSignals['sugestoesPendentes'] = undefined
+        if (!achouProduto(extratorOutput.campos)) {
+          const resolucao = await resolverAmbiguidade({
+            mensagem: text,
+            chatId,
+            msgId: msg.id,
+            replyToId: (msg as any).replyToId,
+            quotedText: (msg as any).quotedText,
+            historico: chatHistory.get(chatId) || [],
+          })
+          if (resolucao.resolvido && resolucao.nome) {
+            sugestaoPendente = [{
+              nome: resolucao.nome,
+              qtd: resolucao.qtd,
+              nomeExtraido: resolucao.nomeExtraido || `${resolucao.nome} (${resolucao.qtd}x)`,
+              confianca: resolucao.confianca || 'baixa',
+              metodo: resolucao.metodo || 'llm',
+              evidencia: resolucao.evidencia || text,
+              criadoEm: new Date().toISOString(),
+            }]
+            console.log('[ouvinte] ambiguidade resolvida:', {
+              nome: resolucao.nome,
+              qtd: resolucao.qtd,
+              confianca: resolucao.confianca,
+              metodo: resolucao.metodo,
+            })
+          }
+        }
+
+        if (extratorOutput.campos.length === 0 && !sugestaoPendente) {
+          console.log('[ouvinte] extrator não encontrou campos e sem ambiguidade')
+          return
+        }
+
+        // Se tem sugestão de ambiguidade, persiste direto (pula validador/sinais/decisor)
+        if (sugestaoPendente) {
+          const sinais: CustomerOperationalSignals = {
+            sugestoesPendentes: sugestaoPendente,
+            lastRecomputeReason: 'turn_end',
+            lastRecomputeAtIso: new Date().toISOString(),
+          }
+          console.log('[ouvinte] persistindo sugestão de ambiguidade:', sinais)
+
+          const result = await atualizarPerfilOperacionalCliente({ chatId, sinais })
+          console.log('[ouvinte] persistência:', result.ok ? '✅' : '❌', result.ok ? '' : (result as any).message)
+
+          if (result.ok) {
+            const event: OuvirProfileUpdatedEvent = {
+              chatId,
+              camposAtualizados: ['sugestoesPendentes'],
+              confiancaPerfil: result.data?.confiancaPerfil ?? 0,
+            }
+            eventBus.emit('ouvir:profile-updated', event)
+          }
           return
         }
 
@@ -229,5 +302,6 @@ export function registerOuvinteListeners(
     eventBus.off('message:new', handler)
     throttleMap.clear()
     cursorMap.clear()
+    chatHistory.clear()
   }
 }
