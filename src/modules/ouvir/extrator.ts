@@ -331,8 +331,9 @@ function corrigirProdutoComPercent(r: ProdutoComQtd, text: string): ProdutoComQt
 /** Extrai padrões "N de produto" ou "N produto" em toda a string (global). */
 function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   const results: ProdutoComQtd[] = []
-  // Números em dígitos: "10 de abobra", "5 multigraos", "1 100% integral"
-  const re = /(\d+)\s*(?:de\s+)?([\w%ºª]+(?:\s+[\w%ºª]+){0,4}?)(?=\s*[,;.!?¿¡]|\s+e\s+|\s+para\s+|\s+pra\s+|$)/gi
+  // Números em dígitos: "10 de abobra", "5 multigraos"
+  // Negative lookahead (?!%) evita capturar "N% X" como quantity (ex: "100% integral" → qtd=100, produto="% integral")
+  const re = /(\d+)(?!%)\s*(?:de\s+)?([\w%ºª]+(?:\s+[\w%ºª]+){0,4}?)(?=\s*[,;.!?¿¡]|\s+e\s+|\s+para\s+|\s+pra\s+|$)/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     const qtdOriginal = parseInt(m[1], 10)
@@ -368,10 +369,26 @@ function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
 
   // Fallback: se nenhum resultado, tentar capturar apenas "N% X" como produto
   // Ex: "Quero 100% integral" → produto="100% integral", qty=1
-  if (results.length === 0 && containsPctProduto(text)) {
+  // Também: se resultados contêm "%" (possível mal-captura) E há "N% X" melhor, substituir
+  const hasPctInResults = results.some(r => /%\w/i.test(r.nome))
+  const needsFallback = (results.length === 0 && containsPctProduto(text)) ||
+                        (hasPctInResults && containsPctProduto(text))
+  
+  if (needsFallback) {
     const pctExtracted = extractPctProduto(text)
     if (pctExtracted) {
-      results.push({ nome: pctExtracted.nome, qtd: pctExtracted.qtd, evidencia: pctExtracted.nome })
+      // Se havia resultados com "%", substituir; caso contrário, adicionar
+      if (hasPctInResults) {
+        // Substituir o resultado que contém "%" pelo produto "N% X" correto
+        const pctResult = results.find(r => /%\w/i.test(r.nome))
+        if (pctResult) {
+          pctResult.nome = pctExtracted.nome
+          pctResult.qtd = pctExtracted.qtd
+          pctResult.evidencia = pctExtracted.nome
+        }
+      } else {
+        results.push({ nome: pctExtracted.nome, qtd: pctExtracted.qtd, evidencia: pctExtracted.nome })
+      }
     }
   }
 
