@@ -370,23 +370,34 @@ function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   // Fallback: se nenhum resultado, tentar capturar apenas "N% X" como produto
   // Ex: "Quero 100% integral" → produto="100% integral", qty=1
   // Também: se resultados contêm "%" (possível mal-captura) E há "N% X" melhor, substituir
+  // Também: se há "N produto N% X" no texto (ex: "5 pães 100% integral") → usar o "N% X" como produto
   const hasPctInResults = results.some(r => /%\w/i.test(r.nome))
+  const hasQtyBeforePct = /\d+\s+\w+\s+\d+%/i.test(text) // detecta "N produto N% X"
   const needsFallback = (results.length === 0 && containsPctProduto(text)) ||
-                        (hasPctInResults && containsPctProduto(text))
+                        (hasPctInResults && containsPctProduto(text)) ||
+                        (hasQtyBeforePct && containsPctProduto(text))
   
   if (needsFallback) {
     const pctExtracted = extractPctProduto(text)
     if (pctExtracted) {
-      // Se havia resultados com "%", substituir; caso contrário, adicionar
-      if (hasPctInResults) {
-        // Substituir o resultado que contém "%" pelo produto "N% X" correto
-        const pctResult = results.find(r => /%\w/i.test(r.nome))
-        if (pctResult) {
-          pctResult.nome = pctExtracted.nome
-          pctResult.qtd = pctExtracted.qtd
-          pctResult.evidencia = pctExtracted.nome
+      // Se havia resultados com "%" OU há "N produto N% X", substituir o produto pelo correto
+      if (hasPctInResults || hasQtyBeforePct) {
+        // Substituir o resultado que contém "%" OU o primeiro resultado (produto capturado pela regex)
+        if (hasPctInResults) {
+          const pctResult = results.find(r => /%\w/i.test(r.nome))
+          if (pctResult) {
+            pctResult.nome = pctExtracted.nome
+            pctResult.qtd = pctExtracted.qtd
+            pctResult.evidencia = pctExtracted.nome
+          }
+        } else if (hasQtyBeforePct && results.length > 0) {
+          // Para "5 pães 100% integral", substituir "pães" por "100% integral"
+          results[0].nome = pctExtracted.nome
+          results[0].qtd = pctExtracted.qtd
+          results[0].evidencia = pctExtracted.nome
         }
       } else {
+        // Sem resultados, adicionar normalmente
         results.push({ nome: pctExtracted.nome, qtd: pctExtracted.qtd, evidencia: pctExtracted.nome })
       }
     }
