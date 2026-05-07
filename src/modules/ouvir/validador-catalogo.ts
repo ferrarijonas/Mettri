@@ -15,7 +15,8 @@ function normalize(valor: string): string {
 }
 
 function buscarProduto(texto: string, produtos: Array<{ nome: string; productId: string }>): { itemId: string; tipo: 'exato' | 'contem' | 'parcial' } | null {
-  const norm = normalize(texto)
+  // Remove "(Nx)" antes de buscar no catálogo para que "100% integral (1x)" case com "100% integral"
+  const norm = normalize(texto).replace(/\s*\(\d+x\)\s*/gi, '').trim()
   for (const p of produtos) {
     const nomeNorm = normalize(p.nome)
     if (norm === nomeNorm) return { itemId: p.productId, tipo: 'exato' }
