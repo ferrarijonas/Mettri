@@ -15,6 +15,7 @@ import {
   getRangesForType,
   getMinDistanceForType,
   isInRange,
+  daysBetweenByCalendar,
   type RelationType,
 } from './inactive-days';
 import { classifyNameCandidate } from '../../clientes/name-likelihood';
@@ -456,25 +457,10 @@ export class RetomarPanel {
 
     let lastOutgoingForEngine = new Map<string, LastOutgoingEntry>();
     if (!skipOutgoingForDebug) {
-      const needWa: string[] = [];
-      for (const chatId of lastActivityByChat.keys()) {
-        const hasIdb = idbLastOutgoing.has(chatId);
-        const hasSt = Object.prototype.hasOwnProperty.call(retomarOutgoingStored, chatId);
-        if (!hasIdb && !hasSt && chatId.endsWith('@c.us')) needWa.push(chatId);
-      }
-      const waCap = 200;
-      let waMap = new Map<string, Date>();
-      if (needWa.length > 0) {
-        try {
-          waMap = await getLastOutgoingFromWhatsAppForChatIds(needWa.slice(0, waCap));
-        } catch (e) {
-          console.warn('[RETOMAR] Fallback WA (última enviada):', e);
-        }
-      }
+      // Two-pass: passada 1 usa apenas IDB + retomar storage (sem WA)
       lastOutgoingForEngine = mergeLastOutgoingMaps(
         idbLastOutgoing,
         retomarOutgoingStored,
-        waMap,
       );
     }
     const contadorByChat = await retomarContador.getContadorMap(this.accountId);
@@ -493,7 +479,7 @@ export class RetomarPanel {
 
     const clients: InactiveClient[] = [];
 
-    const { eligible: eligibleFromEngine, stats: eligibilityStats } = computeEligibleContactsDiagnostics({
+    let { eligible: eligibleFromEngine, stats: eligibilityStats } = computeEligibleContactsDiagnostics({
       now,
       lastActivityByChat,
       lastOutgoingByContact: lastOutgoingForEngine,
@@ -502,6 +488,29 @@ export class RetomarPanel {
       minDistance,
       chatIdsInLists,
     });
+
+    // Two-pass: passada 2 - WA fallback apenas para elegíveis sem dado
+    if (!skipOutgoingForDebug) {
+      const semOutgoing = eligibleFromEngine.filter(e => !lastOutgoingForEngine.has(e.chatId));
+      if (semOutgoing.length > 0) {
+        try {
+          const waMap = await getLastOutgoingFromWhatsAppForChatIds(
+            semOutgoing.map(e => e.chatId)
+          );
+          // Pós-filtro: remover quem WA mostra com daysSinceOutgoing < minDistance
+          const toRemove = new Set<string>();
+          for (const [chatId, waDate] of waMap) {
+            const daysSince = daysBetweenByCalendar(now, waDate);
+            if (daysSince < minDistance) {
+              toRemove.add(chatId);
+            }
+          }
+          eligibleFromEngine = eligibleFromEngine.filter(e => !toRemove.has(e.chatId));
+        } catch (e) {
+          console.warn('[RETOMAR] Pós-filtro WA falhou:', e);
+        }
+      }
+    }
 
     try {
       if (typeof localStorage !== 'undefined' && localStorage.getItem(DEBUG_RETOMAR_ELIGIBILITY_KEY) === '1') {
