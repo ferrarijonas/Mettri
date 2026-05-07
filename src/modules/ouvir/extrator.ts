@@ -328,16 +328,32 @@ function corrigirProdutoComPercent(r: ProdutoComQtd, text: string): ProdutoComQt
   return { nome: nomeCorrigido, qtd: qtdFinal, evidencia: nomeCorrigido }
 }
 
+/** Verifica se um número capturado está dentro de um padrão "N% X" no texto.
+ * Isso evita que "10" de "Quero um 10% integral" seja tratado como quantity.
+ * Retorna true se o número está logo antes de um "%". */
+function isNumberInsidePctPattern(text: string, numberStr: string, matchStart: number): boolean {
+  // Verifica se há "%" logo após o número (compossível espaço)
+  const afterNumber = text.slice(matchStart + numberStr.length).replace(/^\s*/, '')
+  return afterNumber.startsWith('%')
+}
+
 /** Extrai padrões "N de produto" ou "N produto" em toda a string (global). */
 function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   const results: ProdutoComQtd[] = []
   // Números em dígitos: "10 de abobra", "5 multigraos"
   // Negative lookahead (?!%) evita capturar "N% X" como quantity (ex: "100% integral" → qtd=100, produto="% integral")
-  const re = /(\d+)(?!%)\s*(?:de\s+)?([\w%ºª]+(?:\s+[\w%ºª]+){0,4}?)(?=\s*[,;.!?¿¡]|\s+e\s+|\s+para\s+|\s+pra\s+|$)/gi
+  // Também usamos \b para garantir que o número não esteja colado em "%"
+  const re = /\b(\d+)(?!%)\b\s*(?:de\s+)?([\w%ºª]+(?:\s+[\w%ºª]+){0,4}?)(?=\s*[,;.!?¿¡]|\s+e\s+|\s+para\s+|\s+pra\s+|$)/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     const qtdOriginal = parseInt(m[1], 10)
     const nome = limparProduto(m[2].trim())
+
+    // Verificar se o número capturado está dentro de um padrão "N% X"
+    // Se sim, não adicionar este resultado - o fallback cuidará
+    if (isNumberInsidePctPattern(text, m[1], m.index)) {
+      continue // pula este match, deixa o fallback tratar
+    }
 
     // Verificar se o nome contém "%" seguido de palavra (ex: "% integral" ou "pães 100% integral")
     const hasPercent = /%\w/i.test(nome)
@@ -373,15 +389,18 @@ function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   // Também: se há "N produto N% X" no texto (ex: "5 pães 100% integral") → usar o "N% X" como produto
   const hasPctInResults = results.some(r => /%\w/i.test(r.nome))
   const hasQtyBeforePct = /\d+\s+\w+\s+\d+%/i.test(text) // detecta "N produto N% X"
+  // Detecta "intent prefix + N% X" - ex: "Quero um 100% integral", "gostaria de 100% integral"
+  const hasIntentBeforePct = /(?:gostaria de|quero|vou querer|vou pedir|pedir|quisesse|gostaria|preciso|precisaria)\s+\d+%\s+\w+/i.test(text)
   const needsFallback = (results.length === 0 && containsPctProduto(text)) ||
                         (hasPctInResults && containsPctProduto(text)) ||
-                        (hasQtyBeforePct && containsPctProduto(text))
+                        (hasQtyBeforePct && containsPctProduto(text)) ||
+                        (hasIntentBeforePct && containsPctProduto(text))
   
   if (needsFallback) {
     const pctExtracted = extractPctProduto(text)
     if (pctExtracted) {
-      // Se havia resultados com "%" OU há "N produto N% X", substituir o produto pelo correto
-      if (hasPctInResults || hasQtyBeforePct) {
+      // Se havia resultados com "%" OU há "N produto N% X" OU tem intent prefix + N% X, substituir/adicionar o produto correto
+      if (hasPctInResults || hasQtyBeforePct || (hasIntentBeforePct && results.length > 0)) {
         // Substituir o resultado que contém "%" OU o primeiro resultado (produto capturado pela regex)
         if (hasPctInResults) {
           const pctResult = results.find(r => /%\w/i.test(r.nome))
@@ -390,8 +409,8 @@ function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
             pctResult.qtd = pctExtracted.qtd
             pctResult.evidencia = pctExtracted.nome
           }
-        } else if (hasQtyBeforePct && results.length > 0) {
-          // Para "5 pães 100% integral", substituir "pães" por "100% integral"
+        } else if ((hasQtyBeforePct || hasIntentBeforePct) && results.length > 0) {
+          // Para "5 pães 100% integral" ou "Quero um 100% integral", substituir/adicionar corretamente
           results[0].nome = pctExtracted.nome
           results[0].qtd = pctExtracted.qtd
           results[0].evidencia = pctExtracted.nome
