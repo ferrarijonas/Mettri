@@ -369,6 +369,9 @@ async function extractLastOurOutgoingTimeFromChat(chat: unknown): Promise<Date |
   bump(outgoingUnixFromMsgModel(c.__x_lastMessage));
   bump(outgoingUnixFromMsgModel(c._lastMessage));
 
+  // Early-exit: se lastMessage já é outgoing, não precisa escanear mensagens
+  if (best != null) return new Date(best * 1000);
+
   const ms = c.ms || c.msgs;
   if (ms && typeof ms === 'object') {
     try {
@@ -402,15 +405,26 @@ export async function getLastOutgoingFromWhatsAppForChatIds(
   chatIds: string[],
 ): Promise<Map<string, Date>> {
   const out = new Map<string, Date>();
-  for (const chatId of chatIds) {
-    if (!chatId || !chatId.includes('@c.us')) continue;
-    try {
-      const chat = await resolveChatModelForRetomar(chatId);
-      if (!chat) continue;
-      const d = await extractLastOurOutgoingTimeFromChat(chat);
-      if (d && !Number.isNaN(d.getTime())) out.set(chatId, d);
-    } catch {
-      /* ignora por contacto */
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < chatIds.length; i += BATCH_SIZE) {
+    const batch = chatIds.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (chatId) => {
+        if (!chatId || !chatId.includes('@c.us')) return null;
+        try {
+          const chat = await resolveChatModelForRetomar(chatId);
+          if (!chat) return null;
+          const d = await extractLastOurOutgoingTimeFromChat(chat);
+          return d && !Number.isNaN(d.getTime()) ? [chatId, d] as const : null;
+        } catch {
+          return null;
+        }
+      })
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        out.set(r.value[0], r.value[1]);
+      }
     }
   }
   return out;
