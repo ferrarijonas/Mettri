@@ -314,23 +314,31 @@ function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   const re = /(\d+)\s*(?:de\s+)?([\w%ºª]+(?:\s+[\w%ºª]+){0,4}?)(?=\s*[,;.!?¿¡]|\s+e\s+|\s+para\s+|\s+pra\s+|$)/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
+    const qtdOriginal = parseInt(m[1], 10)
     const nome = limparProduto(m[2].trim())
     // Filtrar falsos positivos: produto contém "%" seguido de palavra (ex: "pães 100% integral")
     // Ex: "100% integral" foi capturado como qtd=100, nome="% integral" (errado)
     const isFalsePositive = /%\w/i.test(nome)
     if (nome.length > 2 && !isFiller(nome) && !/^\d+$/.test(nome) && !isFalsePositive) {
-      const qtd = parseInt(m[1], 10)
-      const already = results.some(r => r.nome === nome && r.qtd === qtd)
-      if (!already) results.push({ nome, qtd, evidencia: m[0].trim() })
+      const already = results.some(r => r.nome === nome && r.qtd === qtdOriginal)
+      if (!already) results.push({ nome, qtd: qtdOriginal, evidencia: m[0].trim() })
     } else if (isFalsePositive) {
       // False positive detectado: o produto contém "%" como parte do nome
-      // Tentar extrair "N% X" como produto separado
-      const pctExtracted = extractPctProduto(text)
-      if (pctExtracted) {
-        const already = results.some(r => r.nome === pctExtracted.nome && r.qtd === pctExtracted.qtd)
-        if (!already) {
-          results.push({ nome: pctExtracted.nome, qtd: pctExtracted.qtd, evidencia: pctExtracted.nome })
-        }
+      // Ex: "100% integral" → qtd=100, nome="% integral" (ERRADO)
+      // Deve retornar: produto="100% integral", qty=1 ou a quantity anterior se existir
+      const matchOriginal = m[0].trim() // "100% integral" ou "5 pães 100% integral"
+      // Tentar encontrar o padrão "N% X" no match original
+      const pctInMatch = matchOriginal.match(/(\d+%)\s+(\w+(?:\s+\w+)*)/i)
+      if (pctInMatch) {
+        const nomeFinal = `${pctInMatch[1]} ${pctInMatch[2]}`.trim() // "100% integral"
+        // Se o match original tinha uma quantity ANTES do "N% X", usar essa quantity
+        // Ex: "5 pães 100% integral" → qty=5, produto="100% integral"
+        // Ex: "100 pães 100% integral" → qty=100, produto="100% integral"
+        // Se não há quantity antes, usar qty=1
+        const qtdBeforeMatch = text.match(new RegExp(`(\\d+)\\s+.*?${matchOriginal}`, 'i'))
+        const qtdFinal = qtdBeforeMatch ? parseInt(qtdBeforeMatch[1], 10) : 1
+        const already = results.some(r => r.nome === nomeFinal && r.qtd === qtdFinal)
+        if (!already) results.push({ nome: nomeFinal, qtd: qtdFinal, evidencia: nomeFinal })
       }
     }
   }
