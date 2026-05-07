@@ -277,6 +277,36 @@ function tryExtrairQtdTexto(texto: string): { qtd: number | null; resto: string 
   return { qtd: null, resto: texto }
 }
 
+/** Detecta se o texto contém padrão "N% X" onde X é um produto com porcentaje (ex: "100% integral") */
+function containsPctProduto(text: string): boolean {
+  return /\d+%\s+\w+/i.test(text)
+}
+
+/** Extrai o produto "N% X" do texto, retornando {nome, qtd}. Ex: "5 pães 100% integral" → {nome: "100% integral", qtd: 5} */
+function extractPctProduto(text: string): { nome: string; qtd: number } | null {
+  // Primeiro tenta encontrar "N produto N% X" onde há quantity antes do producto com %
+  // Ex: "5 pães 100% integral" → qtd=5, produto="100% integral"
+  const withQtyBefore = text.match(/(\d+)\s+[\w]+\s+(\d+%)\s+(\w+(?:\s+\w+)*)/i)
+  if (withQtyBefore) {
+    return { nome: `${withQtyBefore[2]} ${withQtyBefore[3]}`.trim(), qtd: parseInt(withQtyBefore[1], 10) }
+  }
+
+  // Depois tenta "N% X" direto no início (sem quantity antes)
+  // Ex: "100% integral" → qtd=1, produto="100% integral"
+  const direct = text.match(/^(\d+%)\s+(\w+(?:\s+\w+)*)/i)
+  if (direct) {
+    return { nome: `${direct[1]} ${direct[2]}`.trim(), qtd: 1 }
+  }
+
+  // Tenta encontrar qualquer "N% X" no texto
+  const anyMatch = text.match(/(\d+%)\s+(\w+(?:\s+\w+)*)/i)
+  if (anyMatch) {
+    return { nome: `${anyMatch[1]} ${anyMatch[2]}`.trim(), qtd: 1 }
+  }
+
+  return null
+}
+
 /** Extrai padrões "N de produto" ou "N produto" em toda a string (global). */
 function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   const results: ProdutoComQtd[] = []
@@ -285,12 +315,35 @@ function extractProdutosComQuantidade(text: string): ProdutoComQtd[] {
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     const nome = limparProduto(m[2].trim())
-    if (nome.length > 2 && !isFiller(nome) && !/^\d+$/.test(nome)) {
+    // Filtrar falsos positivos: produto contém "%" seguido de palavra (ex: "pães 100% integral")
+    // Ex: "100% integral" foi capturado como qtd=100, nome="% integral" (errado)
+    const isFalsePositive = /%\w/i.test(nome)
+    if (nome.length > 2 && !isFiller(nome) && !/^\d+$/.test(nome) && !isFalsePositive) {
       const qtd = parseInt(m[1], 10)
       const already = results.some(r => r.nome === nome && r.qtd === qtd)
       if (!already) results.push({ nome, qtd, evidencia: m[0].trim() })
+    } else if (isFalsePositive) {
+      // False positive detectado: o produto contém "%" como parte do nome
+      // Tentar extrair "N% X" como produto separado
+      const pctExtracted = extractPctProduto(text)
+      if (pctExtracted) {
+        const already = results.some(r => r.nome === pctExtracted.nome && r.qtd === pctExtracted.qtd)
+        if (!already) {
+          results.push({ nome: pctExtracted.nome, qtd: pctExtracted.qtd, evidencia: pctExtracted.nome })
+        }
+      }
     }
   }
+
+  // Fallback: se nenhum resultado, tentar capturar apenas "N% X" como produto
+  // Ex: "Quero 100% integral" → produto="100% integral", qty=1
+  if (results.length === 0 && containsPctProduto(text)) {
+    const pctExtracted = extractPctProduto(text)
+    if (pctExtracted) {
+      results.push({ nome: pctExtracted.nome, qtd: pctExtracted.qtd, evidencia: pctExtracted.nome })
+    }
+  }
+
   return results
 }
 
