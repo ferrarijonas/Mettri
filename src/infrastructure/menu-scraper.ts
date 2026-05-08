@@ -1,5 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer-core';
-import { connectToChrome } from '../../tests/automation/cdp-browser';
+import { connectToChrome, ConnectedBrowser } from '../../tests/automation/cdp-browser';
 
 export type PlatformType = 
   | 'menudino' 
@@ -306,7 +306,7 @@ export class MenuScraper {
     url: string, 
     platform: PlatformType
   ): Promise<{ products: ScrapedProduct[]; confidence: number }> {
-    let browser: Browser | null = null;
+    let browser: ConnectedBrowser | null = null;
 
     try {
       browser = await connectToChrome({ browserURL: DEFAULT_CDP_URL });
