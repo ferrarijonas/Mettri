@@ -326,6 +326,7 @@ export class AtendimentoPanel {
         ${this.vm.kind === 'ready' ? `
         <div class="${ATD_SECTION} p-2.5">
           ${this.renderIntencaoChip()}
+          ${this.renderPedidoOrderRecord()}
           ${this.vm.comercial ? this.renderComercialPipelineCompact(this.vm.comercial) : this.renderFunilTimeline()}
           ${this.renderPedidoUnificado()}
           ${this.renderPendenciasPedido()}
@@ -2048,10 +2049,36 @@ ${this.escapeHtml(info.suggestionOriginal)}
     const chip = tc ? chips[tc] : null;
     if (!chip) return '';
 
+    // NOVO: número do pedido e status
+    const pedidoNumero = this.vm.pedidoAtual?.numeroSequencial;
+    const pedidoStatus = this.vm.pedidoAtual?.status;
+
+    const padSeq = pedidoNumero != null ? String(pedidoNumero).padStart(4, '0') : null;
+    const statusLabel: Record<string, string> = {
+      lead: 'Lead', draft: 'Draft', open: 'Aberto',
+      awaiting_payment: 'Aguardando', completed: 'Completo',
+      cancelled: 'Cancelado', lost: 'Perdido',
+    };
+    const statusCls: Record<string, string> = {
+      lead: 'text-muted-foreground/50',
+      draft: 'text-blue-400',
+      open: 'text-green-400',
+      awaiting_payment: 'text-yellow-400',
+      completed: 'text-emerald-400',
+      cancelled: 'text-red-400',
+      lost: 'text-muted-foreground/30',
+    };
+
+    const statusBadge = pedidoStatus
+      ? `<span class="text-[10px] font-medium ${statusCls[pedidoStatus] || 'text-muted-foreground/50'}">${statusLabel[pedidoStatus] || pedidoStatus}</span>`
+      : '';
+
     return `
       <div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-border/20">
         <span class="w-2 h-2 rounded-full bg-primary/50 shrink-0"></span>
         <span class="text-[11px] font-semibold text-foreground">${this.escapeHtml(chip.label)}</span>
+        ${padSeq ? `<span class="font-mono text-[11px] tabular-nums text-muted-foreground/70">PED-${padSeq}</span>` : ''}
+        ${statusBadge}
       </div>
     `;
   }
