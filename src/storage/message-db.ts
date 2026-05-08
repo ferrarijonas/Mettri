@@ -19,7 +19,7 @@ export class MessageDB {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
   private currentUserWid: string | null = null;
-  private pruneTimer: number | null = null;
+  private pruneTimer: ReturnType<typeof setTimeout> | null = null;
   private pruneInFlight: Promise<void> | null = null;
 
   constructor() {
