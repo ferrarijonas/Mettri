@@ -1257,7 +1257,7 @@ export class ClientesDirectoryPanel {
 
     try {
       const { orderDB } = await import('../../../storage/order-db');
-      const orders = await orderDB.listByClientKeyAndStatus(clientKey, 'closed', 20);
+      const orders = await orderDB.listByClientKeyAndStatus(clientKey, 'completed', 20);
       if (orders.length === 0) {
         listEl.innerHTML = '<span class="text-muted-foreground">Nenhuma compra registrada</span>';
         return;

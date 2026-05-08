@@ -301,4 +301,12 @@ export class CampanhasPanel {
       periodoBlock.classList.toggle('hidden', modoSel.value !== 'periodo');
     });
   }
+
+  public destroy(): void {
+    this.root = null;
+    this.listaPane = null;
+    this.simuladorHost = null;
+    this.vm = null;
+    this.onAction = null;
+  }
 }
