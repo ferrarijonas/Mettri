@@ -2039,7 +2039,6 @@ ${this.escapeHtml(info.suggestionOriginal)}
   private renderIntencaoChip(): string {
     if (!this.vm || this.vm.kind !== 'ready') return '';
     const tc = this.vm.tipoConversa;
-
     const chips: Record<string, { label: string }> = {
       compra_nova: { label: 'Nova compra' },
       suporte_pos_venda: { label: 'Suporte' },
@@ -2048,39 +2047,23 @@ ${this.escapeHtml(info.suggestionOriginal)}
     };
     const chip = tc ? chips[tc] : null;
     if (!chip) return '';
-
-    // NOVO: número do pedido e status
-    const pedidoNumero = this.vm.pedidoAtual?.numeroSequencial;
-    const pedidoStatus = this.vm.pedidoAtual?.status;
-
-    const padSeq = pedidoNumero != null ? String(pedidoNumero).padStart(4, '0') : null;
-    const statusLabel: Record<string, string> = {
-      lead: 'Lead', draft: 'Draft', open: 'Aberto',
-      awaiting_payment: 'Aguardando', completed: 'Completo',
-      cancelled: 'Cancelado', lost: 'Perdido',
-    };
-    const statusCls: Record<string, string> = {
-      lead: 'text-muted-foreground/50',
-      draft: 'text-blue-400',
-      open: 'text-green-400',
-      awaiting_payment: 'text-yellow-400',
-      completed: 'text-emerald-400',
-      cancelled: 'text-red-400',
-      lost: 'text-muted-foreground/30',
-    };
-
-    const statusBadge = pedidoStatus
-      ? `<span class="text-[10px] font-medium ${statusCls[pedidoStatus] || 'text-muted-foreground/50'}">${statusLabel[pedidoStatus] || pedidoStatus}</span>`
-      : '';
-
     return `
       <div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-border/20">
         <span class="w-2 h-2 rounded-full bg-primary/50 shrink-0"></span>
         <span class="text-[11px] font-semibold text-foreground">${this.escapeHtml(chip.label)}</span>
-        ${padSeq ? `<span class="font-mono text-[11px] tabular-nums text-muted-foreground/70">PED-${padSeq}</span>` : ''}
-        ${statusBadge}
+        ${this.renderOrderPill()}
       </div>
     `;
+  }
+
+  /** Pastilha "Pedido #33232" — pill Material-style que aparece ao lado do chip
+   *  quando o cliente tem um pedido ativo (lead/draft/open/awaiting_payment). */
+  private renderOrderPill(): string {
+    if (!this.vm || this.vm.kind !== 'ready') return '';
+    const pa = this.vm.pedidoAtual;
+    if (!pa || !pa.numeroSequencial) return '';
+    const padSeq = String(pa.numeroSequencial).padStart(4, '0');
+    return `<span class="inline-flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-lg border border-border/20 bg-card text-[11px] font-semibold text-foreground/90 shadow-sm leading-none"><span class="font-mono tabular-nums">Pedido #${padSeq}</span></span>`;
   }
 
   // ── Bloco PED-00XX (Aba de Pedido) ──
