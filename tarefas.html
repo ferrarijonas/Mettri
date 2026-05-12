@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karma - Tarefas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --bg-secondary: #F7F5F3;
+      --text: #0A1014;
+      --text-secondary: #5B6368;
+      --border: rgba(17, 27, 33, 0.1);
+      --accent: #00A884;
+      --accent-foreground: #FFFFFF;
+      --glass-bg: rgba(255, 255, 255, 0.8);
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      --radius: 10px;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .dark {
+      --bg: #12181C;
+      --bg-secondary: #20272B;
+      --text: #FFFFFF;
+      --text-secondary: #8D9599;
+      --border: rgba(255, 255, 255, 0.05);
+      --glass-bg: rgba(18, 24, 28, 0.8);
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .container { max-width: 800px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+
+    .badge { font-size: 0.75rem; color: var(--text-secondary); font-weight: 500; }
+
+    .dark-toggle {
+      width: 40px; height: 40px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--glass-bg);
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease; color: var(--text-secondary);
+    }
+
+    .dark-toggle:hover { background: var(--bg-secondary); color: var(--text); }
+
+    .section {
+      background: var(--glass-bg); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 1rem; overflow: hidden; box-shadow: var(--shadow);
+    }
+
+    .section-header {
+      padding: 1rem 1.25rem; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: background 0.2s ease; user-select: none;
+    }
+
+    .section-header:hover { background: var(--bg-secondary); }
+
+    .section-title {
+      font-size: 0.875rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.025em; color: var(--text);
+    }
+
+    .section-count { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-left: 0.5rem; }
+
+    .section-chevron { width: 16px; height: 16px; color: var(--text-secondary); transition: transform 0.2s ease; }
+
+    .section.collapsed .section-chevron { transform: rotate(-90deg); }
+
+    .section-content {
+      padding: 0 1.25rem 1rem;
+      transition: max-height 0.3s ease, opacity 0.2s ease;
+      max-height: 1000px; opacity: 1; overflow: hidden;
+    }
+
+    .section.collapsed .section-content { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+
+    .task-list { list-style: none; }
+
+    .task-item {
+      display: flex; align-items: center; padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-secondary);
+    }
+
+    .task-item:last-child { border-bottom: none; }
+
+    .task-checkbox {
+      width: 16px; height: 16px; border-radius: 4px;
+      border: 1.5px solid var(--text-secondary); margin-right: 0.75rem;
+      flex-shrink: 0; position: relative;
+    }
+
+    .task-item.done .task-checkbox { background: var(--accent); border-color: var(--accent); }
+
+    .task-item.done .task-checkbox::after {
+      content: ''; position: absolute; left: 4px; top: 1px;
+      width: 6px; height: 10px; border: solid var(--accent-foreground);
+      border-width: 0 2px 2px 0; transform: rotate(45deg);
+    }
+
+    .task-item.cancelled { opacity: 0.5; text-decoration: line-through; }
+
+    .task-id { font-weight: 600; color: var(--accent); margin-right: 0.5rem; font-size: 0.75rem; min-width: 3rem; }
+
+    .task-text { flex: 1; min-width: 0; word-break: break-word; }
+
+    .task-item.done .task-text { text-decoration: line-through; opacity: 0.6; }
+
+    /* Status badges */
+    .status-badge {
+      font-size: 0.625rem;
+      padding: 0.125rem 0.375rem; border-radius: 4px; margin-left: 0.5rem;
+      font-weight: 600; text-transform: uppercase;
+    }
+
+    .status-pendente { background: #6b7280; color: white; }
+    .status-em_andamento { background: #3b82f6; color: white; }
+    .status-aguardando_aprovacao { background: #f59e0b; color: white; }
+    .status-fase_testes { background: #8b5cf6; color: white; }
+    .status-cancelado { background: #ef4444; color: white; }
+    .status-concluido { background: #10b981; color: white; }
+
+    /* Dependency badges */
+    .dep-badge {
+      font-size: 0.625rem; background: #f59e0b; color: white;
+      padding: 0.125rem 0.375rem; border-radius: 4px; margin-left: 0.5rem;
+      font-weight: 600;
+    }
+
+    .blocked-badge {
+      font-size: 0.625rem; background: #ef4444; color: white;
+      padding: 0.125rem 0.375rem; border-radius: 4px; margin-left: 0.5rem;
+      font-weight: 600;
+    }
+
+    .concluidas-section { margin-top: 2rem; opacity: 0.7; }
+
+    .concluidas-section .section-title { color: var(--text-secondary); font-size: 0.75rem; }
+
+    .icon-moon { display: none; }
+    .dark .icon-sun { display: none; }
+    .dark .icon-moon { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Karma</h1>
+        <span class="badge">8 pendentes · 3 concluídas · 1 cancelada</span>
+      </div>
+      <button class="dark-toggle" id="darkToggle" title="Alternar modo escuro">
+        <svg class="icon-sun w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        <svg class="icon-moon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="sections">
+      <!-- ATENDIMENTO -->
+      <div class="section" data-section="atendimento">
+        <div class="section-header">
+          <div style="display: flex; align-items: center;">
+            <span class="section-title">ATENDIMENTO</span>
+            <span class="section-count">3</span>
+          </div>
+          <svg class="section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="section-content">
+          <ul class="task-list">
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-001</span><span class="task-text">Detector de nova compra — identificar compras a partir da conversa</span><span class="status-badge status-pendente">Pendente</span></li>
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-002</span><span class="task-text">Normalizar nomes de exibição no painel — apenas primeiro nome, capitalizado</span><span class="status-badge status-pendente">Pendente</span></li>
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-005</span><span class="task-text">Cascata de 5 estratégias para resolver telefone de contatos @lid</span><span class="status-badge status-pendente">Pendente</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- OUVIR -->
+      <div class="section" data-section="ouvir">
+        <div class="section-header">
+          <div style="display: flex; align-items: center;">
+            <span class="section-title">OUVIR</span>
+            <span class="section-count">3</span>
+          </div>
+          <svg class="section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="section-content">
+          <ul class="task-list">
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-007</span><span class="task-text">Reply confiável — base para resolução de ambiguidade</span><span class="status-badge status-pendente">Pendente</span><span class="dep-badge">bloqueia T-008</span></li>
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-008</span><span class="task-text">Ambiguidade completa — cobertura total do resolver</span><span class="status-badge status-pendente">Pendente</span><span class="blocked-badge">dep T-007</span></li>
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-009</span><span class="task-text">Recorrência de Pedido — detectar padrões de compra recorrentes</span><span class="status-badge status-pendente">Pendente</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- COMERCIAL -->
+      <div class="section" data-section="comercial">
+        <div class="section-header">
+          <div style="display: flex; align-items: center;">
+            <span class="section-title">COMERCIAL</span>
+            <span class="section-count">2</span>
+          </div>
+          <svg class="section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="section-content">
+          <ul class="task-list">
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-010</span><span class="task-text">Orquestrador comercial completo — LLM + Funil real</span><span class="status-badge status-pendente">Pendente</span><span class="dep-badge">bloqueia T-011</span></li>
+            <li class="task-item"><span class="task-checkbox"></span><span class="task-id">T-011</span><span class="task-text">Fechamento automático — pedido + envio + portão</span><span class="status-badge status-pendente">Pendente</span><span class="blocked-badge">dep T-010</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- RETOMAR (MARKETING) -->
+      <div class="section" data-section="retomar">
+        <div class="section-header">
+          <div style="display: flex; align-items: center;">
+            <span class="section-title">RETOMAR</span>
+            <span class="section-count">2</span>
+          </div>
+          <svg class="section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="section-content">
+          <ul class="task-list">
+            <li class="task-item done"><span class="task-checkbox"></span><span class="task-id">T-006</span><span class="task-text">Two-pass WA fallback — corrigir pipeline de dados do filtro minDistance</span><span class="status-badge status-concluido">Concluído</span></li>
+            <li class="task-item cancelled"><span class="task-checkbox"></span><span class="task-id">T-004</span><span class="task-text">Filtro UI no Retomar — não mostrar contato com mensagem enviada há menos de minDistance</span><span class="status-badge status-cancelado">Cancelado</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- HARNESS -->
+      <div class="section" data-section="harness">
+        <div class="section-header">
+          <div style="display: flex; align-items: center;">
+            <span class="section-title">HARNESS</span>
+            <span class="section-count">0</span>
+          </div>
+          <svg class="section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="section-content">
+          <ul class="task-list">
+          </ul>
+        </div>
+      </div>
+
+      <!-- CONCLUÍDAS -->
+      <div class="section concluidas-section" data-section="concluidas">
+        <div class="section-header">
+          <div style="display: flex; align-items: center;">
+            <span class="section-title">Concluídas</span>
+            <span class="section-count">2</span>
+          </div>
+          <svg class="section-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="section-content">
+          <ul class="task-list">
+            <li class="task-item done"><span class="task-checkbox"></span><span class="task-id">T-003</span><span class="task-text">Normalizar telefone exibido — sem +55, só dígitos limpos</span><span class="status-badge status-concluido">Concluído</span></li>
+            <li class="task-item done"><span class="task-checkbox"></span><span class="task-id">T-012</span><span class="task-text">Atualizar tarefas.html com dados reais dos SPEC.md</span><span class="status-badge status-concluido">Concluído</span></li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    var darkToggle = document.getElementById('darkToggle');
+    var html = document.documentElement;
+
+    var savedDark = localStorage.getItem('karma-dark-mode');
+    if (savedDark === 'true') { html.classList.add('dark'); }
+    else if (savedDark === null) {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) { html.classList.add('dark'); }
+    }
+
+    darkToggle.addEventListener('click', function() {
+      html.classList.toggle('dark');
+      localStorage.setItem('karma-dark-mode', html.classList.contains('dark'));
+    });
+
+    var sections = document.querySelectorAll('.section');
+    sections.forEach(function(section) {
+      var header = section.querySelector('.section-header');
+      header.addEventListener('click', function() {
+        section.classList.toggle('collapsed');
+        var sectionId = section.dataset.section;
+        var isCollapsed = section.classList.contains('collapsed');
+        localStorage.setItem('karma-section-' + sectionId, isCollapsed);
+      });
+
+      var sectionId = section.dataset.section;
+      var savedState = localStorage.getItem('karma-section-' + sectionId);
+      if (savedState === 'true') { section.classList.add('collapsed'); }
+    });
+  </script>
+</body>
+</html>

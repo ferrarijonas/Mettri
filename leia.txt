@@ -1,0 +1,462 @@
+Essa é a vaga:
+
+LKW
+Carreiras
+Voltar ao site
+PT
+Engineering · 1 abertura
+Founding Engineer / Forward Deployed Engineer
+A LKW está contratando uma pessoa técnica, intensa e extremamente dona para atuar entre operação logística, produto e engenharia.
+
+Você vai até o cliente, entende a operação real, desenha workflows, implementa automações na plataforma LKW, mantém sistemas SaaS em produção e ajuda a evoluir o core da nossa tecnologia.
+
+Essa é uma vaga de founding. Você será uma das primeiras lideranças técnicas da empresa, trabalhando direto com os founders, com potencial real de se tornar nosso futuro CTO.
+
+Como aplicar →
+Ler a vaga
+Localização
+Uberlândia/MG ou disponibilidade real e imediata para se mudar
+Modelo
+Híbrido: remoto com o time + presencial em clientes 2-3x por semana, conforme necessidade
+Compensação
+R$ 10.000/mês PJ
+Equity
+2%
+Perfil
+Técnico forte, extremamente proativo, customer-facing e confortável com ambiguidade
+What we do
+O que fazemos
+A LKW constrói automação com IA para logística, transporte e supply chain.
+
+Ajudamos empresas logísticas a eliminar processos manuais, planilhas, retrabalho, WhatsApp operacional e sistemas desconectados, substituindo isso por workflows inteligentes, interfaces internas e automações que rodam direto na operação. Nossa plataforma permite criar workflows low-code com IA, integrações, APIs, interfaces, triggers, histórico de execução, multi-tenancy e governança.
+
+Hoje atuamos com clientes reais do segmento, com faturamentos expressivos na casa de R$ 1 bi/ano de faturamento, resolvendo problemas de operação, atendimento, faturamento, documentos, motoristas, cargas e processos internos.
+
+Nossa missão
+Queremos mudar a logística no Brasil.
+Logística é uma das maiores alavancas de produtividade do país, mas ainda roda com muito processo manual, sistema legado e conhecimento tribal. A LKW existe para levar tecnologia de ponta para dentro dessas operações, gerar ROI real, reduzir custo, otimizar tempo e dar superpoderes para quem está no chão da operação.
+
+Estamos em uma fase de crescimento rápido, com tese de time enxuto, alta autonomia, muita IA e muita execução.
+
+Sobre a vaga
+Essa não é uma vaga tradicional de backend, frontend ou full-stack.
+É uma vaga de Forward Deployed Engineer.
+
+Você vai trabalhar entre produto, engenharia, operação e cliente.
+
+Em alguns dias
+Você estará no cliente entendendo o processo junto com operadores e gestores.
+
+Em outros
+Você estará construindo workflows na plataforma, mantendo sistemas SaaS em produção, criando integrações, mexendo em banco, deploy, IA, API, frontend e core da plataforma.
+
+Você precisa gostar de gente, operação real e código.
+
+A pessoa certa para essa vaga consegue conversar com um operador logístico às 14h, desenhar o processo na plataforma às 16h, transformar isso em workflow funcional às 20h e no dia seguinte abrir PR melhorando a plataforma para nunca mais precisar fazer aquilo do zero.
+
+Não aplique se você:
+-
+Não quer ir presencialmente aos clientes e se envolver com a operação deles, conhecendo a operação, pátio, docas, armazém, carregamento.
+-
+Não mora em Uberlândia e não considera se mudar para cá.
+-
+Quer trabalhar só em tarefas bem detalhadas e especificadas. Muitas você mesmo irá propor, vendo a plataforma + oportunidade + necessidade.
+-
+Não gosta de falar com cliente ou usuário final.
+-
+Não gosta de ambiente de startup, velocidade e ambiguidade.
+-
+Depende de alguém dizendo exatamente o que fazer.
+-
+Não usa IA intensamente para acelerar seu trabalho.
+-
+Tem medo de mexer em cloud, banco, deploy, backend, frontend ou produção.
+-
+Não se importa profundamente com entrega, responsabilidade e honestidade.
+Deliver with customers. Build for reuse.
+O que você vai fazer
+Entregar com clientes
+-
+Entrar em operações logísticas para entender processos, gargalos, sistemas, pessoas e oportunidades de automação.
+-
+Fazer parte do diagnóstico operacional junto com o time de Ops, transformando observação de campo em fluxos, requisitos e prioridades.
+-
+Conversar com stakeholders técnicos e não técnicos para definir o que precisa ser construído, por que importa e como medir sucesso.
+-
+Criar documentação clara, objetiva e acionável para cliente e time interno.
+Construir workflows na plataforma
+-
+Criar workflows, automações e interfaces dentro da plataforma LKW.
+-
+Conectar APIs, webhooks, triggers, regras de negócio, IA, validações, condições, loops e respostas.
+-
+Transformar processos manuais em sistemas confiáveis, auditáveis e reutilizáveis.
+-
+Identificar padrões repetidos em clientes e transformar isso em templates, componentes ou melhorias de produto.
+Manter e evoluir SaaS em produção
+-
+Dar manutenção e evolução em soluções SaaS que já temos em produção.
+-
+Investigar bugs, melhorar confiabilidade, ajustar UX, otimizar fluxos e garantir que o sistema continue gerando valor.
+-
+Cuidar de integrações, dados, logs, erros, performance e deploys.
+Evoluir a plataforma LKW
+-
+Trabalhar no core da plataforma: backend, frontend, workflow engine, interface builder, IA, autenticação, multi-tenancy e integrações.
+-
+Ajudar a melhorar nossa arquitetura, DX, padrões internos, testes, observabilidade e velocidade de entrega.
+-
+Construir abstrações que tornem o próximo cliente mais rápido que o anterior.
+Stack atual
+Exemplos do que usamos hoje:
+
+TypeScript
+React
+Vite
+React Flow
+Tailwind CSS
+Radix / shadcn-style components
+TanStack Query
+NestJS
+Prisma
+PostgreSQL
+OpenAI API
+Bull / filas
+JWT, RBAC e multi-tenancy
+Docker
+Swagger
+Railway / Vercel
+Cursor, Claude e ferramentas de IA todos os dias
+Você não precisa ter usado exatamente tudo isso, mas precisa ser muito confortável aprendendo rápido e trabalhando full-stack de verdade.
+
+Qualificações mínimas
+-
+0-1+ anos de experiência profissional. Recém-formados são bem-vindos se já constroem, aprendem rápido e colocam coisa de pé.
+-
+Graduação completa.
+-
+Experiência real construindo e entregando software em produção.
+-
+Muito domínio de TypeScript, React e backend Node/NestJS ou equivalente.
+-
+Conforto com banco relacional, APIs, autenticação, deploy, logs e debugging.
+-
+Capacidade de ir do problema de negócio ao código sem travar.
+-
+Boa comunicação com pessoas não técnicas.
+-
+Capacidade de trabalhar em cliente, entender contexto e adaptar linguagem.
+-
+Uso intenso de IA para programar, pesquisar, automatizar e acelerar a entrega.
+-
+Postura extremamente proativa, responsável e orientada a resultado.
+Diferenciais
+-
+5+ anos de experiência construindo sistemas, liderando entregas técnicas ou operando software crítico em produção.
+-
+Formação em Ciência da Computação, Sistemas de Informação, Engenharia, Administração, IA, logística, supply chain ou áreas correlatas.
+-
+Experiência com logística, supply chain, transporte, ERP, WMS, TMS ou operações complexas.
+-
+Experiência como solutions engineer, forward deployed engineer, consultor técnico ou founding engineer.
+-
+Experiência com automação, integrações, webhooks, filas, workers e sistemas internos.
+-
+Experiência com IA em produção: prompts, evals, guardrails, latência, custo e confiabilidade.
+-
+Experiência criando produtos B2B para empresas tradicionais.
+-
+Experiência liderando tecnicamente pessoas, projetos ou arquitetura.
+-
+Vontade real de crescer para uma posição de CTO.
+Como medimos sucesso
+Impacto no cliente
+Tempo até o primeiro workflow em produção, adoção real, ROI percebido e expansão da conta.
+
+Qualidade técnica
+Sistemas confiáveis, manuteníveis, seguros e fáceis de evoluir.
+
+Velocidade
+Capacidade de sair de diagnóstico para protótipo e de protótipo para produção rapidamente.
+
+Reuso
+Quanto do que você constrói vira template, componente, melhoria de plataforma ou playbook para próximos clientes.
+
+Ownership
+Você pega problemas abertos, estrutura, executa, comunica e entrega sem precisar ser microgerenciado.
+
+Cultura LKW
+Somos uma startup em rápido crescimento, com ambição de crescer muito em faturamento, valuation e impacto nos próximos anos. Trabalhamos de forma remota e assíncrona no dia a dia, mas com altíssimo senso de responsabilidade. Não confundimos flexibilidade com baixa intensidade.
+
+Nossa cultura é simples:
+
+-
+ownership extremo
+-
+honestidade radical
+-
+entrega acima de discurso
+-
+velocidade com qualidade
+-
+ship, learn, improve
+-
+IA como alavanca diária
+-
+time pequeno, muito forte e muito responsável
+-
+todo mundo dono
+Usamos muito IA. Cursor, Claude e outras ferramentas são parte central da forma como trabalhamos. Esperamos que você use IA para programar, documentar, investigar, testar, prototipar e automatizar. Mas também esperamos que você saiba o que está acontecendo por baixo: código, banco, cloud, deploy, segurança, arquitetura e operação.
+
+Quando estamos no cliente, entramos para agregar valor. Respeitamos a cultura de empresas tradicionais, ouvimos muito, entendemos a operação e entregamos resultado concreto: ROI, redução de custo, ganho de tempo e menos retrabalho.
+
+O que você recebe
+-
+R$ 10.000/mês PJ.
+-
+2% de equity.
+-
+Trabalho direto com os founders.
+-
+Autonomia enorme.
+-
+Espaço real para virar liderança técnica e futuro CTO.
+-
+Chance de construir uma empresa desde o começo.
+-
+Chance de mudar uma indústria enorme e ainda pouco transformada pela tecnologia.
+Como aplicar
+Lemos toda aplicação séria e damos retorno para todos que aplicam.
+Envie um e-mail para Pablo e Andressa com o assunto abaixo, incluindo LinkedIn ou currículo, GitHub/portfólio e um texto curto se apresentando.
+
+Para
+pablo@izzicupoborges.com + andressa.moukachar@izzicupoborges.com
+Assunto
+Founding Engineer - LKW - Aplicacao
+Responda: por que você quer trabalhar na LKW? Qual foi o sistema mais difícil que você já colocou em produção? Como você usa IA no seu trabalho hoje?
+
+---
+esse é o e-mail que ou mandar:
+
+Gente, li a vaga de vocês e achei muito boa a forma como pensam tecnologia aplicada na operação real.
+
+Me identifiquei muito com essa mistura de negócio, operação, automação, IA e construção prática das coisas.
+
+Hoje minha trajetória é mais empreendedora e “mão na massa” do que tradicional em engenharia de software, então talvez eu ainda não seja o encaixe ideal pra essa vaga específica. Mesmo assim, quis escrever porque gostei muito da cultura e da visão de vocês.
+
+Vou ficar acompanhando a LKW daqui pra frente. Se surgir algo mais júnior, ou alguma oportunidade de crescer junto com o time, com certeza vou querer me aproximar.
+
+Torço muito pra dar certo por aí. É raro ver uma empresa falando de tecnologia de um jeito tão realista e pé no chão! 
+----
+
+--
+Esse é meu cv
+
+# Jonas Ferrari
+
+**Engenheiro de IA | Agentes Autônomos • LLMs • Automação com IA**
+
+34 93618-6847 | Uberlândia, MG | contato@jonasferrari.com.br  
+[GitHub](https://github.com/ferrarijonas) | [LinkedIn](https://www.linkedin.com/in/jonas-ferrari-077b1226/) | [Instagram](https://www.instagram.com/jonasferrari/)
+
+Desenvolvedor com foco em **sistemas orientados a especificação** e arquitetura de agentes de IA. Experiência em traduzir problemas de negócio em especificações formais, com separação clara entre decisão (humano/lógica) e execução (IA/automação). Forte base em engenharia de software, onde linguagens são ferramentas de expressão, não o ponto central. Autodidata com histórico de projetos próprios e visão para construir sistemas escaláveis que resolvem problemas reais.
+
+---
+
+## Projetos
+
+### Mettri – Plataforma de Agentes Conversacionais (2024–2026)
+
+*Python, TypeScript, LLMs via API, Arquitetura Modular*
+
+- Desenvolvimento de arquitetura multi-agente com especialização por etapa do funil comercial
+- Implementação de agentes autônomos com human-in-the-loop para validação de decisões críticas
+- Integração com LLMs (OpenAI API) para geração de sugestões contextuais e automação de fluxos
+- Extensão Chrome em TypeScript com interceptação webpack para integração nativa com WhatsApp Web
+- Sistema de régua de cadência com disparo assistido e gestão automatizada de relacionamento
+- Separação clara entre camadas de decisão (agentes especializados) e execução (automação)
+- Design modular e extensível, preparado para escalonamento e adição de novos agentes
+
+### Automação Comercial com IA (2020–2024)
+
+*Python, Dialogflow, ChatGPT API, AWS Lambda, WhatsApp API*
+
+- Início com Dialogflow para desenvolvimento de chatbot de atendimento
+- Em fev/2023, integração da API do ChatGPT ao WhatsApp para automação inteligente
+- Desenvolvimento de arquitetura serverless com AWS Lambda para raspagem de site institucional e estruturação de catálogo em JSON
+- Implementação de disparo automatizado de mensagens personalizadas, com normalização de texto e gestão de régua de relacionamento
+- Sistema em produção atendendo clientes reais com resolução autônoma
+
+- [ ] 
+
+### Consolidação Financeira com IA (2025)
+
+*Python, OpenAI API, Pandas, Validação Semântica*
+
+- Desenvolvimento de sistema para consolidação automatizada de extratos bancários em múltiplos formatos
+- Processamento concorrente de múltiplos extratos com validação assíncrona via API
+- Classificação de receitas e despesas por regras determinísticas, com padronização de categorias contábeis
+- Detecção de inconsistências com envio para API da OpenAI para validação semântica e auditoria
+- Camada de validação para redução de alucinações e garantia de precisão contábil
+- Geração automatizada de relatórios estruturados para contabilidade
+
+### Agente de Previsão de Vendas (2024)
+
+*Python, Pandas, Análise de Séries Temporais*
+
+- Desenvolvimento de agente para extração e consolidação de dados a partir de planilhas de vendas
+- Estruturação e padronização de produtos, identificação de padrões históricos e geração de previsão de demanda
+- Automação do processo de consolidação e projeção para apoio à decisão comercial e planejamento de estoque
+- Tradução de dados brutos em insights acionáveis para gestão de negócio
+
+### Modelagem e Automação Financeira (2025)
+
+*Python, Machine Learning, MetaTrader 5, Cloud*
+
+- Implementação de modelo de Cadeia de Markov para detecção de regimes de mercado em ambiente de nuvem
+- Aplicação de clustering com K-Means para segmentação de dados financeiros e identificação de padrões de volatilidade
+- Consolidação estruturada de séries temporais para suporte à estratégia quantitativa com análise automatizada de cenários
+
+---
+
+## Abordagem Técnica
+
+**Desenvolvimento orientado a especificação**  
+No último ano, evolui de "estudante de Python" para aprendiz de arquiteto de sistemas: o que importa é modelar lógica, arquitetura e regras formais. Linguagens são ferramentas de implementação — delegáveis para IA. Eu defino, escrevo, registro, a IA executa.
+
+**Separação decisão × execução**  
+Design de sistemas onde decisões críticas permanecem sob controle humano/lógico e execução é delegada a agentes ou automações.
+
+**Stack de Implementação**  
+Python, TypeScript | OpenAI API, GPT-3.5/5.2 | Padrões de orquestração de agentes | AWS Lambda, serverless | Pandas, NumPy, K-Means | Git
+
+**Competências Fundamentais**
+
+- Design de arquitetura modular e extensível
+- Modelagem de problemas complexos em especificações executáveis
+- Validação formal e auditoria de comportamento de sistemas
+- Integração de LLMs como camada de execução controlada
+- Processamento assíncrono e concorrente
+- Análise de dados e modelagem estatística
+
+**Idiomas**  
+Português (nativo) | Espanhol (fala, leitura) | Inglês (leitura e escrita )
+
+---
+
+## Certificações e cursos
+
+- Microsoft Learn – **Fundamentos de IA no Azure (AI-901)**
+- Microsoft Learn – **Aplicações e agentes de IA no Azure**  
+
+---
+
+## Diferenciais
+
+**Tradução negócio → código**  
+Experiência prática em identificar problemas operacionais e estruturar soluções técnicas escaláveis, do conceito à produção em ambientes reais.
+
+**Arquitetura de agentes especializados**  
+Design de sistemas multi-agente com papéis bem definidos, separação entre decisão e execução, e controle humano para decisões críticas.
+
+**Engenharia + IA aplicada**  
+Foco em código limpo, tipado e manutenível. Uso de LLMs como ferramenta integrada a sistemas robustos, não como solução isolada.
+
+**Autonomia técnica**  
+Autodidata com histórico de projetos próprios desenvolvidos do zero. Capacidade de propor soluções arquiteturais e tomar decisões técnicas com visão de produto.
+
+**Validação e confiabilidade**  
+Implementação de camadas de validação semântica e auditoria para redução de alucinações, garantia de precisão e manutenção da qualidade em produção.
+
+**Visão de produto**  
+Experiência em negócios próprios com foco em impacto real. Compreensão do ciclo completo: problema de negócio → solução técnica → entrega de valor.
+
+---
+
+## Formação
+
+**Engenharia de Software** – Universidade Anhanguera  
+Cursando 1º Semestre | Previsão de conclusão: 2030
+
+**Design** – Universidade Feevale (RS)  
+2008–2014 | Incompleto
+
+---
+
+## Experiência Profissional
+
+### Pão de Verdade | Forneria Artesanal
+
+**Fundador e Gestor** (2019–atual)
+
+- Estruturação completa do negócio desde a concepção até a operação contínua
+- Desenvolvimento e padronização de processos produtivos com foco em qualidade e previsibilidade
+- Gestão financeira, controle de custos e definição de estratégia comercial
+- Criação de soluções tecnológicas próprias para automação e otimização de fluxos internos
+- Sistemas para organização de pedidos, integração com ferramentas digitais e análise de desempenho
+- Aplicação prática de mentalidade lean na construção e evolução da operação
+- Análise contínua de desempenho e ajustes estratégicos orientados a dados
+
+### CNX Marketing + Design
+
+**Fundador e Gestor** (2012–2017)
+
+- Estruturação e liderança de equipe remota com 5 colaboradores
+- Organização de fluxo de trabalho distribuído em modelo home office, com definição de processos e entregáveis
+- Atendimento a contas estratégicas (SkyTeam e grandes empresas do setor de turismo no RS)
+- Planejamento e execução de campanhas digitais e materiais institucionais
+- Interface direta com clientes para alinhamento de escopo, prazos e metas
+- Gestão operacional e financeira do negócio
+- Implementação de processos internos para padronização de entregas e previsibilidade de execução
+- Coordenação de múltiplos projetos simultâneos com controle de prazo e qualidade
+
+### Grupo SkyTeam
+
+**Analista de Comunicação e Design** (2010–2012)
+
+- Estruturação e padronização do sistema visual da empresa, garantindo consistência entre 17 unidades
+- Planejamento e execução de campanhas recorrentes de e-mail marketing e comunicação institucional
+- Desenvolvimento de materiais estratégicos para eventos, ações comerciais e suporte à equipe de vendas
+- Interface direta com diretoria e área comercial para alinhamento de comunicação e posicionamento
+- Organização de fluxo de criação e envio de campanhas com regularidade e previsibilidade operacional
+
+### Via Zen – Associação de Prática Zen Budista
+
+**Residente, Cozinheiro e Designer** (2017–2019)
+
+- Desenvolvimento de materiais visuais e apoio à comunicação institucional
+- Gestão da cozinha e equipes na preparação de refeições em retiros
+- Responsável pelo manejo e cuidado diário de animais (gado leiteiro)
+- Participação ativa na organização de retiros e manutenção do espaço comunitário
+- Vivência em ambiente estruturado por rotina, responsabilidade compartilhada e constância de execução
+
+### Ki-sola
+
+**Técnico em Modelagem / Desenvolvimento de Protótipos** (2003–2010)
+
+- Desenvolvimento técnico de maquetes e protótipos para validação de viabilidade produtiva
+- Interpretação de desenhos técnicos e especificações para construção de modelos funcionais
+- Ajustes finos em geometria e encaixe visando precisão, funcionalidade e redução de erro na produção final
+- Atuação como ponte entre desenvolvimento e chão de fábrica, garantindo aderência técnica antes da escala
+- Foco em antecipação de falhas, retrabalho e inconsistências antes da entrada em linha
+
+### Calçados Crysalis
+
+**Operador de Produção** (2000–2003)
+
+- Atuação em ambiente industrial influenciado por princípios de 5S e TPS (Toyota Production System)
+- Execução de processos técnicos com foco em padronização, organização e eliminação de desperdícios
+- Trabalho orientado a melhoria contínua (Kaizen), controle de qualidade e redução sistemática de falhas
+- Operação sob metas claras de produtividade, eficiência e estabilidade de processo
+
+---
+
+## Sobre
+
+Busco primeira oportunidade de atuar em ambientes técnicos desafiadores onde possa aplicar minha visão de sistemas orientados a especificação, contribuir com autonomia técnica e impactar diretamente produtos que resolvem problemas reais. Tenho especial interesse em startups de IA em fase de crescimento, onde decisões arquiteturais importam e a entrega de valor é concreta.
+
+---
+
+
+
+Quero comecar alterando as primeiras partes e estou te chamando pq é vc quem sabe mais do mettri e sabe o que eu sei e o que eu já fiz lá, enende?
