@@ -1,308 +1,328 @@
 /**
- * SettingsModal - Modal de configurações da extensão
+ * SettingsModal - Painel de configurações da extensão
  * 
- * Permite controlar atualizações automáticas e ver informações de versão.
+ * Renderiza as configurações inline dentro do #mettri-content (como um módulo),
+ * não como overlay flutuante. Aceita callback onClose para restaurar módulo anterior.
  */
 
 import { getIcon } from '../icons/lucide-icons';
 import type { ModuleUpdater } from '../../infrastructure/module-updater';
+import { MettriBridgeClient } from '../../content/bridge-client';
 
 export class SettingsModal {
-  private overlay: HTMLElement | null = null;
-  private modal: HTMLElement | null = null;
+  private viewEl: HTMLElement | null = null;
+  private containerEl: HTMLElement | null = null;
   private isOpen = false;
   private moduleUpdater: ModuleUpdater;
+  private bridge = new MettriBridgeClient(5000);
   private autoUpdateEnabled = true;
+  private devModeEnabled = false;
+  private openaiApiKey = '';
+  private deepseekApiKey = '';
+  private onClose: (() => void) | null = null;
 
   constructor(moduleUpdater: ModuleUpdater) {
     this.moduleUpdater = moduleUpdater;
   }
 
   /**
-   * Abre o modal de configurações.
+   * Abre as configurações inline no container fornecido.
+   * @param container - Elemento onde renderizar (ex.: #mettri-content)
+   * @param onClose - Callback chamado ao fechar (ex.: restaurar módulo anterior)
    */
-  async show(): Promise<void> {
-    if (this.isOpen) {
-      this.close();
-      return;
+  async show(container: HTMLElement, onClose?: () => void): Promise<void> {
+    // Se a view foi removida externamente (ex.: PanelShell trocou de módulo), resetar estado
+    if (this.viewEl && !this.viewEl.isConnected) {
+      this.viewEl = null;
+      this.isOpen = false;
     }
-
+    if (this.isOpen) return;
+    this.onClose = onClose ?? null;
     await this.loadSettings();
-    await this.createModal();
+    this.createView(container);
     this.isOpen = true;
   }
 
   /**
-   * Fecha o modal.
+   * Fecha as configurações e restaura o módulo anterior.
    */
   close(): void {
-    if (this.overlay) {
-      this.overlay.remove();
-      this.overlay = null;
+    if (this.viewEl) {
+      this.viewEl.remove();
+      this.viewEl = null;
     }
-    if (this.modal) {
-      this.modal.remove();
-      this.modal = null;
-    }
+    this.containerEl = null;
     this.isOpen = false;
+    this.onClose?.();
   }
 
   /**
-   * Carrega configurações do storage
+   * Carrega configurações do storage via bridge
    */
   private async loadSettings(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['autoUpdateEnabled', 'moduleUpdateVersion', 'moduleUpdateCheckedAt']);
-      this.autoUpdateEnabled = result.autoUpdateEnabled !== false; // Default true
+      const result = await this.bridge.storageGet([
+        'autoUpdateEnabled',
+        'moduleUpdateVersion',
+        'moduleUpdateCheckedAt',
+        'mettri:devMode',
+        'mettri:openai:apiKey',
+        'mettri:deepseek:apiKey',
+      ]);
+      this.autoUpdateEnabled = result.autoUpdateEnabled !== false;
+      this.devModeEnabled = result['mettri:devMode'] === true;
+      this.openaiApiKey = typeof result['mettri:openai:apiKey'] === 'string' ? result['mettri:openai:apiKey'] : '';
+      this.deepseekApiKey = typeof result['mettri:deepseek:apiKey'] === 'string' ? result['mettri:deepseek:apiKey'] : '';
     } catch (error) {
       console.error('[SettingsModal] Erro ao carregar configurações:', error);
     }
   }
 
   /**
-   * Cria o modal com configurações.
+   * Cria a view de configurações inline dentro do container.
+   * Design: cards glass com tipografia do design system, sem botão de fechar.
    */
-  private async createModal(): Promise<void> {
-    // Overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center';
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        this.close();
-      }
-    });
+  private createView(container: HTMLElement): void {
+    container.innerHTML = '';
 
-    // Modal
-    const modal = document.createElement('div');
-    modal.className = 'glass rounded-2xl border border-border/50 p-6 w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto';
-    modal.style.backgroundColor = 'var(--mettri-bg, #ffffff)';
-    modal.style.color = 'var(--mettri-text, #0A1014)';
+    const view = document.createElement('div');
+    view.className = 'bg-background rounded-xl p-4 space-y-5';
+    view.setAttribute('data-module-container', 'settings');
 
     const manifest =
       typeof chrome !== 'undefined' && typeof chrome.runtime?.getManifest === 'function'
         ? chrome.runtime.getManifest()
         : null;
     const currentVersion = manifest?.version ?? '—';
-    const updateVersion = await this.getUpdateVersion();
-    const lastChecked = await this.getLastChecked();
 
-    modal.innerHTML = `
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">Configurações</h2>
-        <button class="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center" id="mettri-settings-modal-close">
-          ${getIcon('X')}
-        </button>
+    const hasOpenAi = this.openaiApiKey.length > 0;
+    const hasDeepSeek = this.deepseekApiKey.length > 0;
+    const openAiLabel = `OpenAI${hasOpenAi ? '  ✓' : ''}`;
+    const deepSeekLabel = `DeepSeek${hasDeepSeek ? '  ✓' : ''}`;
+
+    view.innerHTML = `
+      <!-- Chaves da API -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-semibold text-foreground" style="letter-spacing:-0.01em">Chaves da API</h3>
+
+        <div class="bg-card rounded-xl p-3.5 space-y-2 border border-border/30">
+          <label class="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide">${openAiLabel}</label>
+          <input type="password" id="mettri-openai-key" class="w-full rounded-lg border border-border/50 bg-background text-foreground px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent" placeholder="sk-..." value="${this.escapeHtml(this.openaiApiKey)}" />
+          <div class="flex items-center gap-2">
+            <button id="mettri-save-openai-key" class="text-[13px] font-semibold px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+              Salvar chave
+            </button>
+            <span id="mettri-openai-key-status" class="text-[13px] text-muted-foreground"></span>
+          </div>
+        </div>
+
+        <div class="bg-card rounded-xl p-3.5 space-y-2 border border-border/30">
+          <label class="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide">${deepSeekLabel}</label>
+          <input type="password" id="mettri-deepseek-key" class="w-full rounded-lg border border-border/50 bg-background text-foreground px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent" placeholder="sk-..." value="${this.escapeHtml(this.deepseekApiKey)}" />
+          <div class="flex items-center gap-2">
+            <button id="mettri-save-deepseek-key" class="text-[13px] font-semibold px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+              Salvar chave
+            </button>
+            <span id="mettri-deepseek-key-status" class="text-[13px] text-muted-foreground"></span>
+          </div>
+        </div>
       </div>
 
-      <div class="space-y-6">
-        <!-- Atualizações Automáticas -->
+      <!-- Atualizações Automáticas -->
+      <div class="bg-card rounded-xl p-3.5 flex items-center justify-between border border-border/30">
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-sm font-medium">Atualizações Automáticas</label>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="mettri-auto-update-toggle" class="sr-only peer" ${this.autoUpdateEnabled ? 'checked' : ''}>
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-          <p class="text-xs text-muted-foreground">
-            Quando habilitado, a extensão verifica e aplica atualizações automaticamente.
-          </p>
+          <p class="text-[13px] font-semibold text-foreground">Atualizações Automáticas</p>
+          <p class="text-[12px] text-muted-foreground mt-0.5">Verificação e aplicação automática de atualizações</p>
         </div>
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-3">
+          <input type="checkbox" id="mettri-auto-update-toggle" class="sr-only peer" ${this.autoUpdateEnabled ? 'checked' : ''}>
+          <div class="w-11 h-6 bg-zinc-300 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+      </div>
 
-        <!-- Informações de Versão -->
-        <div class="border-t border-border/50 pt-4">
-          <h3 class="text-sm font-medium mb-3">Informações</h3>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-muted-foreground">Versão atual:</span>
-              <span class="font-mono">${currentVersion}</span>
-            </div>
-            ${updateVersion ? `
-            <div class="flex justify-between">
-              <span class="text-muted-foreground">Versão módulos:</span>
-              <span class="font-mono">${updateVersion}</span>
-            </div>
-            ` : ''}
-            ${lastChecked ? `
-            <div class="flex justify-between">
-              <span class="text-muted-foreground">Última verificação:</span>
-              <span class="text-xs">${lastChecked}</span>
-            </div>
-            ` : ''}
-          </div>
+      <!-- Informações -->
+      <div class="bg-card rounded-xl p-3.5 border border-border/30">
+        <h3 class="text-[13px] font-semibold text-foreground mb-2">Informações</h3>
+        <div class="flex items-baseline gap-2">
+          <span class="text-[11px] text-muted-foreground uppercase tracking-wide">Versão atual</span>
+          <span class="text-[13px] font-mono text-foreground tabular-nums">${currentVersion}</span>
         </div>
+      </div>
 
-        <!-- Ações -->
-        <div class="border-t border-border/50 pt-4 space-y-2">
-          <button id="mettri-check-updates-now" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
-            Verificar Atualizações Agora
-          </button>
-          <button id="mettri-clear-cache" class="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors text-sm">
-            Limpar Cache de Módulos
-          </button>
+      <!-- Modo Desenvolvedor -->
+      <div class="bg-card rounded-xl p-3.5 flex items-center justify-between border border-border/30">
+        <div>
+          <p class="text-[13px] font-semibold text-foreground">Modo Desenvolvedor</p>
+          <p class="text-[12px] text-muted-foreground mt-0.5">Mostrar módulos experimentais</p>
         </div>
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-3">
+          <input type="checkbox" id="mettri-dev-mode-toggle" class="sr-only peer" ${this.devModeEnabled ? 'checked' : ''}>
+          <div class="w-9 h-5 bg-zinc-300 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+      </div>
+
+      <!-- Ações -->
+      <div class="pt-1 space-y-2">
+        <button id="mettri-check-updates-now" class="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90 transition-colors tracking-wide">
+          Verificar Atualizações Agora
+        </button>
+        <button id="mettri-clear-cache" class="w-full px-4 py-2.5 rounded-xl bg-background text-foreground text-[13px] font-medium border border-border/50 hover:bg-accent transition-colors">
+          Limpar Cache de Módulos
+        </button>
       </div>
     `;
 
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    this.overlay = overlay;
-    this.modal = modal;
+    container.appendChild(view);
+    this.viewEl = view;
+    this.containerEl = container;
 
     this.setupEventListeners();
   }
 
-  /**
-   * Configura event listeners do modal
-   */
-  private setupEventListeners(): void {
-    if (!this.modal) return;
-
-    // Fechar modal
-    const closeBtn = this.modal.querySelector('#mettri-settings-modal-close');
-    closeBtn?.addEventListener('click', () => this.close());
-
-    // Toggle atualizações automáticas
-    const toggle = this.modal.querySelector('#mettri-auto-update-toggle') as HTMLInputElement;
-    toggle?.addEventListener('change', async (e) => {
-      const enabled = (e.target as HTMLInputElement).checked;
-      await this.setAutoUpdateEnabled(enabled);
-    });
-
-    // Verificar atualizações agora
-    const checkBtn = this.modal.querySelector('#mettri-check-updates-now');
-    checkBtn?.addEventListener('click', async () => {
-      await this.checkUpdatesNow();
-    });
-
-    // Limpar cache
-    const clearBtn = this.modal.querySelector('#mettri-clear-cache');
-    clearBtn?.addEventListener('click', async () => {
-      await this.clearCache();
-    });
+  private escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**
-   * Define se atualizações automáticas estão habilitadas
+   * Salva chave de API via bridge
    */
+  private async saveApiKey(storageKey: string, inputId: string, statusId: string): Promise<void> {
+    const input = this.viewEl?.querySelector(`#${inputId}`) as HTMLInputElement | null;
+    const status = this.viewEl?.querySelector(`#${statusId}`) as HTMLElement | null;
+    if (!input || !status) return;
+
+    const key = input.value.trim();
+    if (!key) {
+      status.textContent = 'Informe uma chave antes de salvar.';
+      status.className = 'text-xs text-destructive';
+      return;
+    }
+
+    try {
+      await this.bridge.storageSet({ [storageKey]: key });
+      status.textContent = 'Salvo ✓';
+      status.className = 'text-xs text-primary';
+
+      if (storageKey === 'mettri:openai:apiKey') this.openaiApiKey = key;
+      else if (storageKey === 'mettri:deepseek:apiKey') this.deepseekApiKey = key;
+
+      // Atualizar indicador ✓ no label
+      const label = input.closest('div')?.querySelector('label');
+      if (label && !label.innerHTML.includes('✓')) {
+        const text = label.childNodes[0]?.textContent ?? '';
+        label.innerHTML = text + ' <span class="text-primary font-semibold">✓</span>';
+      }
+
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    } catch {
+      status.textContent = 'Erro ao salvar';
+      status.className = 'text-xs text-destructive';
+    }
+  }
+
+  private setupEventListeners(): void {
+    if (!this.viewEl) return;
+
+    // Salvar chave OpenAI
+    this.viewEl.querySelector('#mettri-save-openai-key')?.addEventListener('click', () => {
+      this.saveApiKey('mettri:openai:apiKey', 'mettri-openai-key', 'mettri-openai-key-status');
+    });
+
+    // Salvar chave DeepSeek
+    this.viewEl.querySelector('#mettri-save-deepseek-key')?.addEventListener('click', () => {
+      this.saveApiKey('mettri:deepseek:apiKey', 'mettri-deepseek-key', 'mettri-deepseek-key-status');
+    });
+
+    // Enter nos inputs das chaves
+    (this.viewEl.querySelector('#mettri-openai-key') as HTMLInputElement)
+      ?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this.saveApiKey('mettri:openai:apiKey', 'mettri-openai-key', 'mettri-openai-key-status');
+      });
+    (this.viewEl.querySelector('#mettri-deepseek-key') as HTMLInputElement)
+      ?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this.saveApiKey('mettri:deepseek:apiKey', 'mettri-deepseek-key', 'mettri-deepseek-key-status');
+      });
+
+    // Toggle auto-update
+    (this.viewEl.querySelector('#mettri-auto-update-toggle') as HTMLInputElement)
+      ?.addEventListener('change', async (e) => {
+        await this.setAutoUpdateEnabled((e.target as HTMLInputElement).checked);
+      });
+
+    // Verificar atualizações
+    this.viewEl.querySelector('#mettri-check-updates-now')
+      ?.addEventListener('click', () => this.checkUpdatesNow());
+
+    // Limpar cache
+    this.viewEl.querySelector('#mettri-clear-cache')
+      ?.addEventListener('click', () => this.clearCache());
+
+    // Toggle Modo Desenvolvedor
+    (this.viewEl.querySelector('#mettri-dev-mode-toggle') as HTMLInputElement)
+      ?.addEventListener('change', async (e) => {
+        await this.setDevModeEnabled((e.target as HTMLInputElement).checked);
+      });
+  }
+
+  private async setDevModeEnabled(enabled: boolean): Promise<void> {
+    try {
+      await this.bridge.storageSet({ 'mettri:devMode': enabled });
+      this.devModeEnabled = enabled;
+    } catch (error) {
+      console.error('[SettingsModal] Erro ao salvar devMode:', error);
+    }
+  }
+
   private async setAutoUpdateEnabled(enabled: boolean): Promise<void> {
     try {
-      await chrome.storage.local.set({ autoUpdateEnabled: enabled });
+      await this.bridge.storageSet({ autoUpdateEnabled: enabled });
       this.autoUpdateEnabled = enabled;
-
       if (enabled) {
         await this.moduleUpdater.startAutoCheck();
-        console.log('[SettingsModal] Atualizações automáticas habilitadas');
       } else {
         this.moduleUpdater.stopAutoCheck();
-        console.log('[SettingsModal] Atualizações automáticas desabilitadas');
       }
     } catch (error) {
       console.error('[SettingsModal] Erro ao salvar configuração:', error);
     }
   }
 
-  /**
-   * Verifica atualizações manualmente
-   */
   private async checkUpdatesNow(): Promise<void> {
-    const checkBtn = this.modal?.querySelector('#mettri-check-updates-now') as HTMLButtonElement;
-    if (!checkBtn) return;
-
-    const originalText = checkBtn.textContent;
-    checkBtn.disabled = true;
-    checkBtn.textContent = 'Verificando...';
-
+    const btn = this.viewEl?.querySelector('#mettri-check-updates-now') as HTMLButtonElement;
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Verificando...';
     try {
       const result = await this.moduleUpdater.checkForUpdates();
-      
-      if (result.hasUpdate) {
-        checkBtn.textContent = `Atualização disponível!`;
-        checkBtn.classList.add('bg-green-600');
-        setTimeout(() => {
-          checkBtn.textContent = originalText;
-          checkBtn.classList.remove('bg-green-600');
-          checkBtn.disabled = false;
-        }, 3000);
-      } else {
-        checkBtn.textContent = 'Nenhuma atualização';
-        setTimeout(() => {
-          checkBtn.textContent = originalText;
-          checkBtn.disabled = false;
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('[SettingsModal] Erro ao verificar atualizações:', error);
-      checkBtn.textContent = 'Erro ao verificar';
+      btn.textContent = result.hasUpdate ? 'Atualização disponível!' : 'Nenhuma atualização';
+      if (result.hasUpdate) btn.classList.add('bg-green-600');
       setTimeout(() => {
-        checkBtn.textContent = originalText;
-        checkBtn.disabled = false;
-      }, 2000);
+        btn.textContent = original;
+        btn.classList.remove('bg-green-600');
+        btn.disabled = false;
+      }, result.hasUpdate ? 3000 : 2000);
+    } catch {
+      btn.textContent = 'Erro ao verificar';
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
     }
   }
 
-  /**
-   * Limpa cache de módulos
-   */
   private async clearCache(): Promise<void> {
-    const clearBtn = this.modal?.querySelector('#mettri-clear-cache') as HTMLButtonElement;
-    if (!clearBtn) return;
-
-    const originalText = clearBtn.textContent;
-    clearBtn.disabled = true;
-    clearBtn.textContent = 'Limpando...';
-
+    const btn = this.viewEl?.querySelector('#mettri-clear-cache') as HTMLButtonElement;
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Limpando...';
     try {
       await this.moduleUpdater.clearCache();
-      clearBtn.textContent = 'Cache limpo!';
-      setTimeout(() => {
-        clearBtn.textContent = originalText;
-        clearBtn.disabled = false;
-      }, 2000);
-    } catch (error) {
-      console.error('[SettingsModal] Erro ao limpar cache:', error);
-      clearBtn.textContent = 'Erro ao limpar';
-      setTimeout(() => {
-        clearBtn.textContent = originalText;
-        clearBtn.disabled = false;
-      }, 2000);
-    }
-  }
-
-  /**
-   * Obtém versão dos módulos atualizados
-   */
-  private async getUpdateVersion(): Promise<string | null> {
-    try {
-      const result = await chrome.storage.local.get(['moduleUpdateVersion']);
-      return result.moduleUpdateVersion || null;
+      btn.textContent = 'Cache limpo!';
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
     } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Obtém última verificação formatada
-   */
-  private async getLastChecked(): Promise<string | null> {
-    try {
-      const result = await chrome.storage.local.get(['moduleUpdateCheckedAt']);
-      if (!result.moduleUpdateCheckedAt) return null;
-      
-      const date = new Date(result.moduleUpdateCheckedAt);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      
-      if (diffMins < 1) return 'Agora mesmo';
-      if (diffMins < 60) return `${diffMins} min atrás`;
-      const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `${diffHours}h atrás`;
-      const diffDays = Math.floor(diffHours / 24);
-      return `${diffDays}d atrás`;
-    } catch {
-      return null;
+      btn.textContent = 'Erro ao limpar';
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
     }
   }
 }
