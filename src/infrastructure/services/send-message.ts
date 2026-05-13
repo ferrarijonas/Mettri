@@ -80,10 +80,24 @@ async function findChatMatchingPhoneInModels(Chat: any, phoneDigits: string): Pr
           : typeof m.id === 'string'
             ? m.id
             : '') || '';
-      if (!sid.endsWith('@c.us')) continue;
-      const userDigits = digitsOnly(sid.split('@')[0] || '');
-      if (!userDigits) continue;
-      if (phoneAliasesIntersect(phoneDigits, userDigits)) return c;
+      // @c.us: comparar id._serialized (contém o número de telefone)
+      if (sid.endsWith('@c.us')) {
+        const userDigits = digitsOnly(sid.split('@')[0] || '');
+        if (!userDigits) continue;
+        if (phoneAliasesIntersect(phoneDigits, userDigits)) return c;
+        continue;
+      }
+      // @lid: o id._serialized é um LID aleatório — não contém telefone.
+      // Comparar pelo __x_contact.id.user (que tem o número real).
+      if (sid.endsWith('@lid')) {
+        const m2 = c as { __x_contact?: { id?: { user?: string } } };
+        const contactUser = m2.__x_contact?.id?.user;
+        if (!contactUser) continue;
+        const userDigits = digitsOnly(contactUser);
+        if (!userDigits) continue;
+        if (phoneAliasesIntersect(phoneDigits, userDigits)) return c;
+        continue;
+      }
     }
   }
   return null;
@@ -159,6 +173,17 @@ async function tryMaterializeChatInWa(
   try {
     const widObj = createWidObject(WidFactory, wid);
     const widForFind = widObj?.user ? widObj : null;
+
+    // Estratégia 0: findOrCreateLatestChat (T-033)
+    // WhatsApp Business Web materializa chats via WAWebFindChatAction.
+    // Chat.find() está quebrado (this.findImpl is not a function).
+    try {
+      const findChatAction = (window as any).require?.('WAWebFindChatAction');
+      if (findChatAction?.findOrCreateLatestChat && widObj?.user) {
+        const result = await Promise.resolve(findChatAction.findOrCreateLatestChat(widObj));
+        if (result?.chat && chatModelHasRequiredProps(result.chat)) return result.chat;
+      }
+    } catch { /* ignore */ }
 
     if (widForFind && typeof Chat.find === 'function') {
       let found: any = null;
@@ -441,6 +466,7 @@ export class SendMessageService {
 
       const i = whatsappInterceptors;
       const Chat = i.Chat;
+      const Contact = i.Contact;
       const Cmd = i.Cmd;
       const User = i.User;
       const MsgKey = i.MsgKey;
@@ -538,6 +564,30 @@ export class SendMessageService {
         for (const wid of widsToTry) {
           try {
             const foundChat = chatModule.get(wid);
+            if (foundChat) {
+              chat = foundChat;
+              break;
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      // Estratégia 3.5: Resolver via Contact → LID (T-033)
+      // WhatsApp Business Web indexa chats por @lid, não @c.us.
+      // Contact.get(numero@c.us) funciona e retorna o contato com id @lid.
+      if (!chat && Contact?.get) {
+        for (const wid of widsToTry) {
+          try {
+            const contact = Contact.get(wid);
+            if (!contact) continue;
+            const serialized =
+              (contact.id && typeof contact.id === 'object' && '_serialized' in contact.id
+                ? contact.id._serialized
+                : typeof contact.id === 'string'
+                  ? contact.id
+                  : '') || '';
+            if (!serialized.endsWith('@lid')) continue;
+            const foundChat = chatModule.get(serialized);
             if (foundChat) {
               chat = foundChat;
               break;
