@@ -101,3 +101,30 @@ tests/automation/*.ts
 # Design notes (local)
 DESIGN.md
 rag-test.html
+
+# Test scripts (dev-only, root)
+test-*.mjs
+test-*.cjs
+test-*.html
+
+# Personal / temp files
+Curriculo_JonasFerrari.md
+leia.txt
+estilo.md
+extensions-page.png
+tarefas.html
+
+# Build artifacts (recriável via build)
+modules-updates/
+
+# Reference code (third-party, not ours)
+whatsapp-copilot-crm/
+
+# Utilitários manuais (não no build)
+activar-pages-e-deploy.html
+generate-icons.html
+create-icons.js
+create_icons.py
+
+# Artefato numeral acidental
+1
