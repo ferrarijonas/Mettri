@@ -46,6 +46,7 @@ export class MettriPanel {
   private capturer: MessageCapturer | null = null;
   private bridge = new MettriBridgeClient(2500);
   private historyEnabled = false; // Toggle do Histórico (persistido)
+  private isDevMode = false; // Modo Desenvolvedor (mostrar módulos experimentais)
   private exporter: LocalBatchExporter | null = null;
   private activeChat: ActiveChatService | null = null;
   private squeezeStyle: HTMLStyleElement | null = null;
@@ -70,6 +71,7 @@ export class MettriPanel {
     this.ensureShadowRoot();
     this.injectBaseStyles();
     this.createSidebar();
+    await this.loadDevMode();
     this.createNavBar();
     this.createToggleButton();
     this.userSessionModal = new UserSessionModal();
@@ -84,6 +86,7 @@ export class MettriPanel {
 
     // Carregar settings antes de renderizar módulos (para o Histórico nascer OFF por padrão)
     await this.loadAndApplySettings();
+    this.setupDevModeStorageListener();
     await this.initializePluginSystem();
     this.startActiveChatService();
     this.startExportScheduler();
@@ -143,12 +146,12 @@ export class MettriPanel {
       </button>
 
       <!-- Module: Vitrine -->
-      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="vitrine" title="Vitrine">
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="vitrine" data-mvp="false" title="Vitrine">
         <span class="w-5 h-5">${getIcon('BarChart3')}</span>
       </button>
 
       <!-- Module: Campanhas -->
-      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="campanhas" title="Campanhas — gestão e simulador de ofertas">
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="campanhas" data-mvp="false" title="Campanhas — gestão e simulador de ofertas">
         <span class="w-5 h-5">${getIcon('Play')}</span>
       </button>
 
@@ -158,7 +161,7 @@ export class MettriPanel {
       </button>
 
       <!-- Module: Infraestrutura / Testes -->
-      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="infraestrutura" title="Infraestrutura - Testes e Sentinela">
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="infraestrutura" data-mvp="false" title="Infraestrutura - Testes e Sentinela">
         <span class="w-5 h-5">${getIcon('Server')}</span>
       </button>
 
@@ -168,7 +171,7 @@ export class MettriPanel {
       </button>
 
       <!-- Module: Cadastro / Mapear compras -->
-      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="cadastro" title="Cadastro - Mapear compras já existentes">
+      <button class="w-10 h-10 rounded-xl transition-all text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 mettri-navbar-module flex items-center justify-center" data-module-id="cadastro" data-mvp="false" title="Cadastro - Mapear compras já existentes">
         <span class="w-5 h-5">${getIcon('ClipboardList')}</span>
       </button>
 
@@ -210,6 +213,9 @@ export class MettriPanel {
 
     this.shadowContainer?.appendChild(navbar);
     this.navbar = navbar;
+
+    // Filtrar módulos experimentais se não estiver em Modo Desenvolvedor
+    this.filterNavBarModules();
 
     this.setupNavBarListeners();
   }
@@ -415,6 +421,63 @@ export class MettriPanel {
     wrap.style.display = moduleId === 'clientes.history' ? 'flex' : 'none';
   }
 
+  /**
+   * Carrega o estado do Modo Desenvolvedor do chrome.storage.local
+   */
+  private async loadDevMode(): Promise<void> {
+    try {
+      const result = await this.bridge.storageGet(['mettri:devMode']);
+      this.isDevMode = result['mettri:devMode'] === true;
+    } catch {
+      this.isDevMode = false;
+    }
+  }
+
+  /**
+   * Filtra botões da NavBar baseado no Modo Desenvolvedor
+   * Botões com data-mvp="false" são ocultados quando devMode=false
+   */
+  private filterNavBarModules(): void {
+    if (!this.navbar) return;
+    const moduleButtons = this.navbar.querySelectorAll<HTMLButtonElement>('.mettri-navbar-module');
+    moduleButtons.forEach(btn => {
+      const isMvp = btn.getAttribute('data-mvp') !== 'false'; // default true
+      if (!isMvp && !this.isDevMode) {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = '';
+      }
+    });
+  }
+
+  /**
+   * Reconstrói a NavBar (remove antiga, recria com estado atualizado)
+   */
+  private rebuildNavBar(): void {
+    if (!this.navbar || !this.shadowContainer) return;
+    this.navbar.remove();
+    this.navbar = null;
+    this.createNavBar();
+  }
+
+  /**
+   * Escuta mudanças no storage para recarregar NavBar quando devMode alterar
+   */
+  private setupDevModeStorageListener(): void {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      return; // chrome.storage indisponível no MAIN world
+    }
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes['mettri:devMode']) {
+        const newValue = changes['mettri:devMode'].newValue === true;
+        if (newValue !== this.isDevMode) {
+          this.isDevMode = newValue;
+          this.rebuildNavBar();
+        }
+      }
+    });
+  }
+
   private setupHistoryToggleListeners(): void {
     const input = this.container?.querySelector('#mettri-history-toggle') as HTMLInputElement | null;
     if (!input) return;
@@ -570,10 +633,21 @@ export class MettriPanel {
       this.showUserSessionModal();
     });
 
-    // Settings
+    // Settings (abre inline no #mettri-content, como um módulo normal)
     const settingsBtn = this.navbar.querySelector('#mettri-navbar-settings');
     settingsBtn?.addEventListener('click', () => {
-      this.settingsModal?.show();
+      if (!this.settingsModal) return;
+      const contentContainer = this.container?.querySelector('#mettri-content') as HTMLElement;
+      if (contentContainer) {
+        this.settingsModal.show(contentContainer, () => {
+          // Ao fechar, restaurar módulo atual
+          if (this.panelShell && this.currentModuleId) {
+            this.panelShell.switchToModule(this.currentModuleId).catch((err) => {
+              console.error('[MettriPanel] Erro ao restaurar módulo:', err);
+            });
+          }
+        });
+      }
     });
 
     const helpBtn = this.navbar.querySelector('#mettri-navbar-help');
@@ -1090,8 +1164,8 @@ export class MettriPanel {
    * Passa o shadow root para o modal ser anexado dentro do painel e herdar os estilos (evita modal invisível).
    */
   private showUserSessionModal(): void {
-    if (this.userSessionModal && this.shadow) {
-      this.userSessionModal.show(this.userSession, this.shadow);
+    if (this.userSessionModal && this.container) {
+      this.userSessionModal.show(this.userSession, this.container);
     }
   }
 
