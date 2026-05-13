@@ -2,7 +2,7 @@
  * Módulo de sugestão IA para o Retomar.
  *
  * Dado um Texto A (e contexto opcional de campanha/tipo de relação),
- * gera uma variação (Texto B) via OpenAI.
+ * gera uma variação (Texto B) via DeepSeek.
  *
  * Usa o MettriBridgeClient (storageGet + netFetch) para contornar o CSP
  * do WhatsApp Web e acessar chrome.storage.local do service worker.
@@ -14,9 +14,9 @@ import {
   type AgenteRetomarPromptFill,
 } from './agente-retomar-prompt';
 
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-const MODEL = 'gpt-4o-mini';
-const STORAGE_KEY_API = 'mettri:openai:apiKey';
+const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
+const MODEL = 'deepseek-chat';
+const STORAGE_KEY_API = 'mettri:deepseek:apiKey';
 
 /**
  * Remove bloco de raciocínio interno e mantém apenas a mensagem final.
@@ -62,7 +62,7 @@ export async function suggestText(
 
   const apiKey = await getApiKey(bridge);
   if (!apiKey) {
-    throw new Error('Chave API OpenAI não configurada. Acesse Cadastro > Mapear compras para salvar sua chave.');
+    throw new Error('Chave API DeepSeek não configurada. Acesse Cadastro > Mapear compras para salvar sua chave.');
   }
 
   const systemParts = [
@@ -93,7 +93,7 @@ export async function suggestText(
   };
 
   const result = await bridge.netFetch({
-    url: OPENAI_URL,
+    url: DEEPSEEK_URL,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -103,14 +103,14 @@ export async function suggestText(
   });
 
   if (!result.ok) {
-    throw new Error(`OpenAI ${result.status}: ${result.text}`);
+    throw new Error(`DeepSeek ${result.status}: ${result.text}`);
   }
 
   const data = JSON.parse(result.text) as {
     choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error('OpenAI respondeu sem conteúdo');
+  if (!content)     throw new Error('DeepSeek respondeu sem conteúdo');
 
   return extractVisibleRetomarMessage(content);
 }
@@ -147,7 +147,7 @@ export async function suggestRedacaoRetomar(
   };
 
   const result = await bridge.netFetch({
-    url: OPENAI_URL,
+    url: DEEPSEEK_URL,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -157,14 +157,14 @@ export async function suggestRedacaoRetomar(
   });
 
   if (!result.ok) {
-    throw new Error(`OpenAI ${result.status}: ${result.text}`);
+    throw new Error(`DeepSeek ${result.status}: ${result.text}`);
   }
 
   const data = JSON.parse(result.text) as {
     choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error('OpenAI respondeu sem conteúdo');
+  if (!content)     throw new Error('DeepSeek respondeu sem conteúdo');
 
   return content;
 }
