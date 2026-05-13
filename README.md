@@ -1,31 +1,36 @@
 <div align="center">
 
-<h1>Mettri</h1>
-<h3><em>Plataforma de vendas conversacionais para WhatsApp Web</em></h3>
+# Mettri
+
+### *Plataforma de vendas conversacionais para WhatsApp Web*
+
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue)](package.json)
+
+> Construído por IA · Guiado por ZenSpecs · Orquestrado pelo **Karma**
 
 </div>
-
-> Versão **2.0.1** • Foco em **negócios locais** • Extensão Chrome integrada ao **WhatsApp Web**
 
 ---
 
 ## Sumário
 
-- [🤔 O que é o Mettri?](#-o-que-é-o-mettri)
-- [🧑‍🍳 Para quem é](#-para-quem-é)
-- [🌟 O que já existe hoje](#-o-que-já-existe-hoje)
-- [🏗️ Como funciona por dentro](#-como-funciona-por-dentro)
-- [⚡ Como começar (instalação)](#-como-começar-instalação)
-- [🧪 Desenvolvimento & testes](#-desenvolvimento--testes)
-- [📚 Documentação](#-documentação)
-- [🧠 Filosofia do projeto](#-filosofia-do-projeto)
-- [🚧 Roadmap](#-roadmap)
-- [🤝 Contribuindo](#-contribuindo)
-- [📄 Licença](#-licença)
+- [O que é o Mettri?](#o-que-é-o-mettri)
+- [Como este software é construído](#como-este-software-é-construído)
+- [Para quem é](#para-quem-é)
+- [O que já existe hoje](#o-que-já-existe-hoje)
+- [Como funciona por dentro](#como-funciona-por-dentro)
+- [Como começar (instalação)](#como-começar-instalação)
+- [Desenvolvimento & testes](#desenvolvimento--testes)
+- [Documentação](#documentação)
+- [Filosofia do projeto](#filosofia-do-projeto)
+- [Roadmap](#roadmap)
+- [Licença](#licença)
 
 ---
 
-## 🤔 O que é o Mettri?
+## O que é o Mettri?
 
 Pensa no Mettri como um **gerente de vendas que mora dentro do seu WhatsApp Web**.
 
@@ -41,7 +46,23 @@ Ele:
 
 ---
 
-## 🧑‍🍳 Para quem é
+## Como este software é construído
+
+O Mettri não é escrito linha por linha por um desenvolvedor. Todo o código-fonte (`src/`) é gerado por **agentes de IA orquestrados pelo Karma** — um sistema que vive em `.karma/` e segue um pipeline rigoroso:
+
+1. **Especificação** — cada funcionalidade nasce como um **ZenSpec** (contrato formal determinístico) em `ZenSpecKit/`.
+2. **Tarefa** — o Karma cria uma SPEC.md com escopo, sabotagens conhecidas e critério de pronto.
+3. **Implementação** — o agente `@implementador` lê o briefing, codifica, e valida com lint → type-check → build → testes.
+4. **Verificação** — o agente `@avaliador` revisa o diff contra a spec e o catálogo de sabotagens do domínio.
+5. **Consolidação** — o agente `@sonhador` extrai aprendizados e alimenta a memória do sistema.
+
+**Resultado**: código TypeScript estrito, validado por testes, com rastreabilidade completa da spec ao deploy. Nenhum `any` escapa. Nenhuma mudança acontece sem contrato.
+
+> Este modelo de desenvolvimento é o produto tanto quanto a extensão em si. O Karma aprende a cada tarefa, e o Mettri evolui sem depender de um time de engenharia.
+
+---
+
+## Para quem é
 
 Mettri é pensado para:
 
@@ -51,11 +72,11 @@ Mettri é pensado para:
 
 ---
 
-## 🌟 O que já existe hoje
+## O que já existe hoje
 
 Metáfora: cada item abaixo é como uma **ferramenta** numa caixa de ferramentas. Algumas já estão prontas, outras ainda são rascunho.
 
-### ✅ Funcionalidades já implementadas (v2.0.1)
+### Funcionalidades já implementadas
 
 - **Extensão Chrome integrada ao WhatsApp Web**
   - Terceira coluna fixa ao lado das conversas.
@@ -78,40 +99,37 @@ Metáfora: cada item abaixo é como uma **ferramenta** numa caixa de ferramentas
 
 - **Módulo de Marketing / Retomar / Reativação**
   - Identificação de **clientes inativos** (dias sem contato).
-  - Listas especiais (ex.: “nunca enviar”, “exclusivos”).
+  - Listas especiais (ex.: "nunca enviar", "exclusivos").
   - Sugestões de mensagens para retomar clientes com contexto.
   - Métricas iniciais de resposta/silêncio.
 
 - **Módulo RAG (Recuperação Aumentada por Geração)**
-  - Módulos dedicados em `src/modules/rag/*`.
-  - Testes unitários e E2E específicos para RAG (fonte real de dados).
-  - Infra de embeddings, índice vetorial local e orquestradores de consulta.
+  - Embeddings, índice vetorial local e orquestradores de consulta.
+  - Testes unitários e E2E específicos para RAG com fonte real de dados.
 
 - **Infraestrutura crítica**
-  - **Sistema de seletores auto‑corrigíveis** com fallback chain.
+  - **Sistema de seletores auto-corrigíveis** com fallback chain.
   - **Configuração remota** para atualizar seletores e regras sem depender da Chrome Web Store.
   - **Interceptação webpack** para acessar módulos internos do WhatsApp de forma robusta.
   - **Arquitetura modular por domínios** (atendimento, clientes, marketing, rag, etc.) com plugin system.
 
 - **Engenharia**
   - Código em **TypeScript** com modo estrito.
-  - Lint, format, type‑check e suíte de testes (unit + E2E).
-  - Regras de engenharia formalizadas em `ENGINEERING_CONTRACT.md` e `.cursorrules`.
-  - Histórico de mudanças rastreado em `HISTORICO_SIMPLES.md` (uma linha por coisa feita).
+  - Lint, format, type-check e suíte de testes (unit + E2E).
+  - Regras de engenharia formalizadas em `ENGINEERING_CONTRACT.md`.
+  - Validação de dados com **Zod** em toda fronteira do sistema.
 
-### 🚧 Funcionalidades planejadas (ainda parciais ou não implementadas)
-
-Algumas capacidades já estão bem definidas em `project_context.md`, mas ainda não estão completas no código:
+### Funcionalidades planejadas (ainda parciais ou não implementadas)
 
 - **Produtos, Pedidos, Entrega e Financeiro** (catálogo, checkout, frete, relatórios);
 - **Persona configurável** (tom de voz da marca);
 - **Feature flags completas e rollout gradual via config remota**;
-- **Bot de suporte com IA** usando “documentação viva”;
+- **Bot de suporte com IA** usando "documentação viva";
 - **Monetização** (planos, licenças, rate limiting, webhooks).
 
 ---
 
-## 🏗️ Como funciona por dentro
+## Como funciona por dentro
 
 Metáfora: imagine um **prédio**:
 
@@ -123,19 +141,19 @@ Metáfora: imagine um **prédio**:
 
 Fluxo simplificado:
 
-1. WhatsApp Web → interceptores webpack + DOM coletam eventos e mensagens.  
-2. `MessageCapturer` normaliza tudo e grava em bancos locais (IndexedDB).  
-3. Módulos de domínio (`atendimento`, `clientes`, `marketing`, `rag`, etc.) usam esses dados.  
-4. A UI (`PanelShell` + módulos) mostra tudo em uma terceira coluna no WhatsApp.  
+1. WhatsApp Web → interceptores webpack + DOM coletam eventos e mensagens.
+2. `MessageCapturer` normaliza tudo e grava em bancos locais (IndexedDB).
+3. Módulos de domínio (`atendimento`, `clientes`, `marketing`, `rag`, etc.) usam esses dados.
+4. A UI (`PanelShell` + módulos) mostra tudo em uma terceira coluna no WhatsApp.
 5. Seletores e regras de negócio podem ser atualizados via **config remota**, sem exigir nova versão na Chrome Web Store.
 
-Detalhes completos (com domínios, capacidades e status): veja **`project_context.md`** e **`project_concept.md`**.
+Detalhes completos (com domínios, capacidades e status): veja **`docs/archive/project_concept.md`** e **`docs/archive/project_context.md`**.
 
 ---
 
-## ⚡ Como começar (instalação)
+## Como começar (instalação)
 
-### Pré‑requisitos
+### Pré-requisitos
 
 - Node.js **20+**
 - npm **10+**
@@ -166,130 +184,96 @@ npm run build
 
 **IMPORTANTE:** o WhatsApp Web detecta quando o navegador está sendo controlado por automação (como Playwright) e pode bloquear.
 
-- ✅ Use **Chrome normal**, aberto manualmente.  
-- ❌ Não use Playwright / automação para testar a UI do WhatsApp.  
+- ✅ Use **Chrome normal**, aberto manualmente.
+- ❌ Não use Playwright / automação para testar a UI do WhatsApp.
 - ✅ Use Playwright apenas para **testes estruturais** (manifest, rotas, painéis) ou fluxos específicos preparados.
-
-Mais detalhes em `TESTE-RAPIDO.md` (quando disponível).
 
 ---
 
-## 🧪 Desenvolvimento & testes
+## Desenvolvimento & testes
 
 ### Scripts principais (`package.json`)
 
-| Comando                        | Descrição simplificada                                      |
-| ----------------------------- | ------------------------------------------------------------ |
-| `npm run dev`                 | Build com watch (desenvolvimento)                           |
-| `npm run build`               | Build de produção da extensão                               |
-| `npm run lint`                | Verificar regras de lint                                    |
-| `npm run lint:fix`            | Corrigir problemas de lint automaticamente                  |
-| `npm run format`              | Formatador (Prettier) nos arquivos `ts` e `css`             |
-| `npm run type-check`          | Verificação de tipos TypeScript (`tsc --noEmit`)            |
-| `npm run test:unit`           | Testes unitários com Vitest                                 |
-| `npm run test:unit:watch`     | Testes unitários em modo watch                              |
-| `npm run test:e2e`            | Testes E2E com Playwright                                   |
-| `npm run test:e2e:headed`     | Testes E2E com navegador visível                            |
-| `npm run test:rag:browser`    | Build + testes E2E focados em RAG com navegador real        |
-| `npm run test:cdp`            | Scripts de automação/diagnóstico via CDP                    |
-| `npm run chrome:debug`        | Abre Chrome em modo debug (via PowerShell)                  |
-| `npm run package`             | Empacota a extensão para distribuição                       |
-| `npm run build:modules`       | Build apenas dos módulos (para publish de módulos)          |
-| `npm run publish-modules`     | Publica módulos (ex.: via GitHub Pages / config remota)     |
-| `npm run clean`               | Limpa a pasta `dist/`                                       |
+| Comando | Descrição |
+| --- | --- |
+| `npm run dev` | Build com watch (desenvolvimento) |
+| `npm run build` | Build de produção da extensão |
+| `npm run lint` | Verificar regras de lint |
+| `npm run type-check` | Verificação de tipos TypeScript (`tsc --noEmit`) |
+| `npm run test:unit` | Testes unitários com Vitest |
+| `npm run test:e2e` | Testes E2E com Playwright |
+| `npm run test:e2e:headed` | Testes E2E com navegador visível |
+| `npm run test:rag:browser` | Build + testes E2E focados em RAG |
+| `npm run chrome:debug` | Abre Chrome em modo debug |
+| `npm run package` | Empacota a extensão para distribuição |
+| `npm run build:modules` | Build apenas dos módulos para publicação remota |
+| `npm run clean` | Limpa a pasta `dist/` |
 
 ---
 
-## 📚 Documentação
+## Documentação
 
-Pontos de partida recomendados:
-
-| Documento                                      | Descrição                                                     |
-| --------------------------------------------- | ------------------------------------------------------------- |
-| `project_concept.md`                          | Visão conceitual por domínios (atendimento, clientes, etc.)  |
-| `project_context.md`                          | Especificações técnicas, status de implementação e roadmap   |
-| `HISTORICO_SIMPLES.md`                        | Linha do tempo simples (uma linha por melhoria)              |
-| `ENGINEERING_CONTRACT.md`                     | Contrato de engenharia (regras obrigatórias do projeto)      |
-| `docs/MODULE-UPDATES.md`                      | Como funciona o sistema de atualização remota de módulos     |
-| `docs/IMPORT_TELEFONE_FALLBACK.md`            | Estratégia de importação de contatos / telefones             |
-| `docs/DISPLAY_NAME_LOGIC.md`                  | Lógica de exibição de nomes de clientes                      |
-| `specs/`                                      | Especificações por domínio (atendimento, cadastro, retomar…) |
+| Documento | Descrição |
+| --- | --- |
+| `ENGINEERING_CONTRACT.md` | Contrato de engenharia (regras obrigatórias do projeto) |
+| `ZenSpecKit/Mettri/Specs/` | Especificações formais por domínio (atendimento, cadastro, retomar, etc.) |
+| `docs/archive/project_concept.md` | Visão conceitual por domínios |
+| `docs/archive/project_context.md` | Especificações técnicas e status de implementação |
+| `docs/MODULE-UPDATES.md` | Sistema de atualização remota de módulos |
+| `docs/DISPLAY_NAME_LOGIC.md` | Lógica de exibição de nomes de clientes |
 
 > Regra de ouro: **primeiro leia a spec, depois mexa no código**.
 
 ---
 
-## 🧠 Filosofia do projeto
+## Filosofia do projeto
 
-Alguns princípios que guiam o Mettri (explicados em detalhes em `project_concept.md` e `project_context.md`):
-
-- **Human‑in‑the‑loop**: a IA **nunca age sozinha**; sempre precisa de aprovação humana.  
-- **Histórico imutável**: o histórico de mensagens e interações **nunca é apagado**; é base para IA e reativação.  
-- **Seletores auto‑corrigíveis**: se o WhatsApp mudar o DOM, o foco é **corrigir seletores em menos de 1 minuto**, não “dar sorte”.  
-- **TypeScript estrito e validação forte**: sem `any` solto, com validação de dados (ex.: Zod).  
-- **Documentação viva**: tudo que funciona deve ser **documentado junto com o código** (specs, exemplos, erros conhecidos).  
+- **Human-in-the-loop**: a IA **nunca age sozinha**; sempre precisa de aprovação humana.
+- **Histórico imutável**: o histórico de mensagens e interações **nunca é apagado**; é base para IA e reativação.
+- **Spec-first**: toda funcionalidade começa com um ZenSpec (contrato formal). Código cumpre contrato.
+- **TypeScript estrito e validação forte**: sem `any` solto, com Zod em toda fronteira do sistema.
+- **Jidoka**: se algo quebra, para e corrige. Erro não é empurrado pra frente.
 - **Arquitetura modular por domínios**: cada parte de negócio vive em seu próprio módulo, com baixo acoplamento.
 
 ---
 
-## 🚧 Roadmap
+## Roadmap
 
-O `project_context.md` descreve um roadmap por **Tiers**. Resumo simplificado:
+O projeto evolui por tarefas orquestradas pelo Karma. Cada tarefa (T-XXX) nasce de uma spec, é implementada e verificada por agentes de IA.
 
-- **Tier 0 – Fundação**  
-  - Captura completa de mensagens + IndexedDB confiável.  
-  - Sistema de seletores com fallback chain + config remota.  
-  - Documentação básica e troubleshooting inicial.
+**Tier 0 — Fundação** (concluído)
+- Captura completa de mensagens + IndexedDB confiável.
+- Sistema de seletores com fallback chain + config remota.
+- 14 tarefas concluídas (T-003 a T-024), habilitando atendimento, clientes, marketing e RAG.
 
-- **Tier 1 – MVP básico (1 negócio real)**  
-  - Perfil de cliente com histórico utilizável.  
-  - Sugestões contextuais baseadas em histórico.  
-  - Reativação básica + primeiros recursos de produtos simples.  
-  - Feature flags e monitoramento de seletores.
+**Tier 1 — MVP básico**
+- Perfil de cliente com histórico utilizável.
+- Sugestões contextuais baseadas em histórico.
+- Reativação básica + produtos simples.
+- Feature flags e monitoramento de seletores.
 
-- **Tier 2 – MVP completo (produto vendável)**  
-  - Pedidos, vitrine do dia, persona configurável.  
-  - Dashboard com métricas simples.  
-  - Bot de suporte IA com base de conhecimento.
+**Tier 2 — MVP completo**
+- Pedidos, vitrine do dia, persona configurável.
+- Dashboard com métricas simples.
+- Bot de suporte IA com base de conhecimento.
 
-- **Tier 3 – Escala (100k usuários)**  
-  - Entrega (zonas, frete), financeiro básico, marketing avançado.  
-  - Multi‑atendente, rollout gradual, monetização completa (planos e integrações).
-
-Para ver o detalhamento (por capacidade, status e arquivo), consulte a seção **“Estado Atual vs. Planejado”** em `project_context.md`.
+**Tier 3 — Escala**
+- Entrega (zonas, frete), financeiro básico, marketing avançado.
+- Multi-atendente, rollout gradual, monetização (planos e integrações).
 
 ---
 
-## 🤝 Contribuindo
-
-⚠️ Este projeto segue regras obrigatórias definidas em **`ENGINEERING_CONTRACT.md`** e `.cursorrules`.  
-Qualquer mudança estrutural deve respeitá‑las.
-
-Passos básicos:
-
-1. Faça um **fork** do repositório.  
-2. Crie uma branch a partir da main ou do branch de trabalho:  
-   - `git checkout -b feat/minha-feature`  
-3. Garanta que os checks passam:  
-   - `npm run lint`  
-   - `npm run type-check`  
-   - `npm run test:unit` (e E2E se aplicável).  
-4. Faça commits seguindo **Conventional Commits** (ex.: `feat: adiciona módulo X`).  
-5. Abra um **Pull Request** explicando:
-   - qual domínio/capacidade foi alterado,  
-   - qual spec foi seguida/atualizada (em `specs/` ou `project_context.md`).
-
-O template de PR em `.github/PULL_REQUEST_TEMPLATE.md` ajuda a manter o padrão.
-
----
-
-## 📄 Licença
+## Licença
 
 Distribuído sob licença **MIT**. Veja [`LICENSE`](LICENSE) para detalhes.
 
 ---
 
-## Autor
-
-Mettri é desenvolvido em **TypeScript**, guiado por **especificações vivas** e muita paciência.  
-Construa com calma, com propósito e pensando sempre na próxima conversa com o cliente.
+<p align="center">
+  <em>
+    Construído com TypeScript estrito, ZenSpecs e Karma.<br>
+    <a href=".karma/">Orquestração</a> ·
+    <a href="ZenSpecKit/">Especificações</a> ·
+    <a href="docs/">Documentação</a>
+  </em>
+</p>
