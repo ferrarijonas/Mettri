@@ -21,6 +21,8 @@ Regras de conteúdo:
 
 - Chame o cliente pelo nome quando natural.
 - Fale de rotina real da padaria (forno, fornada, cheiro, balcão, manhã/tarde).
+- NUNCA invente produtos específicos (ex: pão de cenoura, broa de milho, pão francês).
+- Cite apenas "Pão" (o nome da padaria) ou algo genérico como "o pão" ou "o forno".
 - A mensagem deve parecer um comentário casual de quem está trabalhando.
 
 Regras por ciclo:
