@@ -2727,17 +2727,6 @@ export class RetomarPanel {
    * Renderiza fluxo unificado completo com novo design.
    */
   private renderUnifiedFlow(): string {
-    const selectedCount = this.selectedClients.size;
-    const selectedClients = this.eligibleClients.filter(c =>
-      this.selectedClients.has(c.chatId) &&
-      c.status === 'pending' && !c.isSpecialList
-    );
-
-    // Clientes elegíveis para exibição
-    const eligibleClients = this.eligibleClients.filter(c =>
-      c.status === 'pending' && !c.isSpecialList
-    );
-
     return `
       ${this.renderRelationTypeBlock()}
 
@@ -2770,84 +2759,7 @@ export class RetomarPanel {
         ${this.renderRetomarSummaryMetricsSection()}
       </div>
 
-      <!-- SEÇÃO CICLOS DE CONTATO (Colapsável) -->
-      <div class="mettri-chamadas-section-wrap space-y-1 mb-0">
-        <div class="flex items-center justify-between py-2.5 border-b border-border/50 min-w-0">
-          <button 
-            class="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors"
-            id="retomar-filters-toggle"
-            type="button"
-          >
-            Ciclos de contato
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="transition-transform shrink-0 ${this.isFiltersExpanded ? 'rotate-180' : ''}" id="retomar-filters-chevron">
-              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <button 
-            class="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-accent/50 transition-colors shrink-0"
-            id="retomar-filters-kebab"
-            type="button"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M7 2.25L7.7 3.7C7.83 3.96 8.09 4.13 8.38 4.13H9.95L10.3 5.9H8.98C8.67 5.9 8.4 6.08 8.29 6.36L7.75 7.75L8.7 8.7C8.92 8.92 8.96 9.26 8.8 9.53L7.9 11.03L6.4 10.13C6.14 9.98 5.83 9.99 5.58 10.15L4.25 11L3.2 9.5L4.3 8.7C4.56 8.51 4.68 8.18 4.6 7.87L4.25 6.5L3 6.1L3.35 4.3L4.78 4.6C5.1 4.67 5.42 4.54 5.62 4.28L6.5 3.1L7 2.25Z" stroke="currentColor" stroke-width="0.8" fill="none" class="text-muted-foreground"/>
-              <circle cx="7" cy="7" r="1.3" fill="currentColor" class="text-muted-foreground"/>
-            </svg>
-          </button>
-        </div>
-        ${this.isChamadasConfigOpen ? this.renderChamadasConfigPopover() : ''}
-        ${this.isFiltersExpanded ? `
-          <div id="retomar-period-filters" class="mettri-chamadas-content">
-            ${this.renderChamadas()}
-          </div>
-        ` : ''}
-      </div>
-
       ${this.renderAgenticSection()}
-
-      <!-- SEÇÃO DE ETIQUETAS (Colapsável) -->
-      ${this.renderLists()}
-
-      <!-- SEÇÃO DE PESSOAS (Colapsável) - min-w-0 evita alargar e manter scroll -->
-      <div class="space-y-1 mb-0 min-w-0 w-full overflow-x-hidden overflow-y-visible">
-        <div class="flex items-center justify-between py-2.5 border-b border-border/50 min-w-0">
-          <button 
-            class="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors min-w-0"
-            id="retomar-contacts-toggle"
-            type="button"
-          >
-            Pessoas
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="transition-transform shrink-0 ${this.isContactsExpanded ? 'rotate-180' : ''}" id="retomar-contacts-chevron">
-              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <button 
-            class="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-accent/50 transition-colors shrink-0"
-            id="retomar-contacts-kebab"
-            type="button"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="3.5" r="1.5" fill="currentColor" class="text-muted-foreground"/>
-              <circle cx="7" cy="7" r="1.5" fill="currentColor" class="text-muted-foreground"/>
-              <circle cx="7" cy="10.5" r="1.5" fill="currentColor" class="text-muted-foreground"/>
-            </svg>
-          </button>
-        </div>
-        ${this.isContactsExpanded ? `
-          <div class="space-y-0.5 min-w-0 max-w-full overflow-x-hidden overflow-y-visible pt-2" id="retomar-contacts-list">
-            ${this.renderPeopleSectionContent(selectedCount, selectedClients, eligibleClients)}
-          </div>
-          
-          ${selectedClients.length > 6 ? `
-            <button 
-              class="w-full h-8 rounded-lg text-xs text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1"
-              id="retomar-expand-contacts"
-              type="button"
-            >
-              ${this.isContactsExpanded ? 'Ver menos' : 'Ver todos >'}
-            </button>
-          ` : ''}
-        ` : ''}
-      </div>
 
       <!-- UI DE PROGRESSO -->
       ${this.renderProgressUI()}
@@ -2889,9 +2801,9 @@ export class RetomarPanel {
             class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             id="retomar-send-selected"
             type="button"
-            ${selectedCount === 0 && !this.testModeEnabled ? 'disabled' : ''}
+            ${this.selectedClients.size === 0 && !this.testModeEnabled ? 'disabled' : ''}
           >
-            ${this.testModeEnabled ? 'Enviar Teste' : selectedCount > 0 ? `Enviar (${selectedCount})` : 'Enviar'}
+            ${this.testModeEnabled ? 'Enviar Teste' : this.selectedClients.size > 0 ? `Enviar (${this.selectedClients.size})` : 'Enviar'}
           </button>
         `}
       </div>
@@ -3569,9 +3481,6 @@ export class RetomarPanel {
                 )
                 .join('')}
             </select>
-            <button type="button" id="retomar-export-outcomes-btn" class="inline-flex items-center gap-1 rounded-md border border-primary/50 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/15 transition-colors" title="Baixa JSONL com cada envio Retomar que teve resposta (textos truncados). Usa o mesmo período acima.">
-              Exportar frases (JSONL)
-            </button>
           </div>
           <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0 min-w-0">${metricsHtml}</div>
         </div>`;
