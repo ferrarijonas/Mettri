@@ -33,7 +33,7 @@ export const EnviarRetomarModule: ModuleDefinition = {
   icon: '🔄',
   dependencies: [],
   panelFactory: createRetomarPanel,
-  lazy: true,
+  lazy: false,
 };
 
 export function register(registry: { register: (module: ModuleDefinition) => void }): void {

@@ -298,31 +298,27 @@ export class RetomarPanel {
     this.agenticRegeneratingId = null;
 
     try {
-      await this.loadConfig();
-      // Timeout de 12s para loadInactiveClients — não travar o painel se WA Web demorar
-      try {
-        await Promise.race([
-          this.loadInactiveClients(),
-          new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout (12s)')), 12_000)
-          ),
-        ]);
-      } catch (e) {
-        console.warn('[RETOMAR] loadInactiveClients falhou, renderizando sem clientes:', e);
-      }
-      // Inicializar dia selecionado com o primeiro da régua
-      if (!this.selectedInactiveDay) {
-        this.selectedInactiveDay = this.cadenceDays[0] || 21;
-      }
-      this.renderContent();
-      this.updateStats();
+      // Timeout GLOBAL de 10s para toda a renderização
+      await Promise.race([
+        (async () => {
+          await this.loadConfig();
+          await this.loadInactiveClients();
+          if (!this.selectedInactiveDay) {
+            this.selectedInactiveDay = this.cadenceDays[0] || 21;
+          }
+          this.renderContent();
+          this.updateStats();
+        })(),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('Render timeout (10s)')), 10_000)
+        ),
+      ]);
     } catch (error) {
       console.error('[RETOMAR] Erro ao renderizar painel:', error);
       panel.innerHTML = `
-        <div class="mettri-error">
-          <p>Erro ao carregar painel de retomada.</p>
-          <p>Verifique o console para mais detalhes.</p>
-          <pre>${error instanceof Error ? error.message : String(error)}</pre>
+        <div class="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
+          Painel Retomar indisponível no momento.
+          <br><small>${error instanceof Error ? error.message : String(error)}</small>
         </div>
       `;
     }
