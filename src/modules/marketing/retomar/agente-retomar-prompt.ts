@@ -23,6 +23,10 @@ export interface AgenteRetomarPromptFill {
   firstName: string;
   /** 1–4 (igual ao contador Retomar / retomarMeta.cycleIndex). */
   cycleIndex: number;
+  /** Tipo de relação: frequente, pontual, sazonal, personalizado. */
+  relationType?: string;
+  /** Dias desde a última atividade do cliente. */
+  daysInactive?: number;
   /** Última mensagem do cliente; usada como guarda em `suggestRedacaoRetomar`. */
   lastIncomingFromClient: string;
   /** Texto da última retomar ou sentinela quando não houver. */
@@ -91,9 +95,19 @@ export function buildAgenteRetomarMessages(fill: AgenteRetomarPromptFill): {
   user: string;
 } {
   const { system, userTemplate } = getParsed();
+
+  const relationLabel: Record<string, string> = {
+    frequente: 'Frequente (quinzenal ou mensal)',
+    pontual: 'Pontual (mensal ou bimestral)',
+    sazonal: 'Sazonal (trimestral)',
+    personalizado: 'Personalizado',
+  };
+
   const user = substitute(userTemplate, {
     firstName: fill.firstName.trim() || '(não informado)',
     cycleIndex: String(Math.min(4, Math.max(1, Math.floor(fill.cycleIndex)))),
+    relationType: fill.relationType ? (relationLabel[fill.relationType] ?? fill.relationType) : '(não informado)',
+    daysInactive: fill.daysInactive != null ? String(fill.daysInactive) : '(não informado)',
     lastRetomarSentText: fill.lastRetomarSentText.trim() || '(nenhuma ainda)',
     conversationThread: fill.conversationThread.trim() || '(sem histórico)',
   });
