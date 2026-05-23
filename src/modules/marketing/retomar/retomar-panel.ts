@@ -299,7 +299,13 @@ export class RetomarPanel {
 
     try {
       await this.loadConfig();
-      await this.loadInactiveClients();
+      // Timeout de 10s para loadInactiveClients — não travar o painel se WA Web demorar
+      await Promise.race([
+        this.loadInactiveClients(),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('loadInactiveClients timeout (10s)')), 10_000)
+        ),
+      ]);
       // Inicializar dia selecionado com o primeiro da régua
       if (!this.selectedInactiveDay) {
         this.selectedInactiveDay = this.cadenceDays[0] || 21;
@@ -309,13 +315,16 @@ export class RetomarPanel {
       this.updateStats();
     } catch (error) {
       console.error('[RETOMAR] Erro ao renderizar painel:', error);
-      panel.innerHTML = `
-        <div class="mettri-error">
-          <p>Erro ao carregar painel de retomada.</p>
-          <p>Verifique o console para mais detalhes.</p>
-          <pre>${error instanceof Error ? error.message : String(error)}</pre>
-        </div>
-      `;
+      // Se o timeout estourou, renderiza mesmo assim (sem clientes)
+      if (!this.container?.isConnected) {
+        panel.innerHTML = `
+          <div class="mettri-error">
+            <p>Erro ao carregar painel de retomada.</p>
+            <p>Verifique o console para mais detalhes.</p>
+            <pre>${error instanceof Error ? error.message : String(error)}</pre>
+          </div>
+        `;
+      }
     }
 
     return panel;
