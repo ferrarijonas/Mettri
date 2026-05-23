@@ -166,7 +166,7 @@ export class RetomarPanel {
 
   private testContact: { phone: string; name: string } | null = null;
   private testModeEnabled = false;
-  private bridge = new MettriBridgeClient(2500);
+  private bridge = new MettriBridgeClient(30_000);
   private sendButtonClickHandler: ((e: MouseEvent) => void) | null = null;
 
   /** Índice da chamada (0–3) da fila atual; usado após envio para setContador. */
