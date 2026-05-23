@@ -298,39 +298,33 @@ export class RetomarPanel {
     this.agenticRegeneratingId = null;
 
     try {
-      console.time('[RETOMAR] render:loadConfig');
       await this.loadConfig();
-      console.timeEnd('[RETOMAR] render:loadConfig');
-
-      console.time('[RETOMAR] render:loadInactiveClients');
-      // Timeout de 15s para loadInactiveClients — não travar o painel se WA Web demorar
-      await Promise.race([
-        this.loadInactiveClients(),
-        new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error('loadInactiveClients timeout (15s)')), 15_000)
-        ),
-      ]);
-      console.timeEnd('[RETOMAR] render:loadInactiveClients');
-
+      // Timeout de 12s para loadInactiveClients — não travar o painel se WA Web demorar
+      try {
+        await Promise.race([
+          this.loadInactiveClients(),
+          new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout (12s)')), 12_000)
+          ),
+        ]);
+      } catch (e) {
+        console.warn('[RETOMAR] loadInactiveClients falhou, renderizando sem clientes:', e);
+      }
       // Inicializar dia selecionado com o primeiro da régua
       if (!this.selectedInactiveDay) {
         this.selectedInactiveDay = this.cadenceDays[0] || 21;
       }
       this.renderContent();
-      // Atualizar stats após renderizar
       this.updateStats();
     } catch (error) {
       console.error('[RETOMAR] Erro ao renderizar painel:', error);
-      // Se o timeout estourou, renderiza mesmo assim (sem clientes)
-      if (!this.container?.isConnected) {
-        panel.innerHTML = `
-          <div class="mettri-error">
-            <p>Erro ao carregar painel de retomada.</p>
-            <p>Verifique o console para mais detalhes.</p>
-            <pre>${error instanceof Error ? error.message : String(error)}</pre>
-          </div>
-        `;
-      }
+      panel.innerHTML = `
+        <div class="mettri-error">
+          <p>Erro ao carregar painel de retomada.</p>
+          <p>Verifique o console para mais detalhes.</p>
+          <pre>${error instanceof Error ? error.message : String(error)}</pre>
+        </div>
+      `;
     }
 
     return panel;
