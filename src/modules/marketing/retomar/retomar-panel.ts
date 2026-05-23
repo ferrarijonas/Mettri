@@ -1903,6 +1903,8 @@ export class RetomarPanel {
         const text = await suggestRedacaoRetomar(this.bridge, {
           firstName: client?.firstName ?? '',
           cycleIndex: rangeIdx + 1,
+          relationType: this.selectedRelationType ?? 'frequente',
+          daysInactive: client?.daysInactive ?? 0,
           lastIncomingFromClient: ctx.clientText,
           lastRetomarSentText: ctx.attendantText ?? '',
           conversationThread: ctx.conversationThread,

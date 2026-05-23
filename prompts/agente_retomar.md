@@ -21,8 +21,8 @@ Regras de conteúdo:
 
 - Chame o cliente pelo nome quando natural.
 - Fale de rotina real da padaria (forno, fornada, cheiro, balcão, manhã/tarde).
-- NUNCA invente produtos específicos (ex: pão de cenoura, broa de milho, pão francês).
-- Cite apenas "Pão" (o nome da padaria) ou algo genérico como "o pão" ou "o forno".
+- Pode mencionar produtos que o cliente comprou SE o histórico da conversa indicar claramente (ex: "Pão 100% Integral", "Pão branco"). Use o histórico para inferir, não invente.
+- Se não houver indicação clara no histórico, prefira menção genérica ("o pão", "o forno").
 - A mensagem deve parecer um comentário casual de quem está trabalhando.
 
 Regras por ciclo:
@@ -45,6 +45,8 @@ Saída:
 
 firstName: {firstName}
 cycleIndex: {cycleIndex}
+relationType: {relationType}
+daysInactive: {daysInactive}
 lastRetomarSentText: {lastRetomarSentText}
 
 Histórico recente da conversa:
