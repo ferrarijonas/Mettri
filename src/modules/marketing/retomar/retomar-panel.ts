@@ -298,14 +298,20 @@ export class RetomarPanel {
     this.agenticRegeneratingId = null;
 
     try {
+      console.time('[RETOMAR] render:loadConfig');
       await this.loadConfig();
-      // Timeout de 10s para loadInactiveClients — não travar o painel se WA Web demorar
+      console.timeEnd('[RETOMAR] render:loadConfig');
+
+      console.time('[RETOMAR] render:loadInactiveClients');
+      // Timeout de 15s para loadInactiveClients — não travar o painel se WA Web demorar
       await Promise.race([
         this.loadInactiveClients(),
         new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error('loadInactiveClients timeout (10s)')), 10_000)
+          setTimeout(() => reject(new Error('loadInactiveClients timeout (15s)')), 15_000)
         ),
       ]);
+      console.timeEnd('[RETOMAR] render:loadInactiveClients');
+
       // Inicializar dia selecionado com o primeiro da régua
       if (!this.selectedInactiveDay) {
         this.selectedInactiveDay = this.cadenceDays[0] || 21;
