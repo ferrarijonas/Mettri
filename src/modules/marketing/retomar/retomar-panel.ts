@@ -1888,21 +1888,38 @@ export class RetomarPanel {
         });
         let ctx = contexts[0];
         if (!ctx) {
-          // Lista importada / chat sem mensagens capturadas: antes abortava; agora contexto mínimo para a IA.
-          const name = (client?.firstName || client?.chatName || '').trim() || '(nome não informado)';
-          const days = client?.daysInactive ?? 0;
-          const synthetic = `[Sem mensagem de texto do cliente no histórico local] ${name}, ~${days} dias de inatividade na régua.`;
-          ctx = {
-            chatId,
-            chatName: client?.chatName ?? chatId,
-            contextText: `Cliente: ${synthetic}`,
-            clientText: synthetic,
-            conversationThread: synthetic,
-          };
-          this.addLog(
-            'info',
-            `${label}: sem histórico de texto no banco — gerando com nome + dias inativo.`,
-          );
+          // Fallback 1: tentar buscar mensagens do WA Web (chat pode não ter sido indexado no messageDB)
+          try {
+            const waThread = await this.fetchLastMessagesFromWAChat(chatId, 20);
+            if (waThread) {
+              ctx = {
+                chatId,
+                chatName: client?.chatName ?? chatId,
+                contextText: `Cliente: ${waThread.clientText || '(conversa via WA Web)'}`,
+                clientText: waThread.clientText || '(conversa via WA Web)',
+                conversationThread: waThread.thread,
+                ...(waThread.attendantText ? { attendantText: waThread.attendantText } : {}),
+              };
+              this.addLog('info', `${label}: contexto recuperado do WA Web (${waThread.msgCount} msgs).`);
+            }
+          } catch (e) {
+            console.warn('[RETOMAR] Fallback WA Web falhou:', e);
+          }
+
+          if (!ctx) {
+            // Fallback 2: contexto mínimo para a IA (nome + dias)
+            const name = (client?.firstName || client?.chatName || '').trim() || '(nome não informado)';
+            const days = client?.daysInactive ?? 0;
+            const synthetic = `[Sem histórico] ${name}, ~${days} dias de inatividade.`;
+            ctx = {
+              chatId,
+              chatName: client?.chatName ?? chatId,
+              contextText: `Cliente: ${synthetic}`,
+              clientText: synthetic,
+              conversationThread: synthetic,
+            };
+            this.addLog('info', `${label}: sem histórico — gerando com nome + dias inativo.`);
+          }
         }
         const rangeIdx = this.selectedAgenticRangeIndex ?? 0;
         const text = await suggestRedacaoRetomar(this.bridge, {
@@ -1920,6 +1937,85 @@ export class RetomarPanel {
         this.addLog('error', `${label}: ${msg}`);
       }
       this.updateUnifiedFlow();
+    }
+  }
+
+  /**
+   * Fallback: busca as últimas N mensagens de texto do WA Web para um chat.
+   * Usado quando o messageDB local não tem dados (chat nunca foi aberto após instalação).
+   * Acessa window.Mettri.Chat diretamente (disponível em world: MAIN).
+   */
+  private async fetchLastMessagesFromWAChat(
+    chatId: string,
+    maxMessages = 20,
+  ): Promise<{ thread: string; clientText: string; attendantText?: string; msgCount: number } | null> {
+    try {
+      const mettri = (window as any).Mettri;
+      if (!mettri?.Chat) return null;
+
+      // Tentar obter o chat model (já deve estar em memória após ensureChatLoaded)
+      let chat: any = null;
+      if (typeof mettri.Chat.get === 'function') {
+        chat = mettri.Chat.get(chatId);
+      }
+      if (!chat && typeof mettri.Chat.find === 'function') {
+        try {
+          chat = await Promise.resolve(mettri.Chat.find(chatId));
+        } catch { /* ignore */ }
+      }
+      if (!chat) return null;
+
+      // Acessar mensagens do chat (WA Web armazena em .ms ou .msgs)
+      const ms = chat.ms || chat.msgs || chat.msgCollection;
+      if (!ms || typeof ms !== 'object') return null;
+
+      let models: any[] = [];
+      const coll = ms as { getModelsArray?: () => unknown; _models?: unknown[] };
+      if (typeof coll.getModelsArray === 'function') {
+        const raw = coll.getModelsArray();
+        const arr = await Promise.resolve(raw);
+        if (Array.isArray(arr)) models = arr;
+      } else if (Array.isArray(coll._models)) {
+        models = coll._models;
+      }
+
+      if (models.length === 0) return null;
+
+      // Filtrar mensagens de texto legíveis
+      const textMsgs = models
+        .filter((m: any) => {
+          const body = m.body ?? m.__x_body ?? m.caption ?? m.__x_caption ?? '';
+          return typeof body === 'string' && body.trim() && !body.match(/^[A-Za-z0-9+/=]{40,}$/);
+        })
+        .slice(0, maxMessages);
+
+      if (textMsgs.length === 0) return null;
+
+      // Formatar em ordem cronológica
+      const chronological = [...textMsgs].reverse();
+      const lines: string[] = [];
+      let lastClientText: string | null = null;
+      let lastAttendantText: string | null = null;
+
+      for (const m of chronological) {
+        const body = m.body ?? m.__x_body ?? m.caption ?? m.__x_caption ?? '';
+        const fromMe = m.fromMe === true || m.id?.fromMe === true || m.__x_fromMe === true;
+        const role = fromMe ? 'padaria' : 'cliente';
+        lines.push(`[${role}] ${body.trim()}`);
+
+        if (!fromMe && !lastClientText) lastClientText = body.trim();
+        if (fromMe && !lastAttendantText) lastAttendantText = body.trim();
+      }
+
+      return {
+        thread: lines.join('\n'),
+        clientText: lastClientText || '(conversa via WA Web)',
+        attendantText: lastAttendantText || undefined,
+        msgCount: lines.length,
+      };
+    } catch (e) {
+      console.warn('[RETOMAR] Erro ao buscar msgs do WA Web:', e);
+      return null;
     }
   }
 
