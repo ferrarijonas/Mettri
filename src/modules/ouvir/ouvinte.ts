@@ -1,12 +1,10 @@
-import { EventBus, type EventHandler } from '../../ui/core/event-bus'
+import type { EventBus, EventHandler } from '../../ui/core/event-bus'
 import type { CapturedMessage } from '../../types'
 import { atualizarPerfilOperacionalCliente } from '../cadastro/cliente/atualizar-perfil-operacional-cliente'
 import type { CustomerOperationalSignals } from '../cadastro/cliente/types'
-import { extrator } from './extrator'
-import { validadorCatalogo, type ValidadorDeps } from './validador-catalogo'
-import { sinaisRelease } from './sinais-release'
-import { decisorUpdate } from './decisor-update'
-import { resolverAmbiguidade } from './ambiguidade'
+import type { ValidadorDeps } from './validador-catalogo'
+import { ouvinteLlm } from './ouvinte-llm'
+import { customerProfileDB } from '../../storage/customer-profile-db'
 import type {
   ThrottleState,
   CursorState,
@@ -23,7 +21,7 @@ const throttleMap = new Map<string, ThrottleState>()
 const cursorMap = new Map<string, CursorState>()
 
 /** Ring buffer: últimas 10 mensagens por chatId (ambas direções). */
-const chatHistory = new Map<string, Array<{ text: string; isOutgoing: boolean }>>()
+const chatHistory = new Map<string, { text: string; isOutgoing: boolean }[]>()
 
 function pushHistory(chatId: string, text: string, isOutgoing: boolean): void {
   const hist = chatHistory.get(chatId) || []
@@ -65,10 +63,12 @@ function checkCursor(chatId: string, timestamp: number): boolean {
 }
 
 /** Verifica se extrator achou preferenciasProduto na mensagem. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function achouProduto(campos: CampoExtraido[]): boolean {
   return campos.some(c => c.campo === 'preferenciasProduto')
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function convertDecisoesParaSinais(decisoes: DecisaoUpdate[]): CustomerOperationalSignals {
   const sinais: CustomerOperationalSignals = {}
 
@@ -102,6 +102,7 @@ function convertDecisoesParaSinais(decisoes: DecisaoUpdate[]): CustomerOperation
   return sinais
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function extractCampoValue(valor: string | string[] | undefined): string {
   if (!valor) return ''
   if (Array.isArray(valor)) return valor.join(', ')
@@ -167,120 +168,63 @@ export function registerOuvinteListeners(
 
         console.log('[ouvinte] pipeline iniciado para:', chatId.substring(0, 20), text.substring(0, 40))
 
-        const extratorOutput = await extrator({ mensagem: text, chatId })
-        console.log('[ouvinte] extrator:', {
-          campos: extratorOutput.campos.map(c => `${c.campo}=${Array.isArray(c.valor) ? c.valor.join(',') : c.valor}`),
-          urgencia: extratorOutput.urgencia,
-          usaLLM: extratorOutput.usaLLM,
-        })
+        // Busca profile atual (se existir)
+        const profile = await customerProfileDB.getByChatId(chatId)
 
-        // Se extrator não achou preferenciasProduto, tenta resolver ambiguidade
-        let sugestaoPendente: CustomerOperationalSignals['sugestoesPendentes'] = undefined
-        if (!achouProduto(extratorOutput.campos)) {
-          const resolucao = await resolverAmbiguidade({
-            mensagem: text,
-            chatId,
-            msgId: msg.id,
-            replyToId: (msg as any).replyToId,
-            quotedText: (msg as any).quotedText,
-            historico: chatHistory.get(chatId) || [],
-          })
-          if (resolucao.resolvido && resolucao.nome) {
-            sugestaoPendente = [{
-              nome: resolucao.nome,
-              qtd: resolucao.qtd,
-              nomeExtraido: resolucao.nomeExtraido || `${resolucao.nome} (${resolucao.qtd}x)`,
-              confianca: resolucao.confianca || 'baixa',
-              metodo: resolucao.metodo || 'llm',
-              evidencia: resolucao.evidencia || text,
-              criadoEm: new Date().toISOString(),
-            }]
-            console.log('[ouvinte] ambiguidade resolvida:', {
-              nome: resolucao.nome,
-              qtd: resolucao.qtd,
-              confianca: resolucao.confianca,
-              metodo: resolucao.metodo,
-            })
-          }
+        // Busca candidatos do catálogo (validadorCatalogo ainda é usado ANTES do LLM)
+        const catalogoCandidatos: string[] = []
+        const depsCatalogo = deps?.catalogo
+        if (depsCatalogo?.produtos && depsCatalogo.produtos.length > 0) {
+          // Pega TOP 5 produtos do catálogo que tenham match parcial no texto
+          const matchNomes = depsCatalogo.produtos
+            .filter(p => text.toLowerCase().includes(p.nome.toLowerCase().substring(0, 4)))
+            .slice(0, 5)
+            .map(p => p.nome)
+          catalogoCandidatos.push(...matchNomes)
         }
 
-        if (extratorOutput.campos.length === 0 && !sugestaoPendente) {
-          console.log('[ouvinte] extrator não encontrou campos e sem ambiguidade')
+        // Chamada LLM
+        const llmOutput = await ouvinteLlm({
+          mensagem: text,
+          chatId,
+          profile,
+          catalogoCandidatos,
+        })
+
+        console.log('[ouvinte-llm] resultado:', JSON.stringify(llmOutput.extras))
+
+        if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) {
+          console.log('[ouvinte-llm] sem extração, pulando')
           return
         }
 
-        // Se tem sugestão de ambiguidade, persiste direto (pula validador/sinais/decisor)
-        if (sugestaoPendente) {
-          const sinais: CustomerOperationalSignals = {
-            sugestoesPendentes: sugestaoPendente,
-            lastRecomputeReason: 'turn_end',
-            lastRecomputeAtIso: new Date().toISOString(),
-          }
-          console.log('[ouvinte] persistindo sugestão de ambiguidade:', sinais)
+        // Converte LlmExtractionResult → CustomerOperationalSignals
+        const sinais: CustomerOperationalSignals = {}
+        const e = llmOutput.extras
 
-          const result = await atualizarPerfilOperacionalCliente({ chatId, sinais })
-          console.log('[ouvinte] persistência:', result.ok ? '✅' : '❌', result.ok ? '' : (result as any).message)
-
-          if (result.ok) {
-            const event: OuvirProfileUpdatedEvent = {
-              chatId,
-              camposAtualizados: ['sugestoesPendentes'],
-              confiancaPerfil: result.data?.confiancaPerfil ?? 0,
-            }
-            eventBus.emit('ouvir:profile-updated', event)
-          }
-          return
+        if (e.nome) sinais.nomeConfiavel = e.nome
+        if (e.endereco) sinais.enderecoEntrega = e.endereco
+        if (e.formaPagamento) sinais.formaPagamentoPreferida = [e.formaPagamento]
+        if (e.urgencia) Object.assign(sinais, { urgenciaEntrega: e.urgencia })
+        if (e.observacoesLogisticas && e.observacoesLogisticas.length > 0) {
+          sinais.observacoesLogisticas = e.observacoesLogisticas
         }
-
-        const validadorOutput = validadorCatalogo(
-          { campos: extratorOutput.campos },
-          deps?.catalogo,
-        )
-
-        const camposValidos = validadorOutput.campos.filter(c => c.valido)
-        console.log('[ouvinte] validador:', {
-          total: validadorOutput.campos.length,
-          validos: camposValidos.length,
-          invalidos: validadorOutput.campos.filter(c => !c.valido).map(c => c.campo),
-        })
-
-        if (camposValidos.length === 0) {
-          console.log('[ouvinte] nenhum campo válido, pulando')
-          return
+        if (e.produtos && e.produtos.length > 0) {
+          sinais.preferenciasProduto = e.produtos
+            .filter(p => p.nome !== 'desconhecido')
+            .map(p => `${p.nome} (${p.quantidade}x)`)
         }
-
-        const releaseOutput = sinaisRelease({ mensagem: text })
-        console.log('[ouvinte] sinaisRelease:', {
-          sinais: releaseOutput.sinais.map(s => `${s.campo}=${s.forca}`),
-        })
-
-        const decisorOutput = decisorUpdate({
-          camposExtraidos: validadorOutput.campos,
-          urgencia: extratorOutput.urgencia,
-          sinaisRelease: releaseOutput.sinais,
-        })
-        console.log('[ouvinte] decisor:', {
-          atualizacoes: decisorOutput.atualizacoes.map(d => `${d.campo}=${d.tipo} conf=${d.confianca.toFixed(2)}`),
-        })
-
-        if (decisorOutput.atualizacoes.length === 0) {
-          console.log('[ouvinte] decisor não gerou atualizações')
-          return
-        }
-
-        const sinais = convertDecisoesParaSinais(decisorOutput.atualizacoes)
         sinais.lastRecomputeReason = 'turn_end'
         sinais.lastRecomputeAtIso = new Date().toISOString()
 
-        console.log('[ouvinte] persistindo:', sinais)
+        console.log('[ouvinte-llm] persistindo:', sinais)
 
         const result = await atualizarPerfilOperacionalCliente({ chatId, sinais })
-        console.log('[ouvinte] persistência:', result.ok ? '✅' : '❌', result.ok ? '' : (result as any).message)
+        console.log('[ouvinte-llm] persistência:', result.ok ? 'sim' : 'nao', result.ok ? '' : (result as unknown as { message: string }).message)
 
         if (result.ok) {
-          const camposAtualizados = decisorOutput.atualizacoes
-            .filter(d => d.confianca >= 0.2)
-            .map(d => d.campo)
+          const camposAtualizados = Object.keys(sinais)
+            .filter(k => k !== 'lastRecomputeReason' && k !== 'lastRecomputeAtIso' && k !== 'urgenciaEntrega')
 
           const event: OuvirProfileUpdatedEvent = {
             chatId,
@@ -288,7 +232,7 @@ export function registerOuvinteListeners(
             confiancaPerfil: result.data?.confiancaPerfil ?? 0,
           }
           eventBus.emit('ouvir:profile-updated', event)
-          console.log('[ouvinte] evento emitido:', camposAtualizados)
+          console.log('[ouvinte-llm] evento emitido:', camposAtualizados)
         }
       } catch (error) {
         console.error('[ouvinte] Erro no pipeline:', error)

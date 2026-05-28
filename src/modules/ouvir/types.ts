@@ -1,3 +1,5 @@
+import type { CustomerOperationalProfile } from '../../storage/customer-profile-db'
+
 export type CampoConfianca = 'desconhecido' | 'baixa' | 'media' | 'alta'
 
 export interface CampoExtraido {
@@ -73,4 +75,31 @@ export interface OuvirProfileUpdatedEvent {
   chatId: string
   camposAtualizados: string[]
   confiancaPerfil: number
+}
+
+export interface LlmExtractionResult {
+  produtos?: {
+    nome: string
+    quantidade: number
+    confianca: 'alta' | 'media' | 'baixa'
+  }[]
+  nome?: string
+  endereco?: string
+  formaPagamento?: string
+  urgencia?: 'alta' | 'media' | 'baixa'
+  observacoesLogisticas?: string[]
+  retratacoes?: string[]
+}
+
+export interface OuvinteLlmInput {
+  mensagem: string
+  chatId: string
+  profile: CustomerOperationalProfile | null
+  catalogoCandidatos: string[]
+}
+
+export interface OuvinteLlmOutput {
+  extras: LlmExtractionResult
+  usouLlm: boolean
+  tokensEstimados: number
 }
