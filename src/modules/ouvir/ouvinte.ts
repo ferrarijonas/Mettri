@@ -244,10 +244,14 @@ export function registerOuvinteListeners(
           const camposAtualizados = Object.keys(sinais)
             .filter(k => k !== 'lastRecomputeReason' && k !== 'lastRecomputeAtIso')
 
+          // Se o LLM classificou a intenção, propaga no evento
+          const intencao = e.intencao
+
           const event: OuvirProfileUpdatedEvent = {
             chatId,
             camposAtualizados,
             confiancaPerfil: result.data?.confiancaPerfil ?? 0,
+            intencao,
           }
           eventBus.emit('ouvir:profile-updated', event)
           console.log('[ouvinte-llm] evento emitido:', camposAtualizados)

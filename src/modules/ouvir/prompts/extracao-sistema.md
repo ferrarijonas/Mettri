@@ -25,6 +25,11 @@ CAMPOS:
   (portaria, apto, horário, deixar com, observação)
 - retratacoes: se msg contradiz pedido/campo anterior
   (ex: "mudei de ideia", "na verdade...", "quero trocar")
+- intencao: classifique a intenção da mensagem. Sempre extraia.
+  "compra_nova" → cliente quer comprar (ex: "quero 2 paes", "me ve uma coca")
+  "suporte_pos_venda" → cliente tem pedido em andamento e reclama/ajuda (ex: "faltou", "atrasou", "estragado", "trocar")
+  "orcamento" → cliente pedindo preço (ex: "quanto é", "qual o valor", "preço")
+  "outro" → nenhum dos acima (ex: "obrigado", "ok", "pode deixar")
 
 EXEMPLO:
 {
@@ -32,7 +37,8 @@ EXEMPLO:
   "urgencia": "alta",
   "aversoes": [{"nome": "Coca-Cola", "confianca": "alta"}],
   "retratacoes": ["cancelar pedido anterior"],
-  "observacoesLogisticas": ["apto 42, portaria 123"]
+  "observacoesLogisticas": ["apto 42, portaria 123"],
+  "intencao": "compra_nova"
 }
 
 Use EXATAMENTE:
@@ -42,6 +48,7 @@ Use EXATAMENTE:
 - aversoes (não retratacao_aversao), array de { nome, confianca }
 - retratacoes: array de strings
 - observacoesLogisticas: array de strings
+- intencao: "compra_nova" | "suporte_pos_venda" | "orcamento" | "outro"
 
 Se nada a extrair → {} (objeto vazio).
 Só JSON, sem markdown, sem explicações.

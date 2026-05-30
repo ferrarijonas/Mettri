@@ -57,6 +57,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   let unsubscribeRagController: (() => void) | null = null;
   let updatedFields: string[] | undefined;
   let confiancaPerfil: number | undefined;
+  let ultimaIntencao: string | undefined;
   let clearAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
@@ -97,7 +98,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 
   rerender = async () => {
     ragAutoSuggestEnabled = await loadRagAutoSuggestFromStorage();
-    const vm = await getAtendimentoViewModel({ chatId: currentChatId, updatedFields, confiancaPerfil });
+    const vm = await getAtendimentoViewModel({ chatId: currentChatId, updatedFields, confiancaPerfil, intencao: ultimaIntencao });
     if (vm.kind === 'ready') {
       lastClientKey = vm.customer.clientKey || null;
     } else {
@@ -127,10 +128,12 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = data.camposAtualizados;
     confiancaPerfil = data.confiancaPerfil;
+    if (data.intencao) ultimaIntencao = data.intencao;  // LLM classificou
     rerender().catch(() => {});
     clearAnimationTimer = setTimeout(() => {
       updatedFields = undefined;
       confiancaPerfil = undefined;
+      ultimaIntencao = undefined;
       clearAnimationTimer = null;
     }, 4000);
   };

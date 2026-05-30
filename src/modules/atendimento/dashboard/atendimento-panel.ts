@@ -2043,7 +2043,6 @@ ${this.escapeHtml(info.suggestionOriginal)}
       compra_nova: { label: 'Nova compra' },
       suporte_pos_venda: { label: 'Suporte' },
       orcamento: { label: 'Orçamento' },
-      duvida: { label: 'Dúvida' },
     };
     const chip = tc ? chips[tc] : null;
     if (!chip) return '';

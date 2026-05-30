@@ -6,7 +6,7 @@
  */
 import type { ClienteContextoVitrine } from '../../cadastro';
 
-export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'duvida' | 'outro';
+export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro';
 
 export type OrderStatusUnificado =
   | 'lead' | 'draft' | 'open' | 'awaiting_payment' | 'completed' | 'cancelled' | 'lost';

@@ -75,6 +75,7 @@ export interface OuvirProfileUpdatedEvent {
   chatId: string
   camposAtualizados: string[]
   confiancaPerfil: number
+  intencao?: 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro'
 }
 
 export interface LlmExtractionResult {
@@ -93,6 +94,7 @@ export interface LlmExtractionResult {
     confianca: 'alta' | 'media' | 'baixa'
   }[]
   retratacoes?: string[]
+  intencao?: 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro'
 }
 
 export interface OuvinteLlmInput {
