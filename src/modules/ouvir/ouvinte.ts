@@ -5,6 +5,7 @@ import type { CustomerOperationalSignals } from '../cadastro/cliente/types'
 import type { ValidadorDeps } from './validador-catalogo'
 import { ouvinteLlm } from './ouvinte-llm'
 import { customerProfileDB } from '../../storage/customer-profile-db'
+import { catalogoDB } from '../../storage/catalogo-db'
 import type {
   ThrottleState,
   CursorState,
@@ -171,17 +172,28 @@ export function registerOuvinteListeners(
         // Busca profile atual (se existir)
         const profile = await customerProfileDB.getByChatId(chatId)
 
-        // Busca candidatos do catálogo (validadorCatalogo ainda é usado ANTES do LLM)
+        // Busca candidatos do catálogo diretamente do banco local
         const catalogoCandidatos: string[] = []
-        const depsCatalogo = deps?.catalogo
-        if (depsCatalogo?.produtos && depsCatalogo.produtos.length > 0) {
-          // Pega TOP 5 produtos do catálogo que tenham match parcial no texto
-          const matchNomes = depsCatalogo.produtos
-            .filter(p => text.toLowerCase().includes(p.nome.toLowerCase().substring(0, 4)))
-            .slice(0, 5)
-            .map(p => p.nome)
-          catalogoCandidatos.push(...matchNomes)
+        try {
+          const accountId = catalogoDB.getCurrentUserWid() || 'default'
+          const produtos = await catalogoDB.listByAccount(accountId)
+          if (produtos.length > 0) {
+            const matchNomes = produtos
+              .filter(p => text.toLowerCase().includes(p.nome.toLowerCase().substring(0, 4)))
+              .slice(0, 5)
+              .map(p => p.nome)
+            catalogoCandidatos.push(...matchNomes)
+          }
+        } catch {
+          // Catálogo indisponível — LLM extrai livremente
         }
+
+        console.log('[ouvinte-llm] input:', {
+          mensagem: text,
+          chatId: chatId.substring(0, 20),
+          profileTemDados: !!profile?.nomeConfiavel,
+          catalogoCandidatos,
+        })
 
         // Chamada LLM
         const llmOutput = await ouvinteLlm({
@@ -205,7 +217,7 @@ export function registerOuvinteListeners(
         if (e.nome) sinais.nomeConfiavel = e.nome
         if (e.endereco) sinais.enderecoEntrega = e.endereco
         if (e.formaPagamento) sinais.formaPagamentoPreferida = [e.formaPagamento]
-        if (e.urgencia) Object.assign(sinais, { urgenciaEntrega: e.urgencia })
+        if (e.urgencia) sinais.urgenciaEntrega = e.urgencia
         if (e.observacoesLogisticas && e.observacoesLogisticas.length > 0) {
           sinais.observacoesLogisticas = e.observacoesLogisticas
         }
@@ -214,6 +226,12 @@ export function registerOuvinteListeners(
             .filter(p => p.nome !== 'desconhecido')
             .map(p => `${p.nome} (${p.quantidade}x)`)
         }
+        if (e.aversoes && e.aversoes.length > 0) {
+          sinais.aversoesProduto = e.aversoes.map(a => a.nome)
+        }
+        // retratacoes não vira campo no perfil — sinaliza pro merge.
+        // Se houver retratação, o atualizarPerfilOperacionalCliente
+        // já lida com conflitos via pendentesConfirmacao.
         sinais.lastRecomputeReason = 'turn_end'
         sinais.lastRecomputeAtIso = new Date().toISOString()
 
@@ -224,7 +242,7 @@ export function registerOuvinteListeners(
 
         if (result.ok) {
           const camposAtualizados = Object.keys(sinais)
-            .filter(k => k !== 'lastRecomputeReason' && k !== 'lastRecomputeAtIso' && k !== 'urgenciaEntrega')
+            .filter(k => k !== 'lastRecomputeReason' && k !== 'lastRecomputeAtIso')
 
           const event: OuvirProfileUpdatedEvent = {
             chatId,

@@ -10,6 +10,7 @@
 
 import { MettriBridgeClient } from '../../content/bridge-client'
 import type { LlmExtractionResult, OuvinteLlmInput, OuvinteLlmOutput } from './types'
+import systemPrompt from './prompts/extracao-sistema.md'
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions'
 const MODEL = 'deepseek-chat'
@@ -17,27 +18,38 @@ const STORAGE_KEY_API = 'mettri:deepseek:apiKey'
 
 /**
  * Monta o prompt do usuário como JSON estruturado:
- * mensagem + catálogo candidatos + perfil atual (só campos preenchidos).
+ * mensagem + catálogo candidatos + perfil atual (SÓ campos VAZIOS — delta).
+ *
+ * O perfil mostra APENAS os campos ainda não preenchidos (null).
+ * Campos que já existem no perfil não aparecem — o LLM sabe que não precisa extraí-los.
  */
 function buildUserPrompt(input: OuvinteLlmInput): string {
-  const perfilAtual: Record<string, unknown> = {}
+  const perfilVazio: Record<string, null> = {}
   const p = input.profile
   if (p) {
-    if (p.nomeConfiavel) perfilAtual.nome = p.nomeConfiavel
-    if (p.enderecoEntrega) perfilAtual.endereco = p.enderecoEntrega
-    if (p.formaPagamentoPreferida && p.formaPagamentoPreferida.length > 0) {
-      perfilAtual.formaPagamento = p.formaPagamentoPreferida
+    // Só inclui campos que estão VAZIOS (null/empty/ausentes)
+    if (!p.nomeConfiavel) perfilVazio.nome = null
+    if (!p.enderecoEntrega) perfilVazio.endereco = null
+    if (!p.formaPagamentoPreferida || p.formaPagamentoPreferida.length === 0) {
+      perfilVazio.formaPagamento = null
     }
-    if (p.preferenciasProduto && p.preferenciasProduto.length > 0) {
-      perfilAtual.produtos_existentes = p.preferenciasProduto
-    }
+    // produtos, urgencia, aversoes, logistica são SEMPRE extraídos
+    // (não entram no perfil_vazio — o prompt instrui o LLM a extrair sempre)
   }
 
-  return JSON.stringify({
-    mensagem: input.mensagem,
-    catalogo: input.catalogoCandidatos,
-    perfil_atual: perfilAtual,
-  })
+  const catalogoStatus = input.catalogoCandidatos.length > 0
+    ? `Produtos disponíveis no catálogo: [${input.catalogoCandidatos.join(', ')}]`
+    : 'Catálogo não disponível. Extraia produtos livremente do texto.'
+
+  return [
+    catalogoStatus,
+    '---',
+    JSON.stringify({
+      mensagem: input.mensagem,
+      catalogo: input.catalogoCandidatos,
+      perfil_atual: perfilVazio,
+    }),
+  ].join('\n')
 }
 
 /**
@@ -54,12 +66,98 @@ function parseResponse(text: string): LlmExtractionResult {
   try {
     const parsed = JSON.parse(cleaned)
     if (typeof parsed === 'object' && parsed !== null) {
-      return parsed as LlmExtractionResult
+      return normalizeResult(parsed as Record<string, unknown>)
     }
   } catch {
     // fallback silencioso
   }
   return {}
+}
+
+/**
+ * Normaliza campos da resposta LLM para o schema LlmExtractionResult.
+ * Corrige variações comuns:
+ * - "urgente" (pt) → "urgencia" (schema)
+ * - "produto" (singular) → "produtos" (plural)
+ * - "metodoPagamento" → "formaPagamento"
+ */
+function normalizeResult(raw: Record<string, unknown>): LlmExtractionResult {
+  const out: Record<string, unknown> = {}
+
+  // Mapa de aliases: nome alternativo → nome canônico
+  const fieldMap: Record<string, string> = {
+    urgente: 'urgencia',
+    urgencia: 'urgencia',
+    produto: 'produtos',
+    produtos: 'produtos',
+    metodoPagamento: 'formaPagamento',
+    formaPagamento: 'formaPagamento',
+    forma_pagamento: 'formaPagamento',
+    endereco: 'endereco',
+    enderecoEntrega: 'endereco',
+    observacoes: 'observacoesLogisticas',
+    observacoesLogisticas: 'observacoesLogisticas',
+    logistica: 'observacoesLogisticas',
+    retratacao: 'retratacoes',
+    retratacoes: 'retratacoes',
+    nome: 'nome',
+    nomeConfiavel: 'nome',
+  }
+
+  for (const [key, value] of Object.entries(raw)) {
+    const canonical = fieldMap[key.toLowerCase().trim()] || key
+    out[canonical] = value
+  }
+
+  // Valida/limpa urgencia: só aceita string "alta"|"normal"|"baixa"
+  // Normaliza "media" → "normal" (variação comum do LLM)
+  if (out.urgencia !== undefined) {
+    if (typeof out.urgencia === 'string') {
+      const v = out.urgencia.toLowerCase()
+      if (v === 'media') out.urgencia = 'normal'
+      else if (['alta', 'normal', 'baixa'].includes(v)) out.urgencia = v as 'alta' | 'normal' | 'baixa'
+    } else {
+      delete out.urgencia
+    }
+  }
+
+  // Valida produtos: garante que é array com shape correto
+  if (out.produtos !== undefined) {
+    if (Array.isArray(out.produtos)) {
+      out.produtos = out.produtos
+        .filter((p: unknown) => p && typeof p === 'object')
+        .map((p: Record<string, unknown>) => ({
+          nome: String(p.nome ?? 'desconhecido'),
+          quantidade: typeof p.quantidade === 'number' ? p.quantidade : (typeof p.quantidade === 'string' ? parseInt(p.quantidade, 10) || 1 : 1),
+          confianca: (['alta', 'media', 'baixa'].includes(String(p.confianca)) ? String(p.confianca) : 'media') as 'alta' | 'media' | 'baixa',
+        }))
+    } else {
+      delete out.produtos
+    }
+  }
+
+  // Valida aversoes: mesmo shape de produtos, sem quantidade
+  if (out.aversoes !== undefined) {
+    if (Array.isArray(out.aversoes)) {
+      out.aversoes = out.aversoes
+        .filter((a: unknown) => a && typeof a === 'object')
+        .map((a: Record<string, unknown>) => ({
+          nome: String(a.nome ?? 'desconhecido'),
+          confianca: (['alta', 'media', 'baixa'].includes(String(a.confianca)) ? String(a.confianca) : 'media') as 'alta' | 'media' | 'baixa',
+        }))
+    } else {
+      delete out.aversoes
+    }
+  }
+
+  // Garante que arrays vazios sejam removidos
+  for (const key of Object.keys(out)) {
+    if (Array.isArray(out[key]) && (out[key] as unknown[]).length === 0) {
+      delete out[key]
+    }
+  }
+
+  return out as LlmExtractionResult
 }
 
 /**
@@ -88,21 +186,8 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
     return { extras: {}, usouLlm: false, tokensEstimados: 0 }
   }
 
-  const systemPrompt = [
-    'Você é um extrator de perfil de clientes de padaria.',
-    'Dada a mensagem do cliente, os produtos do catálogo e o perfil já conhecido,',
-    'extraia APENAS o que é NOVO ou MUDOU em relação ao perfil atual.',
-    'Retorne APENAS JSON válido, sem markdown, sem explicações.',
-    '',
-    'Regras:',
-    '- Só extraia campos que estão null/vazios no perfil_atual',
-    '- Se "nome" já está preenchido no perfil → IGNORE (não reextraia)',
-    '- Se "endereco" já está preenchido no perfil → IGNORE',
-    '- Produtos: retorne APENAS os que existem no array "catalogo" (faça fuzzy match com o nome do catálogo)',
-    '- Se um produto mencionado não existe no catálogo, retorne como {"nome": "desconhecido", ...}',
-    '- Urgência: sempre extraia (pode mudar a cada mensagem)',
-    '- Se a mensagem contradiz pedidos anteriores (ex: "sem coca"), inclua em "retratacoes"',
-  ].join('\n')
+  // System prompt vem do arquivo prompts/extracao-sistema.md
+  // (importado como string pelo esbuild loader { '.md': 'text' })
 
   const userPrompt = buildUserPrompt(input)
 

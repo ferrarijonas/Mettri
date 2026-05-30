@@ -257,6 +257,9 @@ export async function atualizarPerfilOperacionalCliente(
       formaPagamentoPreferida: normalizeList(input.sinais.formaPagamentoPreferida) ?? current?.formaPagamentoPreferida,
       observacoesLogisticas: normalizeList(input.sinais.observacoesLogisticas) ?? current?.observacoesLogisticas,
       enderecoEntrega: normalizeText(input.sinais.enderecoEntrega ?? current?.enderecoEntrega ?? '') || undefined,
+      urgenciaEntrega: ['alta', 'normal', 'baixa'].includes(input.sinais.urgenciaEntrega ?? '')
+        ? (input.sinais.urgenciaEntrega as 'alta' | 'normal' | 'baixa')
+        : current?.urgenciaEntrega,
       proximidade: proximidade as CustomerOperationalProfile['proximidade'],
       updatedAtIso: nowIso,
       modelVersion: CUSTOMER_OPERATIONAL_PROFILE_MODEL_VERSION,

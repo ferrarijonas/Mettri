@@ -58,6 +58,7 @@ export interface CustomerOperationalSignals {
   formaPagamentoPreferida?: string[];
   observacoesLogisticas?: string[];
   enderecoEntrega?: string;
+  urgenciaEntrega?: string;
   sugestoesPendentes?: SugestaoProdutoPendente[];
 }
 

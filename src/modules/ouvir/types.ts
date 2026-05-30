@@ -86,8 +86,12 @@ export interface LlmExtractionResult {
   nome?: string
   endereco?: string
   formaPagamento?: string
-  urgencia?: 'alta' | 'media' | 'baixa'
+  urgencia?: 'alta' | 'normal' | 'baixa'
   observacoesLogisticas?: string[]
+  aversoes?: {
+    nome: string
+    confianca: 'alta' | 'media' | 'baixa'
+  }[]
   retratacoes?: string[]
 }
 

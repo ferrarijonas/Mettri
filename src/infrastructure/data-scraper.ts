@@ -150,8 +150,8 @@ const MessageSchema = z.object({
     .passthrough()
     .optional(),
   __x_quotedMsg: z.any().optional(),
-  __x_isQuotedMsgAvailable: z.boolean().optional(),
-  __x_fromQuotedMsg: z.boolean().optional(),
+  __x_isQuotedMsgAvailable: z.union([z.boolean(), z.object({}).passthrough()]).optional(),
+  __x_fromQuotedMsg: z.union([z.boolean(), z.object({}).passthrough()]).optional(),
 }).passthrough(); // Aceita campos extras que não estão no schema
 
 type MessageCallback = (msg: any) => void;

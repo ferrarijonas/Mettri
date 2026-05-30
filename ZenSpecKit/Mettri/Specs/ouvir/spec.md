@@ -17,18 +17,16 @@ Quem **persiste** é o programa de cadastro `atualizar-perfil-operacional-client
 ### Pipeline (visão geral)
 
 ```
-mensagem (cliente)  →  `ouvinte`  →  `extrator`  →  `resolver-referencia-ambigua`  →  `validador-catalogo`  →  `sinais-release`  →  `decisor-update`  →  `atualizar-perfil-operacional-cliente`
+mensagem (cliente)  →  `ouvinte`  →  `ouvinte-llm` (1 chamada DeepSeek)  →  `atualizar-perfil-operacional-cliente`
 ```
 
 | Programa                               | Recebe                                                          | Faz                                                                                       | Manda para                             |
 | -------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------- |
-| `ouvinte`                              | dados da mensagem + contexto mínimo (chat, tempo, turno, autor) | Identifica cliente; throttle e cursor; chama a cadeia; atualiza estado de cursor/throttle | `extrator` ou fim com motivo de pulo   |
-| `extrator`                             | texto da mensagem (+ o que o contrato filho exigir)             | Produz candidatos a campos com confiança                                                  | `resolver-referencia-ambigua`          |
-| `resolver-referencia-ambigua`          | mensagem + replyToId + quotedText + ring buffer + catálogo     | Resolve referências ambíguas a produtos (reply lookup → último produto → LLM)            | `validador-catalogo`                   |
-| `validador-catalogo`                   | campos extraídos + acesso a catálogo/formas de pagamento        | Ajusta confiança e normaliza quando aplicável                                             | `sinais-release`                       |
-| `sinais-release`                       | mensagem + estado/perfil relevante (ver filha)                  | Detecta invalidação ("mudei de ideia", etc.)                                              | `decisor-update`                       |
-| `decisor-update`                       | campos trabalhados + regras de tipo de update                   | Decide tipo de persistência por campo                                                     | `atualizar-perfil-operacional-cliente` |
-| `atualizar-perfil-operacional-cliente` | decisões + `clienteId`                                          | Merge e gravação no perfil (cadastro)                                                     | —                                      |
+| `ouvinte`                              | dados da mensagem + contexto mínimo (chat, tempo, turno, autor) | Identifica cliente; throttle e cursor; carrega profile + catálogo; chama ouvinte-llm      | `ouvinte-llm` ou fim com motivo de pulo |
+| `ouvinte-llm`                          | mensagem + catálogo candidatos + profile atual (delta)          | 1 chamada DeepSeek → JSON com só o que mudou                                             | `atualizar-perfil-operacional-cliente` |
+| `atualizar-perfil-operacional-cliente` | sinais extraídos + `chatId`                                     | Merge e gravação no perfil (cadastro)                                                     | —                                      |
+
+> ⚠️ Os programas `extrator`, `resolver-referencia-ambigua`, `sinais-release` e `decisor-update` foram substituídos pelo `ouvinte-llm` e não são mais chamados pelo pipeline. O código-fonte foi preservado como legado em `src/modules/ouvir/`. Suas ZenSpecs permanecem para referência histórica.
 
 **Precondição:** MessageDB / identificação de cliente e stores usados pelo cadastro estão disponíveis conforme as specs de **atendimento** e **cadastro**. Se identificação falhar, o comportamento está na ZenSpec `ouvinte.zenspec.md` (ex.: buffer/retry).
 
@@ -55,11 +53,12 @@ mensagem (cliente)  →  `ouvinte`  →  `extrator`  →  `resolver-referencia-a
 | Arquivo                                                          | Responsabilidade                                             |
 | ---------------------------------------------------------------- | ------------------------------------------------------------ |
 | [ouvinte.zenspec.md](./ouvinte.zenspec.md)                       | Shell: entrada/saída, throttle, cursor, métricas, delegação, evento. |
-| [extrator.zenspec.md](./extrator.zenspec.md)                     | Extração de sinais do texto (regex + LLM fallback).         |
-| [resolver-referencia-ambigua.zenspec.md](./resolver-referencia-ambigua.zenspec.md) | Resolução de referências ambíguas a produtos (reply → último produto → LLM). |
+| [ouvinte-llm.zenspec.md](./ouvinte-llm.zenspec.md)               | **Extrai sinais via 1 chamada DeepSeek** (substitui extrator + ambiguidade + sinais-release). |
+| [extrator.zenspec.md](./extrator.zenspec.md)                     | ⚠️ Legado — extração por regex (substituído pelo ouvinte-llm). |
+| [resolver-referencia-ambigua.zenspec.md](./resolver-referencia-ambigua.zenspec.md) | ⚠️ Legado — resolução de referências ambíguas (substituído pelo ouvinte-llm). |
 | [validador-catalogo.zenspec.md](./validador-catalogo.zenspec.md) | Validação/normalização contra catálogo.                      |
-| [sinais-release.zenspec.md](./sinais-release.zenspec.md)         | Detecção de invalidação.                                     |
-| [decisor-update.zenspec.md](./decisor-update.zenspec.md)         | Tipo de update por campo.                                    |
+| [sinais-release.zenspec.md](./sinais-release.zenspec.md)         | ⚠️ Legado — detecção de invalidação (substituído pelo ouvinte-llm). |
+| [decisor-update.zenspec.md](./decisor-update.zenspec.md)         | ⚠️ Legado — tipo de update (substituído pelo ouvinte-llm).  |
 | [enriquecimento-ao-vivo.zenspec.md](./enriquecimento-ao-vivo.zenspec.md) | UI: atualização ao vivo do painel de perfil.                |
 
 A **fonte da verdade** do contrato de cada programa é a respectiva `.zenspec.md`; este `spec.md` não duplica assinaturas TypeScript.
