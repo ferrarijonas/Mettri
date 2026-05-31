@@ -17,7 +17,7 @@ const STORE_ORDERS = 'orders';
 
 // ── Tipos ──
 
-export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'duvida' | 'outro';
+export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro';
 
 export type OrderStatusV2 =
   | 'lead'
@@ -73,7 +73,7 @@ export const OrderRecordV2Schema = z.object({
 
   // Campos novos (v2)
   numeroSequencial: z.number().int().positive().optional(),
-  intencao: z.enum(['compra_nova', 'suporte_pos_venda', 'orcamento', 'duvida', 'outro']).optional(),
+  intencao: z.enum(['compra_nova', 'suporte_pos_venda', 'orcamento', 'outro']).optional(),
   itens: z.array(OrderItemStructSchema).optional(),
   funil: z.object({
     produto: FunilEtapaSchema,
