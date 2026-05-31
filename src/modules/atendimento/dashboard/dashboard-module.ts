@@ -5,6 +5,7 @@
 import type { ModuleDefinition, PanelFactory, PanelInstance } from '../../../ui/core/module-registry';
 import type { EventBus } from '../../../ui/core/event-bus';
 import type { OuvirProfileUpdatedEvent } from '../../ouvir/types';
+import { processarUltimaMensagem } from '../../ouvir/ouvinte';
 import { AtendimentoPanel } from './atendimento-panel';
 import { getAtendimentoViewModel, getActiveChatIdDirect } from './provider';
 import { emitPanelNavigate } from '../../../ui/core/panel-navigation';
@@ -57,6 +58,8 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   let unsubscribeRagController: (() => void) | null = null;
   let updatedFields: string[] | undefined;
   let confiancaPerfil: number | undefined;
+  let ultimaIntencao: string | undefined;
+  let ultimaRespostaSugerida: string | undefined;
   let clearAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
@@ -97,7 +100,13 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 
   rerender = async () => {
     ragAutoSuggestEnabled = await loadRagAutoSuggestFromStorage();
-    const vm = await getAtendimentoViewModel({ chatId: currentChatId, updatedFields, confiancaPerfil });
+    const vm = await getAtendimentoViewModel({
+      chatId: currentChatId,
+      updatedFields,
+      confiancaPerfil,
+      intencao: ultimaIntencao,
+      respostaSugerida: ultimaRespostaSugerida,
+    });
     if (vm.kind === 'ready') {
       lastClientKey = vm.customer.clientKey || null;
     } else {
@@ -127,10 +136,19 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = data.camposAtualizados;
     confiancaPerfil = data.confiancaPerfil;
+    if (data.intencao) ultimaIntencao = data.intencao;  // LLM classificou
+    if (data.respostaSugerida !== undefined) {
+      ultimaRespostaSugerida = data.respostaSugerida;  // LLM gerou resposta (substitui)
+    } else if (data.intencao && data.intencao !== 'compra_nova') {
+      ultimaRespostaSugerida = undefined;  // conversa mudou de rumo, limpa
+    }
+    // Persiste até enviar/recusar/nova msg do cliente
     rerender().catch(() => {});
     clearAnimationTimer = setTimeout(() => {
       updatedFields = undefined;
       confiancaPerfil = undefined;
+      ultimaIntencao = undefined;
+      // ultimaRespostaSugerida NÃO é limpa pelo timer — persiste até o atendente agir ou nova msg chegar
       clearAnimationTimer = null;
     }, 4000);
   };
@@ -568,6 +586,39 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
         return;
       }
 
+      if (actionId === 'resposta:enviar') {
+        const text = String((payload as { text?: string })?.text ?? '').trim();
+        if (!text) return;
+
+        let chatId = String(currentChatId || '').trim();
+        if (!chatId) {
+          chatId = String((await getActiveChatIdDirect()) || '').trim();
+        }
+        if (!chatId) {
+          alert('Abra uma conversa para enviar a mensagem.');
+          return;
+        }
+
+        try {
+          await sendMessageService.sendText(chatId, text);
+          ultimaRespostaSugerida = undefined;
+          await rerender();
+        } catch (error) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível enviar pelo WhatsApp.',
+          );
+        }
+        return;
+      }
+
+      if (actionId === 'resposta:recusar') {
+        ultimaRespostaSugerida = undefined;
+        await rerender();
+        return;
+      }
+
       if (actionId === 'ambiguidade:confirmar') {
         const chatId = String(currentChatId || '').trim()
         if (!chatId) return
@@ -612,6 +663,14 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = undefined;
     confiancaPerfil = undefined;
+
+    // Reprocessa última mensagem do cliente se perfil estiver desatualizado
+    if (next) {
+      processarUltimaMensagem(next).then(reprocessou => {
+        if (reprocessou) rerender().catch(() => {});
+      }).catch(() => {});
+    }
+
     rerender().catch(() => {});
   };
 

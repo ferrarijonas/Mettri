@@ -6,7 +6,7 @@
  */
 import type { ClienteContextoVitrine } from '../../cadastro';
 
-export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'duvida' | 'outro';
+export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro';
 
 export type OrderStatusUnificado =
   | 'lead' | 'draft' | 'open' | 'awaiting_payment' | 'completed' | 'cancelled' | 'lost';
@@ -147,8 +147,10 @@ export type AtendimentoViewModel =
         /** Timeline resumida (do CustomerProfileDB + PurchaseDB). */
         timeline?: string[];
       } & OuvinteVmFields;
-      /** Classificação da intenção da conversa (ClassificarIntencao) */
+      /** Classificação da intenção da conversa (via ouvinte-llm) */
       tipoConversa: IntencaoTipo | null;
+      /** Resposta sugerida pelo LLM para confirmação rápida */
+      respostaSugerida?: string;
       /** Pedido atual do cliente, persistido no OrderDB */
       pedidoAtual: PedidoResumoVm | null;
       /** Últimos N pedidos do cliente (completed, cancelled) */

@@ -52,13 +52,13 @@ describe('AtendimentoPanel.renderIntencaoChip', () => {
   it('deve exibir apenas o chip sem pill quando pedidoAtual é null', () => {
     const panel = createPanel({
       kind: 'ready',
-      tipoConversa: 'duvida',
+      tipoConversa: 'orcamento',
       pedidoAtual: null,
     } as unknown as AtendimentoViewModel);
 
     const html = (panel as any)['renderIntencaoChip']();
 
-    expect(html).toContain('Dúvida');
+    expect(html).toContain('Orçamento');
     expect(html).not.toContain('Pedido');
   });
 
@@ -126,7 +126,7 @@ describe('AtendimentoPanel.renderOrderPill', () => {
   it('deve retornar string vazia quando pedidoAtual é null', () => {
     const panel = createPanel({
       kind: 'ready',
-      tipoConversa: 'duvida',
+      tipoConversa: 'orcamento',
       pedidoAtual: null,
     } as unknown as AtendimentoViewModel);
 

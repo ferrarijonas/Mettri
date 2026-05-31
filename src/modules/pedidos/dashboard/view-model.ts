@@ -2,7 +2,7 @@
  * Tipos do ViewModel do módulo Pedidos.
  */
 
-export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'duvida' | 'outro';
+export type IntencaoTipo = 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro';
 
 export type OrderStatusUnificado =
   | 'lead'

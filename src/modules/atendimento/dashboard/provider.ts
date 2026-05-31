@@ -260,62 +260,9 @@ function mapOrderStatusLabel(status: string): string {
   return status;
 }
 
-// ── ClassificarIntencao ──
-
-const TRIGGERS_POS_VENDA = [
-  'status', 'cade', 'cadê', 'onde está', 'onde ta', 'chegou', 'chega', 'saiu',
-  'demorando', 'atrasou', 'atrasado', 'entrega', 'entregador', 'entregue',
-  'moto', 'motoqueiro', 'endereço', 'endereco', 'bairro', 'rua', 'paguei',
-  'pagamento', 'pix', 'comprovante', 'transferi', 'depositei', 'veio errado',
-  'faltou', 'trocar', 'troca', 'devolver', 'reembolso', 'problema', 'errado',
-  'estragado', 'ja paguei', 'já paguei', 'ta pago', 'tá pago',
-];
-
-const TRIGGERS_COMPRA = [
-  'quero', 'queria', 'gostaria', 'vou querer', 'vou pedir', 'pedir', 'quisesse',
-  'me vê', 'me ve', 'me da', 'me dá', 'manda', 'envia',
-];
-
-const TRIGGERS_ORCAMENTO = [
-  'quanto é', 'qual o valor', 'qual o preço', 'ta quanto', 'tá quanto',
-  'preço', 'valor', 'custa', 'faz orçamento', 'orçamento', 'orcar', 'orçar',
-];
-
-function classificarIntencao(params: {
-  texto: string;
-  temPedidosAtivos: boolean;
-  temProdutosOuvinte: boolean;
-}): { tipo: IntencaoTipo; confianca: 'alta' | 'media' | 'baixa' } {
-  const texto = String(params.texto || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  if (!texto) return { tipo: 'outro', confianca: 'baixa' };
-
-  // R1: Pós-venda
-  if (params.temPedidosAtivos && TRIGGERS_POS_VENDA.some((t) => texto.includes(t))) {
-    return { tipo: 'suporte_pos_venda', confianca: 'media' };
-  }
-
-  // R2: Compra nova
-  const temTriggerCompra = TRIGGERS_COMPRA.some((t) => texto.includes(t));
-  if (params.temProdutosOuvinte || temTriggerCompra) {
-    const confianca = params.temProdutosOuvinte && temTriggerCompra ? 'alta'
-      : params.temProdutosOuvinte || temTriggerCompra ? 'media' : 'baixa';
-    return { tipo: 'compra_nova', confianca };
-  }
-
-  // R3: Orçamento
-  if (TRIGGERS_ORCAMENTO.some((t) => texto.includes(t)) && !temTriggerCompra) {
-    return { tipo: 'orcamento', confianca: 'media' };
-  }
-
-  // R4: Dúvida
-  if (texto.includes('?') || /^(como|onde|qual|quem|quando|por que|pq)\s/.test(texto)) {
-    return { tipo: 'duvida', confianca: 'baixa' };
-  }
-
-  return { tipo: 'outro', confianca: 'baixa' };
-}
+// ── Intenção via ouvinte-llm ──
+// classificarIntencao() e TRIGGERS removidos — a classificação agora é feita
+// pelo ouvinte-llm (DeepSeek) junto com a extração de perfil.
 
 function orderRecordToResumoVm(r: OrderRecordV2): PedidoResumoVm {
   return {
@@ -382,7 +329,13 @@ function calcularMetricasCliente(historico: PedidoResumoVm[]): MetricaClienteVm 
   return { ticketMedioCentavos, frequencia, totalPedidos };
 }
 
-export async function getAtendimentoViewModel(params?: { chatId?: string | null; updatedFields?: string[]; confiancaPerfil?: number }): Promise<AtendimentoViewModel> {
+export async function getAtendimentoViewModel(params?: {
+  chatId?: string | null
+  updatedFields?: string[]
+  confiancaPerfil?: number
+  intencao?: string  // vinda do ouvinte-llm, substitui classificarIntencao()
+  respostaSugerida?: string  // vinda do ouvinte-llm
+}): Promise<AtendimentoViewModel> {
   const chatId = String(params?.chatId || (await getActiveChatIdDirect()) || '').trim();
   if (!chatId) {
     return {
@@ -537,27 +490,18 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null;
   /** Vitrine inline: outros produtos ativos do catálogo (cross-sell) */
   const vitrine = await buildVitrineInline(perfil, pedido.itens);
 
-  // ── ClassificarIntencao + OrderDB ──
+  // ── Intenção (do ouvinte-llm) + OrderDB ──
+  // A intenção vem do LLM via ouvinte (evento ouvire:profile-updated).
+  // Se o ouvinte não classificou (ex: throttle, sem API key), fallback para 'outro'.
 
-  // Obter última mensagem do cliente para classificação
-  let ultimaMensagemCliente = '';
-  try {
-    const ultimas = await messageDB.getMessages(chatId, 1);
-    if (ultimas.length > 0) ultimaMensagemCliente = ultimas[0].text;
-  } catch { /* ignore */ }
-
+  const intencao = (params?.intencao as IntencaoTipo | undefined) || 'outro';
   const pedidosAtivos = clientKey ? await orderDB.listActiveByClientKey(clientKey, 5) : [];
-  const classificacao = classificarIntencao({
-    texto: ultimaMensagemCliente,
-    temPedidosAtivos: pedidosAtivos.length > 0,
-    temProdutosOuvinte: Boolean(perfil?.preferenciasProduto?.length),
-  });
 
   // Pedido atual: o mais recente entre os ativos
   let pedidoAtual: PedidoResumoVm | null = null;
   if (pedidosAtivos.length > 0) {
     pedidoAtual = orderRecordToResumoVm(pedidosAtivos[0]);
-  } else if (classificacao.tipo === 'compra_nova' && clientKey) {
+  } else if (intencao === 'compra_nova' && clientKey) {
     // Criar pedido lead automaticamente
     try {
       const novoPedido = await orderDB.createOrder({
@@ -607,8 +551,10 @@ export async function getAtendimentoViewModel(params?: { chatId?: string | null;
       confiancaPerfil: params?.confiancaPerfil ?? perfil?.confiancaPerfil,
       timeline: buildTimeline(perfil, resolved.phoneDigits),
     },
-    /** Classificação da intenção da conversa */
-    tipoConversa: classificacao.tipo,
+    /** Classificação da intenção da conversa (vinda do ouvinte-llm) */
+    tipoConversa: intencao,
+    /** Resposta sugerida pelo LLM (vinda do ouvinte-llm) */
+    respostaSugerida: params?.respostaSugerida,
     /** Pedido atual do cliente, persistido no OrderDB */
     pedidoAtual,
     /** Últimos N pedidos do cliente */
