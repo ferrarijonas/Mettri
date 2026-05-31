@@ -179,7 +179,14 @@ export function registerOuvinteListeners(
           const produtos = await catalogoDB.listByAccount(accountId)
           if (produtos.length > 0) {
             const matchNomes = produtos
-              .filter(p => text.toLowerCase().includes(p.nome.toLowerCase().substring(0, 4)))
+              .filter(p => {
+                const msg = text.toLowerCase()
+                const nome = p.nome.toLowerCase()
+                // Match se QUALQUER palavra do nome (≥3 chars) aparece na mensagem
+                // Ex: msg="multigrãos" matcha com nome "Pão Multigrãos" via "multigrãos"
+                const palavras = nome.split(/\s+/).filter(w => w.length > 2)
+                return palavras.some(palavra => msg.includes(palavra))
+              })
               .slice(0, 5)
               .map(p => p.nome)
             catalogoCandidatos.push(...matchNomes)
