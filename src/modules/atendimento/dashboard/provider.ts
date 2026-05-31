@@ -334,6 +334,7 @@ export async function getAtendimentoViewModel(params?: {
   updatedFields?: string[]
   confiancaPerfil?: number
   intencao?: string  // vinda do ouvinte-llm, substitui classificarIntencao()
+  respostaSugerida?: string  // vinda do ouvinte-llm
 }): Promise<AtendimentoViewModel> {
   const chatId = String(params?.chatId || (await getActiveChatIdDirect()) || '').trim();
   if (!chatId) {
@@ -552,6 +553,8 @@ export async function getAtendimentoViewModel(params?: {
     },
     /** Classificação da intenção da conversa (vinda do ouvinte-llm) */
     tipoConversa: intencao,
+    /** Resposta sugerida pelo LLM (vinda do ouvinte-llm) */
+    respostaSugerida: params?.respostaSugerida,
     /** Pedido atual do cliente, persistido no OrderDB */
     pedidoAtual,
     /** Últimos N pedidos do cliente */

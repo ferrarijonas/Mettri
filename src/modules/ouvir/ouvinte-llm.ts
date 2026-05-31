@@ -10,47 +10,11 @@
 
 import { MettriBridgeClient } from '../../content/bridge-client'
 import type { LlmExtractionResult, OuvinteLlmInput, OuvinteLlmOutput } from './types'
-import systemPrompt from './prompts/extracao-sistema.md'
+import { montarPrompt } from './montar-prompt'
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions'
 const MODEL = 'deepseek-chat'
 const STORAGE_KEY_API = 'mettri:deepseek:apiKey'
-
-/**
- * Monta o prompt do usuário como JSON estruturado:
- * mensagem + catálogo candidatos + perfil atual (SÓ campos VAZIOS — delta).
- *
- * O perfil mostra APENAS os campos ainda não preenchidos (null).
- * Campos que já existem no perfil não aparecem — o LLM sabe que não precisa extraí-los.
- */
-function buildUserPrompt(input: OuvinteLlmInput): string {
-  const perfilVazio: Record<string, null> = {}
-  const p = input.profile
-  if (p) {
-    // Só inclui campos que estão VAZIOS (null/empty/ausentes)
-    if (!p.nomeConfiavel) perfilVazio.nome = null
-    if (!p.enderecoEntrega) perfilVazio.endereco = null
-    if (!p.formaPagamentoPreferida || p.formaPagamentoPreferida.length === 0) {
-      perfilVazio.formaPagamento = null
-    }
-    // produtos, urgencia, aversoes, logistica são SEMPRE extraídos
-    // (não entram no perfil_vazio — o prompt instrui o LLM a extrair sempre)
-  }
-
-  const catalogoStatus = input.catalogoCandidatos.length > 0
-    ? `Produtos disponíveis no catálogo: [${input.catalogoCandidatos.join(', ')}]`
-    : 'Catálogo não disponível. Extraia produtos livremente do texto.'
-
-  return [
-    catalogoStatus,
-    '---',
-    JSON.stringify({
-      mensagem: input.mensagem,
-      catalogo: input.catalogoCandidatos,
-      perfil_atual: perfilVazio,
-    }),
-  ].join('\n')
-}
 
 /**
  * Tenta extrair JSON da resposta do LLM.
@@ -102,6 +66,9 @@ function normalizeResult(raw: Record<string, unknown>): LlmExtractionResult {
     retratacoes: 'retratacoes',
     nome: 'nome',
     nomeConfiavel: 'nome',
+    resposta: 'respostaSugerida',
+    respostaSugerida: 'respostaSugerida',
+    confirmacao: 'respostaSugerida',
   }
 
   for (const [key, value] of Object.entries(raw)) {
@@ -150,6 +117,17 @@ function normalizeResult(raw: Record<string, unknown>): LlmExtractionResult {
     }
   }
 
+  // Valida respostaSugerida: string, trim, max 200 chars
+  if (out.respostaSugerida !== undefined) {
+    if (typeof out.respostaSugerida === 'string') {
+      const trimmed = out.respostaSugerida.trim()
+      out.respostaSugerida = trimmed.length > 200 ? trimmed.substring(0, 200) : trimmed
+      if (!out.respostaSugerida) delete out.respostaSugerida
+    } else {
+      delete out.respostaSugerida
+    }
+  }
+
   // Garante que arrays vazios sejam removidos
   for (const key of Object.keys(out)) {
     if (Array.isArray(out[key]) && (out[key] as unknown[]).length === 0) {
@@ -186,10 +164,15 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
     return { extras: {}, usouLlm: false, tokensEstimados: 0 }
   }
 
-  // System prompt vem do arquivo prompts/extracao-sistema.md
-  // (importado como string pelo esbuild loader { '.md': 'text' })
-
-  const userPrompt = buildUserPrompt(input)
+  // System prompt montado por seções (identidade + extração + resposta)
+  const prompt = montarPrompt({
+    identidade: true,
+    extracao: true,
+    resposta: true,
+    profile: input.profile,
+    mensagem: input.mensagem,
+    catalogoCandidatos: input.catalogoCandidatos,
+  })
 
   try {
     const result = await bridge.netFetch({
@@ -202,8 +185,8 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: 'system', content: prompt.systemPrompt },
+          { role: 'user', content: prompt.userPrompt },
         ],
         temperature: 0,
         max_tokens: 500,

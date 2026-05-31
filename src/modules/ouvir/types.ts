@@ -76,6 +76,7 @@ export interface OuvirProfileUpdatedEvent {
   camposAtualizados: string[]
   confiancaPerfil: number
   intencao?: 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro'
+  respostaSugerida?: string
 }
 
 export interface LlmExtractionResult {
@@ -95,6 +96,7 @@ export interface LlmExtractionResult {
   }[]
   retratacoes?: string[]
   intencao?: 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro'
+  respostaSugerida?: string
 }
 
 export interface OuvinteLlmInput {

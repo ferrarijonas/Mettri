@@ -147,8 +147,10 @@ export type AtendimentoViewModel =
         /** Timeline resumida (do CustomerProfileDB + PurchaseDB). */
         timeline?: string[];
       } & OuvinteVmFields;
-      /** Classificação da intenção da conversa (ClassificarIntencao) */
+      /** Classificação da intenção da conversa (via ouvinte-llm) */
       tipoConversa: IntencaoTipo | null;
+      /** Resposta sugerida pelo LLM para confirmação rápida */
+      respostaSugerida?: string;
       /** Pedido atual do cliente, persistido no OrderDB */
       pedidoAtual: PedidoResumoVm | null;
       /** Últimos N pedidos do cliente (completed, cancelled) */

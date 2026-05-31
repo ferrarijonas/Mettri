@@ -345,6 +345,9 @@ export class AtendimentoPanel {
         ${this.vm.kind === 'ready' ? this.renderOuvinteFieldsCompact(this.vm.customer) : ''}
         ${this.vm.kind === 'ready' ? this.renderHistoricoCliente() : ''}
 
+        <!-- Resposta sugerida (LLM) — confirmação rápida do ouvinte -->
+        ${this.renderRespostaSugeridaBlock()}
+
         <!-- Resposta sugerida (RAG) — abaixo de cliente & venda -->
         ${this.renderRagSuggestionBlock()}
 
@@ -470,6 +473,19 @@ export class AtendimentoPanel {
         const textarea = this.container?.querySelector('[data-field="sugestao-unificada"]') as HTMLTextAreaElement | null;
         const text = textarea?.value?.trim() ?? '';
         this.onAction?.('sugestao:send', { text });
+        return;
+      }
+
+      if (action === 'resposta:enviar') {
+        const text = btn.getAttribute('data-text') || '';
+        if (text) {
+          this.onAction?.('resposta:enviar', { text });
+        }
+        return;
+      }
+
+      if (action === 'resposta:recusar') {
+        this.onAction?.('resposta:recusar');
         return;
       }
 
@@ -1237,6 +1253,46 @@ export class AtendimentoPanel {
         </div>
         ${rowsHtml}
         ${pendentesHtml}
+      </div>
+    `;
+  }
+
+  /**
+   * Bloco de resposta sugerida pelo ouvinte-llm (DeepSeek).
+   * Aparece quando o LLM detecta compra_nova e gera uma confirmação rápida.
+   * Botão "Enviar" envia a mensagem no WhatsApp.
+   */
+  private renderRespostaSugeridaBlock(): string {
+    if (!this.vm || this.vm.kind !== 'ready' || !this.vm.respostaSugerida) return '';
+
+    const texto = this.escapeHtml(this.vm.respostaSugerida)
+
+    return `
+      <div class="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+        <div class="flex items-center gap-1.5 mb-2">
+          <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Confirmação rápida</span>
+          <span class="ml-auto text-[9px] text-muted-foreground/70">via DeepSeek</span>
+        </div>
+        <div class="text-[12px] leading-relaxed text-foreground/90 mb-2.5 bg-background/40 rounded-md px-2.5 py-2 border border-border/20">
+          ${texto}
+        </div>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="flex-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors duration-150"
+            data-action="resposta:enviar"
+            data-text="${this.escapeAttr(this.vm.respostaSugerida)}"
+          >
+            Enviar
+          </button>
+          <button
+            type="button"
+            class="flex-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-background/60 hover:bg-background/90 text-foreground/80 border border-border/30 transition-colors duration-150"
+            data-action="resposta:recusar"
+          >
+            Recusar
+          </button>
+        </div>
       </div>
     `;
   }

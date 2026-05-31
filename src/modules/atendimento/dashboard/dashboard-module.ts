@@ -58,6 +58,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   let updatedFields: string[] | undefined;
   let confiancaPerfil: number | undefined;
   let ultimaIntencao: string | undefined;
+  let ultimaRespostaSugerida: string | undefined;
   let clearAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
@@ -98,7 +99,13 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 
   rerender = async () => {
     ragAutoSuggestEnabled = await loadRagAutoSuggestFromStorage();
-    const vm = await getAtendimentoViewModel({ chatId: currentChatId, updatedFields, confiancaPerfil, intencao: ultimaIntencao });
+    const vm = await getAtendimentoViewModel({
+      chatId: currentChatId,
+      updatedFields,
+      confiancaPerfil,
+      intencao: ultimaIntencao,
+      respostaSugerida: ultimaRespostaSugerida,
+    });
     if (vm.kind === 'ready') {
       lastClientKey = vm.customer.clientKey || null;
     } else {
@@ -129,11 +136,18 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     updatedFields = data.camposAtualizados;
     confiancaPerfil = data.confiancaPerfil;
     if (data.intencao) ultimaIntencao = data.intencao;  // LLM classificou
+    if (data.respostaSugerida !== undefined) {
+      ultimaRespostaSugerida = data.respostaSugerida;  // LLM gerou resposta (substitui)
+    } else if (data.intencao && data.intencao !== 'compra_nova') {
+      ultimaRespostaSugerida = undefined;  // conversa mudou de rumo, limpa
+    }
+    // Persiste até enviar/recusar/nova msg do cliente
     rerender().catch(() => {});
     clearAnimationTimer = setTimeout(() => {
       updatedFields = undefined;
       confiancaPerfil = undefined;
       ultimaIntencao = undefined;
+      // ultimaRespostaSugerida NÃO é limpa pelo timer — persiste até o atendente agir ou nova msg chegar
       clearAnimationTimer = null;
     }, 4000);
   };
@@ -568,6 +582,39 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
               : 'Não foi possível enviar pelo WhatsApp. Verifique se a conversa está aberta e tente de novo.',
           );
         }
+        return;
+      }
+
+      if (actionId === 'resposta:enviar') {
+        const text = String((payload as { text?: string })?.text ?? '').trim();
+        if (!text) return;
+
+        let chatId = String(currentChatId || '').trim();
+        if (!chatId) {
+          chatId = String((await getActiveChatIdDirect()) || '').trim();
+        }
+        if (!chatId) {
+          alert('Abra uma conversa para enviar a mensagem.');
+          return;
+        }
+
+        try {
+          await sendMessageService.sendText(chatId, text);
+          ultimaRespostaSugerida = undefined;
+          await rerender();
+        } catch (error) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível enviar pelo WhatsApp.',
+          );
+        }
+        return;
+      }
+
+      if (actionId === 'resposta:recusar') {
+        ultimaRespostaSugerida = undefined;
+        await rerender();
         return;
       }
 
