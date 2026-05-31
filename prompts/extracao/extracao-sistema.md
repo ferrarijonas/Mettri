@@ -14,7 +14,9 @@ CAMPOS:
 - nome: extraia se vazio e aparente na msg
 - endereco: extraia se vazio e houver indícios
 - formaPagamento: extraia se vazio; se preenchido, só se msg mencionar OUTRA forma
-- produtos: SEMPRE extraia (append), SÓ da lista do catálogo
+- produtos: SEMPRE extraia (append), SÓ da lista do catálogo.
+  Retorne o nome EXATO como está no catálogo, não o que o cliente digitou.
+  Ex: cliente disse "multigrãos" → catálogo tem "Pão Multigrãos" → retorne "Pão Multigrãos"
 - urgencia: SEMPRE extraia (sobrescreve)
   "alta" → hoje/agora/urgente
   "normal" → amanhã/essa semana
