@@ -5,6 +5,7 @@
 import type { ModuleDefinition, PanelFactory, PanelInstance } from '../../../ui/core/module-registry';
 import type { EventBus } from '../../../ui/core/event-bus';
 import type { OuvirProfileUpdatedEvent } from '../../ouvir/types';
+import { processarUltimaMensagem } from '../../ouvir/ouvinte';
 import { AtendimentoPanel } from './atendimento-panel';
 import { getAtendimentoViewModel, getActiveChatIdDirect } from './provider';
 import { emitPanelNavigate } from '../../../ui/core/panel-navigation';
@@ -662,6 +663,14 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = undefined;
     confiancaPerfil = undefined;
+
+    // Reprocessa última mensagem do cliente se perfil estiver desatualizado
+    if (next) {
+      processarUltimaMensagem(next).then(reprocessou => {
+        if (reprocessou) rerender().catch(() => {});
+      }).catch(() => {});
+    }
+
     rerender().catch(() => {});
   };
 

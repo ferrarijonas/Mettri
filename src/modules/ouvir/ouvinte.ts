@@ -6,6 +6,7 @@ import type { ValidadorDeps } from './validador-catalogo'
 import { ouvinteLlm } from './ouvinte-llm'
 import { customerProfileDB } from '../../storage/customer-profile-db'
 import { catalogoDB } from '../../storage/catalogo-db'
+import { messageDB } from '../../storage/message-db'
 import type {
   ThrottleState,
   CursorState,
@@ -294,5 +295,99 @@ export function registerOuvinteListeners(
     throttleMap.clear()
     cursorMap.clear()
     chatHistory.clear()
+  }
+}
+
+/**
+ * Reprocessa a última mensagem do cliente ao abrir o chat.
+ * Garante que `sugestoesPendentes`, `respostaSugerida` e perfil estejam atualizados
+ * mesmo que a mensagem tenha sido processada antes da correção do código.
+ *
+ * Chamado pelo dashboard-module.ts quando o atendente muda de chat.
+ */
+export async function processarUltimaMensagem(chatId: string): Promise<boolean> {
+  try {
+    // Pega última mensagem do cliente
+    const ultimas = await messageDB.getMessages(chatId, 1)
+    if (ultimas.length === 0) return false
+    const msg = ultimas[0]
+    if (msg.isOutgoing) return false
+
+    const text = (msg.text || '').trim()
+    if (text.length < 10) return false
+
+    // Busca profile
+    const profile = await customerProfileDB.getByChatId(chatId)
+
+    // Se já tem sugestoesPendentes, não precisa reprocessar
+    if (profile?.sugestoesPendentes?.length) return false
+
+    // Busca candidatos do catálogo
+    const catalogoCandidatos: string[] = []
+    try {
+      const accountId = catalogoDB.getCurrentUserWid() || 'default'
+      const produtos = await catalogoDB.listByAccount(accountId)
+      if (produtos.length > 0) {
+        const matchNomes = produtos
+          .filter(p => {
+            const msgText = text.toLowerCase()
+            const nome = p.nome.toLowerCase()
+            const palavras = nome.split(/\s+/).filter((w: string) => w.length > 2)
+            return palavras.some((palavra: string) => msgText.includes(palavra))
+          })
+          .slice(0, 5)
+          .map(p => p.nome)
+        catalogoCandidatos.push(...matchNomes)
+      }
+    } catch { /* catálogo indisponível */ }
+
+    // Chama LLM
+    const llmOutput = await ouvinteLlm({
+      mensagem: text,
+      chatId,
+      profile,
+      catalogoCandidatos,
+    })
+
+    if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) return false
+
+    const e = llmOutput.extras
+
+    // Converte para sinais (mesma lógica do handler principal)
+    const sinais: CustomerOperationalSignals = {}
+    if (e.nome) sinais.nomeConfiavel = e.nome
+    if (e.endereco) sinais.enderecoEntrega = e.endereco
+    if (e.formaPagamento) sinais.formaPagamentoPreferida = [e.formaPagamento]
+    if (e.urgencia) sinais.urgenciaEntrega = e.urgencia
+    if (e.observacoesLogisticas?.length) sinais.observacoesLogisticas = e.observacoesLogisticas
+
+    // Produtos com confiança alta/media → preferencias
+    const produtosConfiaveis = e.produtos?.filter(p => p.confianca !== 'baixa' && p.nome !== 'desconhecido')
+    if (produtosConfiaveis?.length) {
+      sinais.preferenciasProduto = produtosConfiaveis.map(p => `${p.nome} (${p.quantidade}x)`)
+    }
+    // Produtos com confiança baixa → sugestoes pendentes
+    const produtosBaixa = e.produtos?.filter(p => p.confianca === 'baixa' && p.nome !== 'desconhecido')
+    if (produtosBaixa?.length) {
+      const agora = new Date().toISOString()
+      sinais.sugestoesPendentes = produtosBaixa.map(p => ({
+        nome: p.nome,
+        qtd: p.quantidade,
+        nomeExtraido: p.nome,
+        confianca: 'baixa' as const,
+        metodo: 'llm' as const,
+        evidencia: text,
+        criadoEm: agora,
+      }))
+    }
+
+    if (e.aversoes?.length) sinais.aversoesProduto = e.aversoes.map(a => a.nome)
+    sinais.lastRecomputeReason = 'turn_end'
+    sinais.lastRecomputeAtIso = new Date().toISOString()
+
+    const result = await atualizarPerfilOperacionalCliente({ chatId, sinais })
+    return result.ok
+  } catch {
+    return false
   }
 }
