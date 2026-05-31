@@ -229,9 +229,25 @@ export function registerOuvinteListeners(
           sinais.observacoesLogisticas = e.observacoesLogisticas
         }
         if (e.produtos && e.produtos.length > 0) {
-          sinais.preferenciasProduto = e.produtos
-            .filter(p => p.nome !== 'desconhecido')
-            .map(p => `${p.nome} (${p.quantidade}x)`)
+          // Produtos com confiança alta/media → preferências (persiste)
+          const produtosConfiaveis = e.produtos.filter(p => p.confianca !== 'baixa' && p.nome !== 'desconhecido')
+          if (produtosConfiaveis.length > 0) {
+            sinais.preferenciasProduto = produtosConfiaveis.map(p => `${p.nome} (${p.quantidade}x)`)
+          }
+          // Produtos com confiança baixa → sugestão pendente (atendente decide)
+          const produtosBaixa = e.produtos.filter(p => p.confianca === 'baixa' && p.nome !== 'desconhecido')
+          if (produtosBaixa.length > 0) {
+            const agora = new Date().toISOString()
+            sinais.sugestoesPendentes = produtosBaixa.map(p => ({
+              nome: p.nome,
+              qtd: p.quantidade,
+              nomeExtraido: p.nome,
+              confianca: 'baixa' as const,
+              metodo: 'llm' as const,
+              evidencia: text,
+              criadoEm: agora,
+            }))
+          }
         }
         if (e.aversoes && e.aversoes.length > 0) {
           sinais.aversoesProduto = e.aversoes.map(a => a.nome)

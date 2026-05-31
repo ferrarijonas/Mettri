@@ -6,7 +6,8 @@ Extraia esses campos se a mensagem tiver info para preenchê-los.
 
 REGRAS DE CATÁLOGO:
 - Produtos SÓ podem vir da lista "catalogo" abaixo
-- Se um item mencionado NÃO está na lista, IGNORE completamente
+- Se um item mencionado NÃO está na lista, retorne com confianca "baixa"
+  (em vez de ignorar — o atendente decide se é um produto novo ou erro)
 - Se a lista "catalogo" estiver vazia, extraia produtos livremente
 - Erro de digitação é aceitável (ex: "brigadeiro" → "Brigadeiro")
 
