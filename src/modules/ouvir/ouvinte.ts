@@ -307,14 +307,18 @@ export function registerOuvinteListeners(
  */
 export async function processarUltimaMensagem(chatId: string): Promise<boolean> {
   try {
-    // Pega última mensagem do cliente
-    const ultimas = await messageDB.getMessages(chatId, 1)
-    if (ultimas.length === 0) return false
-    const msg = ultimas[0]
-    if (msg.isOutgoing) return false
-
-    const text = (msg.text || '').trim()
-    if (text.length < 10) return false
+    // Busca até 5 mensagens pra trás pra achar a última mensagem relevante do cliente
+    const ultimas = await messageDB.getMessages(chatId, 5)
+    let text = ''
+    for (const msg of ultimas) {
+      if (msg.isOutgoing) continue
+      const t = (msg.text || '').trim()
+      if (t.length >= 10) {
+        text = t
+        break
+      }
+    }
+    if (!text) return false
 
     // Busca profile
     const profile = await customerProfileDB.getByChatId(chatId)
