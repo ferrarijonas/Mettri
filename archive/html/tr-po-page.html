@@ -1,0 +1,1881 @@
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="google-site-verification" content="jQkUjuw9DNumXJoiodomCb-nDLIq8DduLbkU1uqovmw" />
+  <title>Trading Portfolios - Portfolio Detail </title>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+  <link href="https://static.tradingportfolios.com/static/mdb/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://static.tradingportfolios.com/static/mdb/css/mdb.css" rel="stylesheet">
+  <link href="https://static.tradingportfolios.com/static/mdb/css/style.css" rel="stylesheet">
+  <link href="https://static.tradingportfolios.com/static/mdb/css/addons/datatables.css" rel="stylesheet"> 
+  <link href="https://static.tradingportfolios.com/static/mdb/css/addons/datatables-select.css" rel="stylesheet"> 
+  <link href="https://cdn.datatables.net/buttons/2.0.1/css/buttons.bootstrap4.min.css" rel="stylesheet"> 
+  <!--
+  <link href="https://cdn.datatables.net/fixedcolumns/4.0.1/css/fixedColumns.bootstrap4.min.css" rel="stylesheet"> 
+  <link href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css" rel="stylesheet"> 
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.5.6/css/buttons.bootstrap4.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/select/1.3.0/css/select.bootstrap4.min.css">
+  -->
+  <link rel="shortcut icon" href="https://static.tradingportfolios.com/static/favicon.ico">
+  
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/mdb/js/jquery-3.3.1.min.js"></script>
+  
+  <!-- Vega Embed -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-174198813-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'UA-174198813-1');
+  </script>
+  
+
+
+  
+
+    
+    
+    <!-- AdSense -->
+    <script data-ad-client="ca-pub-7930953423546406" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    
+
+
+    
+    
+
+
+
+    <meta property="og:title" content="Portfolio Demo - Geral" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="" />
+    <meta property="og:image" content="https://static.tradingportfolios.com/static/images/tp-logo-opengraph.png" />
+    <meta property="og:site_name" content="Trading Portfolios" />
+    <meta property="og:description" content="" />
+
+    <link media="all" href="https://static.tradingportfolios.com/static/nvd3/build/nv.d3.min.css" type="text/css" rel="stylesheet" />
+<script src="https://static.tradingportfolios.com/static/d3/d3.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="https://static.tradingportfolios.com/static/nvd3/build/nv.d3.min.js" type="text/javascript" charset="utf-8"></script>
+
+
+
+
+
+</head>
+
+<body>
+
+  
+
+<section "modals">
+
+    <!-- Confirm sign out -->
+    <div class="modal fade" id="modalConfirmSignOut" tabindex="-1" role="dialog" aria-labelledby="confirmSignOut" aria-hidden="true">
+        <div class="modal-dialog modal-notify modal-primary" role="document">
+
+            <div class="modal-content">
+
+              <div class="modal-header">
+                <p class="heading lead">Confirm sign out</p>
+            
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true" class="white-text">&times;</span>
+                </button>
+              </div>
+            
+              <div class="modal-body">
+                <div class="text-center">
+                  <p>Are you sure you want to sign out?</p>
+                </div>
+              </div>
+            
+              <div class="modal-footer justify-content-center">
+                <form method="post" action="/accounts/logout/">
+                  <input type="hidden" name="csrfmiddlewaretoken" value="Z65dXKJI20emg8o02GeyCUWtGhwSefyqH9AWmuxcW6uBqMWZHgqa21ShtyMrZcMb">
+                  
+                  <button type="submit" class="btn btn-primary">Yes</button>
+                </form>
+                <a type="button" class="btn btn-outline-primary waves-effect" data-dismiss="modal">No</a>
+              </div>
+            </div>
+
+        </div>
+    </div>        
+
+
+    
+
+    <!-- Confirm delete -->
+    <div class="modal fade" id="modalConfirmDelete" tabindex="-1" role="dialog" aria-labelledby="confirmDelete" aria-hidden="true">
+        <div class="modal-dialog modal-notify modal-danger" role="document">
+
+            <div class="modal-content">
+
+              <div class="modal-header">
+                <p class="heading lead">Confirm delete</p>
+            
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true" class="white-text">&times;</span>
+                </button>
+              </div>
+            
+              <div class="modal-body">
+                <div class="text-center">
+                  <p>Are you sure you want to delete this portfolio? </p>
+                </div>
+              </div>
+            
+              <div class="modal-footer justify-content-center">
+                <a type="button" href="/portfolios/portfolio/delete/5425/" class="btn btn-danger show-loader" onclick="$('#modalConfirmDelete').modal('hide')">Yes</i></a>
+                <a type="button" class="btn btn-outline-danger waves-effect" data-dismiss="modal">No</a>
+              </div>
+            </div>
+
+        </div>
+    </div>        
+    
+    
+
+    <!-- Confirm delete comment -->
+    <div class="modal fade" id="modalConfirmDeleteComment" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteComment" aria-hidden="true">
+        <div class="modal-dialog modal-notify modal-warning" role="document">
+
+            <div class="modal-content">
+
+              <div class="modal-header">
+                <p class="heading lead">Confirm delete comment</p>
+            
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true" class="white-text">&times;</span>
+                </button>
+              </div>
+            
+              <div class="modal-body">
+                <div class="text-center">
+                  <p>Are you sure you want to delete this comment? </p>
+                </div>
+              </div>
+            
+              <div class="modal-footer justify-content-center">
+                <a id="delete-comment-yes" type="button" href="#" class="btn btn-warning show-loader" onclick="$('#modalConfirmDeleteComment').modal('hide')">Yes</i></a>
+                <a type="button" class="btn btn-outline-warning waves-effect" data-dismiss="modal">No</a>
+              </div>
+            </div>
+
+        </div>
+    </div>        
+
+
+    <!-- Compare portfolios -->
+    <div class="modal fade" id="modalComparePortfolio" tabindex="-1" role="dialog" aria-labelledby="comparePortfolio" aria-hidden="true">
+        <div class="modal-dialog modal-notify modal-info" role="document">
+
+            <div class="modal-content">
+            
+              <form action="/portfolios/portfolio/compare/" method="post" onsubmit="$('#modalComparePortfolio').modal('hide'); $('#loadingModal').modal('show');"> 
+                  <input type="hidden" name="csrfmiddlewaretoken" value="Z65dXKJI20emg8o02GeyCUWtGhwSefyqH9AWmuxcW6uBqMWZHgqa21ShtyMrZcMb">
+
+                  <div class="modal-header">
+                    <p class="heading lead"> Compare portfolio with...</p>
+                
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true" class="white-text">&times;</span>
+                    </button>
+                  </div>
+            
+                  <div class="modal-body">
+                      
+                      
+
+
+
+
+
+
+
+
+
+
+
+<div class="row">
+    <div class="col-sm-12 md-form">
+        <label class="active ml-2">Portfolio:</label>
+         
+    </div>
+</div>
+
+
+                  </div>
+            
+                  <div class="modal-footer justify-content-center">
+                    <input type="submit" class="btn btn-info" value="Compare">
+                  </div>
+                  
+              </form> 
+            </div>
+
+        </div>
+    </div>        
+
+
+    <!-- Chart iframe -->
+    
+
+    <!-- Chart iframe -->
+	<div class="modal fade" id="iframePortfolio" tabindex="-1" role="dialog" aria-labelledby="iframePortfolio" aria-hidden="true">
+
+		<div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+
+			<div class="modal-content">
+				<div class="modal-header">
+					<h3 class="modal-title" id="modalLongTitle">Portfolio chart</h3>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+                    <p class="px-4">To show this chart in your website, copy the code below and place in the desired area of your page.</p>
+                    <div class="alert alert-primary">
+                        <code>&lt;iframe scrolling=&quot;no&quot; width=&quot;100%&quot; height=&quot;495&quot; style=&quot;border:none;&quot; title=&quot;Portfolio performance&quot;                          src=&quot;https://tradingportfolios.com/portfolios/jonasferrari/portfolio/chart/5425/?height=400&amp;width=container&amp;data=balance&quot;&gt;&lt;/iframe&gt;</code>
+                    </div>
+                    <p class="px-4">
+                    Note: The strategy or portfolio must be public to allow chart rendering.<br>
+                    Variables passed with the URL:
+                    </p>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Variable</th><th>Description</th><th>Values</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><kbd>height</kbd></td><td>Chart heigth in pixels.</td><td>number</td></tr>
+                            <tr><td><kbd>width</kbd></td><td>Chart width in pixels, or the word "container" to adjust to parent width.</td><td>number or the string 'container'</td></tr>
+                            <tr><td><kbd>data</kbd></td><td>Which data will be ploted.</td><td>balance<br>profit<br>points<br>returns</td></tr>
+                            <tr><td><kbd>theme</kbd></td><td>Theme applied to the chart.</td><td>latimes [default]<br>dark<br>fivethirtyeight<br>ggplot2<br>opaque<br>quartz<br>vox</td></tr>
+                        </tbody>
+                    </table>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-dark" data-dismiss="modal">Close</button>
+				</div>	
+			</div>
+		</div>
+	</div>	
+
+
+
+
+    
+
+<div class="modal fade top" id="loadingModal" tabindex="-1" role="dialog" aria-labelledby="loadingModal" aria-hidden="true">
+
+  <div class="modal-dialog modal-frame modal-top" role="document">
+
+    <div class="modal-content">
+      <div class="modal-body">
+        <div class="row d-flex justify-content-center align-items-center">
+
+              <div class="spinner-border mr-4" style="width: 3rem; height: 3rem;" role="status">
+                <span class="sr-only">Loading...</span>
+              </div>
+              
+              <div>
+                  <h4><strong>Loading, please wait...</strong></h4>
+              </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Frame Modal Bottom -->
+    
+</section> 
+
+
+<div class="container-fluid px-0" style="min-height: calc(100vh - 55px);">   
+  
+
+    <nav class="navbar navbar-expand-lg navbar-dark elegant-color">
+    <div class="container">    
+      <!-- Navbar brand -->
+      <a class="navbar-brand" href="/"><img src="https://static.tradingportfolios.com/static/images/tp-logo-navbar.png" alt="TradingPortfolios"></a>
+    
+      <!-- Collapse button -->
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#DashBoardNavigation"
+        aria-controls="DashBoardNavigation" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    
+      <!-- Collapsible content -->
+      <div class="collapse navbar-collapse" id="DashBoardNavigation">
+    
+        <!-- Links -->
+        <ul class="navbar-nav mr-auto">
+          <!-- Dashboard -->
+          <li class="nav-item ml-3">
+            <a class="nav-link show-loader" href="/"><i class="fas fa-home"></i> Home</a>
+          </li>
+          <li class="nav-item ml-3">
+            <a class="nav-link show-loader" href="/documentation/basic_concepts/main/"><i class="fas fa-book"></i> Documentation</a>
+          </li>
+        </ul>
+
+        <ul class="list-unstyled navbar-nav">
+
+          
+          
+          
+          <li class="nav-item dropdown ml-3">
+          
+          <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown"><img class='mr-1' src="https://static.tradingportfolios.com/static/images/flags/en.png"></a>
+          
+          <ul class="dropdown-menu dropdown-menu-right dropdown-dark" role="menu" id="language-list">
+              
+                  <li>
+                  <a class="dropdown-item" href="/i18n/setlang/" data-language-code="en">
+                      
+                      <img class="mr-2" src="https://static.tradingportfolios.com/static/images/flags/en.png">
+                      
+                      English
+                  </a>
+                  </li>
+              
+                  <li>
+                  <a class="dropdown-item" href="/i18n/setlang/" data-language-code="pt-br">
+                      
+                      <img class="mr-2" src="https://static.tradingportfolios.com/static/images/flags/pt-br.png">
+                      
+                      Português Brasileiro
+                  </a>
+                  </li>
+              
+          </ul>
+          </li>
+
+
+          <li class="nav-item ml-3">
+            <a href="/accounts/login/" class="nav-link white-text"><i class="fas fa-user"></i> <span class="clearfix">Sign in</span></a>
+          </li>
+          <li class="nav-item ml-3">
+            <a href="/accounts/signup/" class="btn btn-danger btn-rounded btn-sm font-weight-bold text-nowrap">Sign up</a>
+          </li>
+        </ul>
+    
+      </div>
+      <!-- Collapsible content -->
+    </div>
+    </nav>
+  
+  <!--/.Navbar-->
+
+  <div class="row">
+    <div class="col-xl-1">
+      
+      <div id='left-side' class="side-ads" style="position: fixed; left: 10px; top: 100px;">
+      
+<div data-django-ads-zone="left_sidebar" data-django-ads-extra-classes=""></div>
+
+
+      </div>
+      
+    </div>
+    <div class="col-xl">
+          
+
+      
+      <div class="container mt-4 d-flex justify-content-center align-items-center">
+          
+<div data-django-ads-zone="header" data-django-ads-extra-classes=""></div>
+
+
+      </div>
+      
+
+      
+
+
+    <div class="container" style="margin-top:0px">        
+
+        <div class="container" id="modify_link">&nbsp;</div>
+        <div class="collapse" id="collapseModifyForm">        
+            <div class="card card-cascade narrower" id="modify">
+                <div class="view view-cascade card-header elegant-color narrower py-2 mx-4 mb-3 d-flex justify-content-between align-items-center">
+    
+                    <div>
+                    </div>
+                    
+                    <a class="white-text mx-3" href="#collapseModifyForm" data-toggle="collapse" aria-expanded="false" aria-controls="collapseModifyForm"><i class="fas fa-edit mr-2"></i>  Modify portfolio</a>
+                    
+                    <div>
+                        <a class="material-tooltip-main" data-toggle="tooltip" data-placement="left"
+                           title="Use this form to change your portfolio information and composition.">
+                                <i class="fas fa-info-circle mt2 text-white"></i>
+                        </a>
+                        <a href="#collapseModifyForm" data-toggle="collapse" aria-expanded="false" aria-controls="collapseModifyForm"><i class="fas fa-times text-white ml-2"></i></a>
+                    </div>
+    
+                </div>
+    
+                <div class="px-4">
+                    <form action="/portfolios/portfolio/modify/5425/" method="post" onsubmit="$('#loadingModal').modal('show');">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="Z65dXKJI20emg8o02GeyCUWtGhwSefyqH9AWmuxcW6uBqMWZHgqa21ShtyMrZcMb">                    
+                        
+
+
+
+
+
+
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="md-form">
+            
+                
+                
+            
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="md-form">
+            <label class="active">:</label>
+            
+                
+            
+
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="md-form">
+            <label class="active">:</label>
+            
+                
+            
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="md-form">
+            
+                
+                
+            
+        </div>
+    </div>
+</div>                                                
+<div class="row">
+    <div class="col-md-6">
+        <div class="md-form">
+            <label class="active">Selected strategies:</label>
+            
+                
+            
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="md-form">
+            <label class="active">:</label>
+            
+                
+            
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-3 col-6" style="min-height: 90px;">
+        <div class="md-form pb-3">
+            <label class="active">Visibility:</label>
+            <div class="switch mt-4 ml-4">
+                <label class="text-muted"> Private
+                    
+                    <span class="lever"></span> Public
+                </label>
+            </div>
+        </div>
+    </div>                            
+    <div class="col-lg-3 col-6" style="min-height: 90px;">
+        <div class="md-form pb-3">
+            <label class="active">:</label>
+            <div class="switch mt-4 ml-4">
+                <label class="text-muted"> No
+                    
+                    <span class="lever"></span> Yes
+                </label>
+            </div>
+        </div>
+    </div>                            
+    <div class="col-lg-6 col-12">
+        <div class="md-form">
+            
+                
+                
+            
+        </div>
+    </div>                            
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="md-form">
+            
+                
+                
+            
+        </div>
+    </div>
+</div>
+
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <button id="update-button" class="btn btn-grey btn-rounded btn-md active mb-4" aria-pressed="true"><i class="fas fa-save  mr-2"></i> Update</button>
+                            </div>
+                        </div>
+                    </form>
+                    <script type="text/javascript">
+                        function check_if_public() {
+                            if ($('#id_public').prop("checked") == true) {
+                                $('#id_privmoney').attr("disabled", false);
+                                $('#id_password').attr("disabled", false);
+                            }
+                            else {
+                                $('#id_privmoney').attr("disabled", true);
+                                $('#id_password').attr("disabled", true);
+                            }
+                        }
+                        
+                        $(document).ready(function () {
+                            check_if_public();
+                        })
+
+                        $('#id_public').click(check_if_public);
+                        
+                    </script>
+                </div>              
+            </div>
+        </div>
+ 
+        <br>
+
+        <div class="row">
+            <div class="col-lg-6 d-flex p-2">
+                <div class="card card-cascade narrower flex-fill"> 
+                    <div class="view view-cascade card-header elegant-color narrower py-2 mx-4 mb-3 d-flex justify-content-between align-items-center">
+                      <a class="text-white" title="Help" href="/documentation/portfolios/detail/" target="_blank"><i class="fas fa-question-circle"></i></a>
+                      <h3 class="mb-0 text-white text-center"><i class="fas fa-wallet mr-2"></i> Demo - Geral</h3>
+                      <div class="text-center">
+                        
+                      </div>
+                    </div>
+                    <div class="card-body d-flex align-content-between flex-wrap">
+                      <div class="row d-flex flex-grow-1">
+                          
+                          <div class="col-12">
+                              <div class="row hoverable mx-2">
+                                  <div class="col-5 text-left">
+                                      <B>User: </B> 
+                                  </div>
+                                  <div class="col-5 text-left">
+                                      <a href="/portfolios/jonasferrari/profile/"> jonasferrari </a>
+                                  </div>
+                                  <div class="col-2 text-center">
+                                     <a class="material-tooltip-main" data-toggle="tooltip" data-placement="right"
+                                        title="The user who published this portfolio.">
+                                             <i class="fas fa-info-circle ml-1 text-muted"></i>
+                                     </a>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <div class="col-12">
+                              <div class="row hoverable mx-2">
+                                  <div class="col-5 text-left">
+                                      <B>History data type: </B>
+                                  </div>
+                                  <div class="col-5 text-left">
+                                      Demo
+                                  </div>
+                                  <div class="col-2 text-center">
+                                     <a class="material-tooltip-main" data-toggle="tooltip" data-placement="right"
+                                        title="This is the source of data used to build portfolio analysis.">
+                                             <i class="fas fa-info-circle ml-1 text-muted"></i>
+                                     </a>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="col-12">
+                              <div class="row hoverable mx-2">
+                                  <div class="col-5 text-left">
+                                      <B>Initial balance: </B>
+                                  </div>
+                                  <div class="col-5 text-left">
+                                       9,000.00 BRL 
+                                  </div>
+                                  <div class="col-2 text-center">
+                                     <a class="material-tooltip-main" data-toggle="tooltip" data-placement="right"
+                                        title="Initial deposit considered within calculations. Change this value to estimate required trading capital.">
+                                            <i class="fas fa-info-circle ml-1 text-muted"></i>
+                                     </a>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <div class="col-12 mt-3 mb-3">
+                              <div class="row hoverable mx-2">
+                                  <div class="col-12 text-justify">
+                                      <B>Description: </B> <p></p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      <div class="row d-flex flex-grow-1">
+                          <div class="col-12 d-flex justify-content-between align-items-center">
+                              
+                              <div></div>
+                              
+                              <div class="text-center">
+                                <span class="dropdown">
+                                    <button class="btn btn-grey btn-rounded btn-md dropdown-toggle active " type="button" id="ShareDropDown" data-toggle="dropdown"
+                                        aria-haspopup="true" aria-expanded="false"><i class="fas fa-pencil-alt mr-2"></i>Actions</button>
+
+                                    <!--Menu-->
+                                    <div class="dropdown-menu dropdown-dark">
+                                        
+                                        <a href="/portfolios/jonasferrari/portfolio/clone/5425/" class="dropdown-item">
+                                            <i class="fas fa-clone  mr-2"></i>Clone this portfolio</a>
+                                    </div>
+                                </span>                             
+                                
+                                <span class="dropdown">
+                                    <button class="btn btn-grey btn-rounded btn-md dropdown-toggle active" type="button" id="ShareDropDown" data-toggle="dropdown"
+                                        aria-haspopup="true" aria-expanded="false"><i class="fas fa-share-alt mr-2"></i>Share</button>
+                                    
+                                    <!--Menu-->
+                                    <div class="dropdown-menu dropdown-dark">
+                                        
+
+
+
+                                    <a id="shortLink" class="dropdown-item" href="#"><i class="fas fa-link mr-2"></i>Copy short link</a>
+                                    <a class="dropdown-item " href="https://twitter.com/intent/tweet?text=Demo%20-%20Geral%20on%20tradingportfolios.com%20https%3A//tr-po.com/s/whmWqW" target="_blank"><i class="fab fa-twitter mr-2"></i>Twitter</a>
+                                    <a class="dropdown-item " href="https://www.facebook.com/sharer/sharer.php?u=https%3A//tr-po.com/s/whmWqW" target="_blank"><i class="fab fa-facebook mr-2"></i>Facebook</a>
+                                    <a class="dropdown-item " href="https://www.linkedin.com/shareArticle?mini=true&title=Demo%20-%20Geral%20on%20tradingportfolios.com&url=https%3A//tr-po.com/s/whmWqW" target="_blank"><i class="fab fa-linkedin mr-2"></i>LinkedIn</a>
+                                    <a class="dropdown-item " href="https://t.me/share/url?text=Demo%20-%20Geral%20on%20tradingportfolios.com&url=https%3A//tr-po.com/s/whmWqW" target="_blank"><i class="fab fa-telegram mr-2"></i>Telegram</a>
+                                    <a class="dropdown-item " href="https://www.reddit.com/submit?title=Demo%20-%20Geral%20on%20tradingportfolios.com&url=https%3A//tr-po.com/s/whmWqW" target="_blank"><i class="fab fa-reddit mr-2"></i>Reddit</a>
+
+                                    <script>
+                                        $("#shortLink").on('click', function() {
+                                            const el = document.createElement('textarea');
+                                            el.value = 'https://tr-po.com/s/whmWqW';
+                                            el.setAttribute('readonly', '');
+                                            el.style.position = 'absolute';
+                                            el.style.left = '-9999px';
+                                            document.body.appendChild(el);
+                                            el.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(el);                                            
+                                        })
+                                    </script>
+
+                                    </div>                                  
+                                </span>
+                            </div>
+                            
+                              <div></div>
+                              
+                          </div>
+                      </div>
+                    </div>
+                </div>            
+            </div>
+            
+            <div class="col-lg-6 d-flex p-2">
+                <div class="card card-cascade narrower flex-fill"> 
+                    <div class="view view-cascade card-header elegant-color narrower py-2 mx-4 mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                        </div>
+                        
+                        <a class="white-text mx-3">Basic performance</a>
+                        
+                        <div>
+                            <a class="material-tooltip-main" data-toggle="tooltip" data-placement="left"
+                               title="This is a simple performance view for a fast verification. It does not include trading costs. Detailed analysis is provided within report page.">
+                                    <i class="fas fa-info-circle mt2 text-white"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body d-flex align-content-between flex-wrap">
+                        <div class="row d-flex flex-grow-1" style="width: 100%;" id="portfolio_performance">
+                            <div class="col-md-12 px-0 text-center" style="height: 492px; width: 100%">
+                            
+
+        <div class="row d-flex justify-content-center align-items-center">
+
+              <div class="spinner-border text-primary mr-2" role="status">
+                <span class="sr-only">Loading...</span>
+              </div>
+              
+              <div>
+                  <strong>Loading content...</strong>
+              </div>
+
+        </div>
+
+                            </div>
+                        </div>
+                        <div class="row d-flex flex-grow-1">
+                          <div class="col-12 text-center">
+                              <a href="/portfolios/jonasferrari/portfolio/report/5425/" class="btn btn-grey btn-rounded btn-md active show-loader" role="button" aria-pressed="true" 
+                                 id="report-button" style="display: none;"><i class="fas fa-chart-bar mr-2"></i>Report</a>
+
+                              <a href="#ranking" data-toggle="modal" aria-controls="ranking" class="btn btn-grey btn-rounded btn-md active" role="button" aria-pressed="true" 
+                                 id="ranking-button" style="display: none;"><i class="fas fa-trophy mr-2"></i>Ranking</a>
+
+                              <span class="dropdown">
+                                  <button class="btn btn-grey btn-rounded btn-md dropdown-toggle active" type="button" id="btToolsDropDown" data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="false" style="display: none;"><i class="fas fa-tools mr-2"></i>Tools</button>
+                                
+                                  <!--Menu-->
+                                  <div class="dropdown-menu dropdown-dark">
+                                      <a class="dropdown-item show-loader" href="/portfolios/jonasferrari/portfolio/correlation/5425/">Strategies Correlation</a>
+                                      <a class="dropdown-item show-loader" href="/portfolios/jonasferrari/portfolio/allocation/5425/">Portfolio Allocation</a>
+                                      <a class="dropdown-item show-loader" href="/portfolios/jonasferrari/portfolio/montecarlo/5425/">Monte Carlo Analysis</a>
+                                      
+                                      <a class="dropdown-item" href="#modalComparePortfolio" data-toggle="modal">Compare with</a>
+                                      
+                                      
+                                  </div>                                  
+                              </span>
+                          </div>
+                        </div>
+                    </div>
+                </div>            
+            </div>
+        </div>
+
+        <br>
+
+
+        <div class="card card-cascade narrower" id="strategies">
+            <div class="view view-cascade card-header elegant-color narrower py-2 mx-4 mb-3 d-flex justify-content-between align-items-center">
+
+                <div>
+                </div>
+                
+                <a class="white-text mx-3"><i class="fas fa-chart-line mr-2"></i>  Selected strategies</a>
+                
+                <div>
+                    <a class="material-tooltip-main" data-toggle="tooltip" data-placement="left"
+                       title="This table shows the strategies selected for the portfolio.">
+                            <i class="fas fa-info-circle mt2 text-white"></i>
+                    </a>
+                </div>
+
+            </div>
+
+            <div class="px-4">
+        
+                <table width="100%" id="selStrategiesTable" class="table table-hover <>-sm text-nowrap">
+                    <thead>            
+                    <TH class="th-lg">ID</TH>
+                    <TH class="th-lg">Name</TH>
+                    <TH class="th-lg">Symbol</TH>
+                    <TH class="th-lg">Timeframe</TH>
+                    <TH class="th-lg">Style</TH>
+                    
+                    </thead>
+                    <tbody>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350342/" class="show-loader">223002</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350342/" class="show-loader">223002 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350342/" class="show-loader">BTC</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350342/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350342/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350735/" class="show-loader">131</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350735/" class="show-loader">Strategy-131 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350735/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350735/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350735/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350736/" class="show-loader">281</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350736/" class="show-loader">Strategy-281 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350736/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350736/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350736/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350737/" class="show-loader">502</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350737/" class="show-loader">Strategy-502 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350737/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350737/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350737/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350738/" class="show-loader">2622</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350738/" class="show-loader">Strategy-2622 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350738/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350738/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350738/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350739/" class="show-loader">5011</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350739/" class="show-loader">Strategy-5011 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350739/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350739/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350739/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350740/" class="show-loader">12221</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350740/" class="show-loader">Strategy-12221 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350740/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350740/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350740/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350741/" class="show-loader">23004</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350741/" class="show-loader">23004 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350741/" class="show-loader">WIN</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350741/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350741/" class="show-loader">Trend following</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350742/" class="show-loader">122666</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350742/" class="show-loader">Strategy-122666 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350742/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350742/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350742/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350743/" class="show-loader">262211</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350743/" class="show-loader">Strategy-262211 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350743/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350743/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350743/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350744/" class="show-loader">5012004</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350744/" class="show-loader">Strategy-5012004 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350744/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350744/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350744/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350745/" class="show-loader">5012005</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350745/" class="show-loader">Strategy-5012005 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350745/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350745/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350745/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350746/" class="show-loader">5012006</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350746/" class="show-loader">Strategy-5012006 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350746/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350746/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350746/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350747/" class="show-loader">5012007</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350747/" class="show-loader">Strategy-5012007 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350747/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350747/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350747/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350748/" class="show-loader">5012008</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350748/" class="show-loader">Strategy-5012008 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350748/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350748/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350748/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350749/" class="show-loader">5012009</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350749/" class="show-loader">Strategy-5012009 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350749/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350749/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350749/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350750/" class="show-loader">5012011</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350750/" class="show-loader">Strategy-5012011 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350750/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350750/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350750/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351662/" class="show-loader">23009</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351662/" class="show-loader">23009 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351662/" class="show-loader">WIN</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351662/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351662/" class="show-loader">Retracements</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351793/" class="show-loader">23008</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351793/" class="show-loader">Strategy-23008 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351793/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351793/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/351793/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347317/" class="show-loader">2001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347317/" class="show-loader">2001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347317/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347317/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347317/" class="show-loader">Fake breakout</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350134/" class="show-loader">213001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350134/" class="show-loader">213001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350134/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350134/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350134/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350136/" class="show-loader">20122</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350136/" class="show-loader">20122 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350136/" class="show-loader">BTC</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350136/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350136/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347456/" class="show-loader">281001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347456/" class="show-loader">281001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347456/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347456/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347456/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350929/" class="show-loader">23007</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350929/" class="show-loader">23007 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350929/" class="show-loader">WIN</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350929/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350929/" class="show-loader">Trend following</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352884/" class="show-loader">13002</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352884/" class="show-loader">Strategy-13002 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352884/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352884/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352884/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352889/" class="show-loader">23006</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352889/" class="show-loader">Strategy-23006 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352889/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352889/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352889/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352891/" class="show-loader">23005</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352891/" class="show-loader">Strategy-23005 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352891/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352891/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/352891/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348922/" class="show-loader">5012013</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348922/" class="show-loader">5012013 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348922/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348922/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348922/" class="show-loader">Retracements</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347455/" class="show-loader">2622001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347455/" class="show-loader">2622001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347455/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347455/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347455/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347286/" class="show-loader">2003</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347286/" class="show-loader">2003 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347286/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347286/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347286/" class="show-loader">Fake breakout</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347303/" class="show-loader">122</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347303/" class="show-loader">122 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347303/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347303/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347303/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347306/" class="show-loader">207</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347306/" class="show-loader">207 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347306/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347306/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347306/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347310/" class="show-loader">251</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347310/" class="show-loader">251 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347310/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347310/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347310/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347314/" class="show-loader">501</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347314/" class="show-loader">501 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347314/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347314/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347314/" class="show-loader">Retracements</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347320/" class="show-loader">5012</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347320/" class="show-loader">5012 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347320/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347320/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347320/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347348/" class="show-loader">5012010</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347348/" class="show-loader">5012010 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347348/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347348/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347348/" class="show-loader">Trend following</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347350/" class="show-loader">5012012</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347350/" class="show-loader">5012012 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347350/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347350/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347350/" class="show-loader">Retracements</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347311/" class="show-loader">261</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347311/" class="show-loader">261 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347311/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347311/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/347311/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348642/" class="show-loader">12001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348642/" class="show-loader">12001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348642/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348642/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348642/" class="show-loader">Mean reversion</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348546/" class="show-loader">32001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348546/" class="show-loader">32001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348546/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348546/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348546/" class="show-loader">Retracements</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348998/" class="show-loader">12002</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348998/" class="show-loader">12002 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348998/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348998/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/348998/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349357/" class="show-loader">13001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349357/" class="show-loader">13001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349357/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349357/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349357/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349360/" class="show-loader">33001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349360/" class="show-loader">33001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349360/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349360/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349360/" class="show-loader">Trend following</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349507/" class="show-loader">33002</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349507/" class="show-loader">33002 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349507/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349507/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/349507/" class="show-loader">Trend following</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350386/" class="show-loader">23003</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350386/" class="show-loader">23003 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350386/" class="show-loader">WIN</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350386/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350386/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350304/" class="show-loader">23002</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350304/" class="show-loader">23002 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350304/" class="show-loader">WIN</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350304/" class="show-loader">1 minute</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/350304/" class="show-loader">Countertrend</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/359307/" class="show-loader">82003</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/359307/" class="show-loader">Strategy-82003 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/359307/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/359307/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/359307/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/374418/" class="show-loader">230042</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/374418/" class="show-loader">Strategy-230042 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/374418/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/374418/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/374418/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385270/" class="show-loader">4</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385270/" class="show-loader">Strategy-4 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385270/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385270/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385270/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385271/" class="show-loader">140</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385271/" class="show-loader">Strategy-140 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385271/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385271/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385271/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385272/" class="show-loader">1000</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385272/" class="show-loader">Strategy-1000 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385272/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385272/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385272/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385273/" class="show-loader">123456</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385273/" class="show-loader">Strategy-123456 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385273/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385273/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385273/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385274/" class="show-loader">999001</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385274/" class="show-loader">Strategy-999001 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385274/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385274/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385274/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385275/" class="show-loader">999002</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385275/" class="show-loader">Strategy-999002 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385275/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385275/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385275/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385276/" class="show-loader">999200</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385276/" class="show-loader">Strategy-999200 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385276/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385276/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385276/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385277/" class="show-loader">999991</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385277/" class="show-loader">Strategy-999991 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385277/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385277/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385277/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385278/" class="show-loader">999992</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385278/" class="show-loader">Strategy-999992 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385278/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385278/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385278/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                        <TR>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385279/" class="show-loader">999993</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385279/" class="show-loader">Strategy-999993 
+                            </a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385279/" class="show-loader">default</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385279/" class="show-loader">1 hour</a></TD>
+                        <TD><a href="/portfolios/jonasferrari/strategy/385279/" class="show-loader">Not specified</a></TD>
+                        
+                        </TR>
+                    
+                    </tbody>
+                </table>
+            </div>              
+        </div>
+ 
+        <br>
+        <br>
+
+
+        <div class="card card-cascade narrower" id="comments">
+            <div class="view view-cascade card-header elegant-color narrower py-2 mx-4 mb-3 d-flex justify-content-between align-items-center">
+
+                <div>
+                </div>
+                
+                <a class="white-text mx-3"><i class="fas fa-comments mr-2"></i>  Comments</a>
+                
+                <div>
+                    <a class="material-tooltip-main" data-toggle="tooltip" data-placement="left"
+                       title="Use this area to insert notes regarding your portfolio, or interact with other users if you turn it public.">
+                            <i class="fas fa-info-circle mt2 text-white"></i>
+                    </a>
+                </div>
+
+            </div>
+
+            <div class="px-4">
+                
+
+
+
+
+
+
+    <div class="row mt-3">
+        <div class="col-md-1">
+        </div>
+        <div class="col-md-10">
+            <p class="font-weight-light text-justify"><i class="fas fa-exclamation-circle mr-2"></i> You must be logged in to send comments.</p>
+        </div>
+        <div class="col-md-1">
+        </div>
+    </div>
+
+
+                <div class="scrollbar scrollbar-black thin comment-list-scrollbar">
+                    
+
+
+
+
+
+
+
+
+
+
+    <div class="row mt-3">
+        <div class="col-md-1">
+        </div>
+        <div class="col-md-10">
+            <p class="font-weight-light text-justify">No comments found for this item.</p>
+        </div>    
+        <div class="col-md-1">
+        </div>
+    </div>
+
+
+
+
+
+                </div>
+                <br>
+            </div>              
+        </div>
+    
+    </div>
+
+    <br>
+    <br>
+
+
+
+      
+      <div class="container mt-2 mb-4 d-flex justify-content-center align-items-center">
+          
+<div data-django-ads-zone="footer" data-django-ads-extra-classes=""></div>
+
+
+      </div>
+      
+    </div>
+    <div class="col-xl-1">
+      
+      <div id='right-side' class="side-ads" style="position: fixed; right: 10px; top: 100px;">
+      
+<div data-django-ads-zone="right_sidebar" data-django-ads-extra-classes=""></div>
+
+
+      </div>
+      
+    </div>
+  </div>
+
+</div>
+
+
+
+
+  <!-- SCRIPTS -->
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/mdb/js/popper.min.js"></script>
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/mdb/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/mdb/js/mdb.js"></script>
+  <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.11.3/js/dataTables.bootstrap4.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.0.1/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.0.1/js/buttons.bootstrap4.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.0.1/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/select/1.3.3/js/dataTables.select.min.js"></script>
+  <!--
+  <script src="https://cdn.datatables.net/fixedcolumns/4.0.1/js/dataTables.fixedColumns.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+  <script src="https://cdn.datatables.net/keytable/2.6.4/js/dataTables.keyTable.min.js"></script>
+  -->
+
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/js/saveSvgAsPng.js"></script>
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/mdb/js/modules/wow.js"></script>
+  <script type="text/javascript" src="https://static.tradingportfolios.com/static/cookie_consent/cookiebar.js"></script>
+  <script type="text/javascript">
+  
+		function chartToPng(container, filename) {
+			saveSvgAsPng(document.getElementById(container).getElementsByTagName('svg')[0], filename, {backgroundColor: '#fff'});
+		}
+		
+		function canvasToPng(container, filename) {
+			let lnk = document.createElement('a'), e;
+			let canvas = document.getElementById(container).getElementsByTagName('canvas')[0]
+			if (!canvas) {
+				canvas = document.getElementById(container)
+			}
+
+			let downloadCanvas = document.createElement("canvas");
+			downloadCanvas.width = canvas.width;
+			downloadCanvas.height = canvas.height;
+
+			let ctx = downloadCanvas.getContext('2d');
+
+			ctx.fillStyle = "#FFF";
+			ctx.fillRect(0,0,canvas.width,canvas.height);
+
+			ctx.drawImage(canvas, 0, 0);
+
+			lnk.download = filename;
+			lnk.href = downloadCanvas.toDataURL("image/png;base64");
+
+			if (document.createEvent) {
+				e = document.createEvent("MouseEvents");
+				e.initMouseEvent("click", true, true, window,
+								 0, 0, 0, 0, 0, false, false, false,
+								 false, 0, null);
+
+				lnk.dispatchEvent(e);
+			} else if (lnk.fireEvent) {
+				lnk.fireEvent("onclick");
+			}			
+		}
+
+    function delayedScrollIntoView(id) {
+
+        setTimeout(function() {
+            document.getElementById(id).scrollIntoView();
+          }, 200);
+        
+    }
+
+    function getCookie(name) {
+        var value = '; ' + document.cookie,
+            parts = value.split('; ' + name + '=');
+        if (parts.length == 2) return parts.pop().split(';').shift();
+    }
+
+
+    $('#language-list a').on('click', function(event) {
+        event.preventDefault();
+        var target = $(event.target);
+        var url = target.attr('href');
+        var language_code = target.data('language-code');
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: {language: language_code},
+            headers: {"X-CSRFToken": getCookie('csrftoken')}
+        }).done(function(data, textStatus, jqXHR) {
+            $.ajax({
+                type: 'POST',
+                url: "/portfolios/profile/navbar/clear/",
+                data: {clear: true},
+                headers: {"X-CSRFToken": getCookie('csrftoken')}
+            });
+            window.location.reload(true);
+        });
+    });
+
+    // Traducoes para DataTables:
+    var dataTablesLanguage = {
+          decimal:        "",
+          emptyTable:     "No data available in table",
+          info:           "Showing _START_ to _END_ of _TOTAL_ entries",
+          infoEmpty:      "Showing 0 to 0 of 0 entries",
+          infoFiltered:   "(filtered from _MAX_ total entries)",
+          infoPostFix:    "",
+          thousands:      ",",
+          lengthMenu:     "Show _MENU_ entries",
+          loadingRecords: "Loading...",
+          processing:     "Processing...",
+          search:         "Search:",
+          zeroRecords:    "No matching records found",
+          paginate: {
+              first:      "First",
+              last:       "Last",
+              next:       "Next",
+              previous:   "Previous"
+          },
+          aria: {
+              sortAscending:  ": activate to sort column ascending",
+              sortDescending: ": activate to sort column descending"
+          }
+    }
+
+    var dataTablesEditori18n = {
+          create: {
+              button: "New",
+              title:  "Create new entry",
+              submit: "Create"
+          },
+          edit: {
+              button: "Edit",
+              title:  "Edit entry",
+              submit: "Update"
+          },
+          remove: {
+              button: "Delete",
+              title:  "Delete",
+              submit: "Delete",
+              confirm: {
+                  _: "Are you sure you wish to delete %d lines?",
+                  1: "Are you sure you wish to delete 1 line ?"
+              }
+          },
+          error: {
+              system: "An error occured, contact system administrator"
+          },
+    }
+
+  </script>
+  <script src="/jsreverse/" type="text/javascript"></script>
+
+  
+
+    <script type="text/javascript">
+
+        function show_load_error_message() {
+            return '' +
+            '<div class="row px-5 ml-2">' +
+                '<div class="col-12 py-5 my-3 text-center">' +
+                    '<div class="alert alert-danger text-center">' +
+                        '<strong><i class="fas fa-exclamation-triangle text-danger mr-2"></i>Error: </strong>' +
+                        'The content could not be loaded.' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+
+        $("#strategiesDropdownList").mdbDropSearch();
+        $("#portfoliosDropdownList").mdbDropSearch();
+        $("#accountsDropdownList").mdbDropSearch();
+        $("#symbolsDropdownList").mdbDropSearch();
+
+        $('.show-loader').on('click', function() {
+            $('#loadingModal').modal('show');
+            setTimeout(function() {
+                $('#loadingModal').modal('hide');
+            }, 20000);
+
+        });
+
+        $(".dropdown-submenu").mouseover(function() {
+          $(this).children(".dropdown-menu").addClass('show');
+          $(this).children(".dropdown-toggle").addClass('text-white');
+        });
+
+        $(".dropdown-submenu").mouseout(function() {
+          $(this).children(".dropdown-toggle").removeClass('text-white');
+          $(this).children(".dropdown-menu").removeClass('show');
+        });
+
+        $(".hide-submenu").mouseover(function() {
+          $(".dropdown-submenu .dropdown-menu").removeClass('show');
+          $(".dropdown-submenu .dropdown-menu").find("input").val("");
+          $(".dropdown-submenu .dropdown-menu").find("input").keyup();
+
+        });
+        
+        setTimeout(function() {
+          $('.alert-dismissible').alert('close');
+        }, 10000);
+
+
+    </script>
+    
+    
+
+    
+
+    <script type="text/javascript">
+
+		function init_date_picker () {
+			// Date Picker Initialization
+			$('.datepicker').pickadate({
+				monthsFull: ["January", "February", "March", "April", 
+							 "May", "June", "July", "August", 
+							 "September", "October", "November", "December"],
+				monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+							  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+				weekdaysFull: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+				weekdaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri",  "Sat"],
+
+				// Buttons
+				today: "Today",
+				clear: "Clear",
+				close: "Close",
+
+				// Accessibility labels
+				labelMonthNext: "Next month",
+				labelMonthPrev: "Previous month",
+				labelMonthSelect: "Select a month",
+				labelYearSelect: "Select a year",
+
+				// Formats
+				format: 'yyyy-mm-dd',
+				formatSubmit: 'yyyy-mm-dd',
+				hiddenPrefix: undefined,
+				hiddenSuffix: undefined,
+				hiddenName: undefined
+			});
+		}
+
+		$(document).ready(function () {
+			init_date_picker();
+		});
+	
+	
+	</script>
+    
+    <script type="text/javascript">
+
+        
+
+
+        function delete_this_comment(delete_url) {
+
+            $('[data-toggle="tooltip"]').tooltip('hide');
+
+            $('#delete-comment-yes').attr('href', delete_url);
+
+            $('#modalConfirmDeleteComment').modal('show');
+
+        }
+
+
+
+
+        
+        
+
+
+
+
+        $(document).ready(function () {
+           
+            $("#selStrategiesTable").DataTable({
+                scrollX: true,
+                language: dataTablesLanguage,
+            });
+            $('.dataTables_length').addClass('bs-select');
+
+                        
+
+            
+            $("#portfolio_performance").load('/portfolios/jonasferrari/portfolio/performance/5425/', 
+                                       function(responseTxt, statusTxt, xhr) {
+                                                    if(statusTxt == "success") {
+                                                        $("#report-button").css("display", "inline-block");
+                                                        $("#ranking-button").css("display", "inline-block");
+                                                        $("#btToolsDropDown").css("display", "inline-block");
+                                                        $('#portfolio_performance [data-toggle="tooltip"]').tooltip();
+                                                        dispatchEvent(new Event('portfolioPerf-load'));
+                                                    }
+                                                    else {
+                                                        $("#portfolio_performance").html(show_load_error_message());
+                                                    }
+                                                });
+            
+
+        });
+
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        });
+
+
+        // Material Select Initialization
+        $(document).ready(function() {
+            $('.mdb-select').materialSelect();
+        });
+        
+        
+    </script>
+
+
+
+
+
+    
+
+
+  <script defer src='https://static.tradingportfolios.com/static/ads/ads.js'></script>
+
+
+  
+
+
+</body>
+
+
+
+<div class="container-fluid px-0">
+
+    <footer class="page-footer font-small elegant-color">
+    
+      
+      
+          <div class="container">
+            <div class="row mx-5 px-3 py-2">
+              <div class="col text-center">
+              <p class="white-text mt-4">
+              All strategies and investments involve risk.<br>
+              No information contained in this product should be interpreted as a guarantee of results.
+              </p>
+              </div>
+            </div>
+            <div class="row mx-5 px-3 py-2">
+              <div class="col-12 col-md-4 mb-3">
+              <p class="white-text mb-2 mt-2">RESOURCES</p>
+              <a class="footer-link" href="/">Home</a><br>
+              <a class="footer-link" href="/accounts/login/">Sign up</a><br>
+              <a class="footer-link" href="/portfolios/dashboard/">Dashboard</a><br>
+              <a class="footer-link" href="/documentation/subscription/main/">Pricing</a><br>
+              <a class="footer-link" href="/documentation/basic_concepts/main/">Documentation</a><br>
+              </div>
+              <div class="col-12 col-md-4 mb-3">
+              <p class="white-text mb-2 mt-2">LEGAL</p>
+              <a class="footer-link" href="/disclaimer/">Disclaimer</a><br>
+              <a class="footer-link" href="/terms/">Terms and conditions</a><br>
+              <a class="footer-link" href="/privacy/">Privacy policy</a><br>
+              <a class="footer-link" href="/cookie-policy/">Cookies policy</a><br>
+              </div>
+              <div class="col-12 col-md-4 mb-3">
+              <p class="white-text mb-2 mt-2">ABOUT US</p>
+              <a class="footer-link" href="/company/"><i class="fas fa-building mr-2"></i>Company</a><br>
+              <a class="footer-link" href="/support/"><i class="fas fa-envelope mr-2"></i>Contact</a><br>
+              <a class="footer-link" href="https://twitter.com/TrPortfolios" target="_blank"><i class="fab fa-twitter mr-2"></i>Twitter</a><br>
+              <a class="footer-link" href="https://www.linkedin.com/in/trading-portfolios-llc-a47a71201/" target="_blank"><i class="fab fa-linkedin mr-2"></i>Linkedin</a><br>
+              </div>
+            </div>
+            <!-- Copyright -->
+            <div class="footer-copyright elegant-color text-center py-3 ">
+              <p class="white-text">
+                © 2021 Copyright:
+                <a class="footer-link" href="/company/"> Trading Portfolios, LLC</a>
+              </p>
+            </div>
+            <!-- Copyright -->
+          </div>
+    </footer>
+
+</div>
+
+</html>
+
+
+
+

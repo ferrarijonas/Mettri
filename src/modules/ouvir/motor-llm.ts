@@ -10,7 +10,7 @@
 
 import { MettriBridgeClient } from '../../content/bridge-client'
 import type { LlmExtractionResult, OuvinteLlmInput, OuvinteLlmOutput } from './types'
-import { montarPrompt } from './montar-prompt'
+import { montarPrompt } from './monta-prompt'
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions'
 const MODEL = 'deepseek-chat'

@@ -1,4 +1,4 @@
-﻿import { messageDB } from '../../storage/message-db'
+import { messageDB } from '../../storage/message-db'
 import { catalogoDB } from '../../storage/catalogo-db'
 import { MettriBridgeClient } from '../../content/bridge-client'
 
@@ -56,15 +56,15 @@ function normalizeText(text: string): string {
     .trim()
 }
 
-/** Regex de sinais de ambiguidade ÔÇö qtd sem produto, pronome, refer├¬ncia vaga. */
+/** Regex de sinais de ambiguidade — qtd sem produto, pronome, referência vaga. */
 function temSinalAmbiguidade(text: string): boolean {
   const t = normalizeText(text)
   // Quantidade sem nome: "quero dois", "queria 5", "vou querer meia duzia"
   if (/^(quero|queria|vou querer|manda|pedi|pode ser)\s+(\d+|dois|duas|tres|quatro|cinco|meia|uma)\s*(desses?|disso|deles?|unidades?)?\s*$/.test(t)) return true
   // Pronome isolado: "esse", "essa", "isso", "aquele", "desse"
-  if (/^(esse|essa|isso|aquele|aquela|desse|dessa|esse mesmo|esse a├¡|esse aqui)\s*(a├¡|mesmo)?$/.test(t)) return true
-  // Refer├¬ncia vaga: "quero de novo", "quero igual", "quero o mesmo"
-  if (/^(quero|queria|vou querer)\s+(de novo|tamb├®m|igual|o mesmo|outro|mais um|mais uma)$/.test(t)) return true
+  if (/^(esse|essa|isso|aquele|aquela|desse|dessa|esse mesmo|esse aí|esse aqui)\s*(aí|mesmo)?$/.test(t)) return true
+  // Referência vaga: "quero de novo", "quero igual", "quero o mesmo"
+  if (/^(quero|queria|vou querer)\s+(de novo|também|igual|o mesmo|outro|mais um|mais uma)$/.test(t)) return true
   return false
 }
 
@@ -72,29 +72,29 @@ function extrairQtdDoTexto(text: string): number {
   const original = text.trim()
   const t = normalizeText(text)
 
-  // Se inicia com N% (porcentagem), n├úo ├® quantidade
+  // Se inicia com N% (porcentagem), não é quantidade
   if (/^\d+%/.test(original)) {
     return 1
   }
 
-  // Se inicia com % ou R$, n├úo tem quantity expl├¡cita (ex: "100% integral", "R$ 50,00")
+  // Se inicia com % ou R$, não tem quantity explícita (ex: "100% integral", "R$ 50,00")
   if (/^%/.test(original) || /^(R\$|R\s|Reais|Centavos)/i.test(original)) {
     return 1
   }
 
-  // Primeiro tenta "N de produto" ou "N produto" (padr├úo claro de quantidade)
-  const padraoQtd = t.match(/^(\d+)\s*(?:de\s+|p\s|p\.|p├ú|fati?s?)?\s*([a-z├á-├║]+|$)/)
+  // Primeiro tenta "N de produto" ou "N produto" (padrão claro de quantidade)
+  const padraoQtd = t.match(/^(\d+)\s*(?:de\s+|p\s|p\.|pã|fati?s?)?\s*([a-zá-ú]+|$)/)
   if (padraoQtd) {
     const num = parseInt(padraoQtd[1], 10)
     if (num > 0 && num <= 100) return num
   }
 
-  // Se come├ºa com "%" no texto normalizado, ignora
+  // Se começa com "%" no texto normalizado, ignora
   if (/^%/.test(t)) return 1
 
-  // Regex que ignora n├║meros seguidos de unidades n├úo-quantidade
-  // "ano 2024" ÔåÆ ignora 2024
-  const NaoQuantidade = /(\d+)(?!\s*(?:de\s|unidades?|p\.|p\s|p├ú|fati?s?|unidades?|p├º|pcs|vez|x|kg|g|ml|l|metro|cm|mm|anos?|ano|CEP|CEP\.?|tel|fone|cel|whatsapp)|$|[a-zA-Z])/g
+  // Regex que ignora números seguidos de unidades não-quantidade
+  // "ano 2024" → ignora 2024
+  const NaoQuantidade = /(\d+)(?!\s*(?:de\s|unidades?|p\.|p\s|pã|fati?s?|unidades?|pç|pcs|vez|x|kg|g|ml|l|metro|cm|mm|anos?|ano|CEP|CEP\.?|tel|fone|cel|whatsapp)|$|[a-zA-Z])/g
 
   const digMatch = t.match(NaoQuantidade)
   if (digMatch) {
@@ -119,16 +119,16 @@ function extrairQtdDoTexto(text: string): number {
 
 function extrairProdutoSimples(texto: string): string | null {
   const t = normalizeText(texto)
-  // Padr├úo "N de produto" ou "N produto"
-  const m = t.match(/(\d+)\s*(?:de\s+)?([\w├á-├║%]+(?:\s+[\w├á-├║%]+){0,4})$/)
+  // Padrão "N de produto" ou "N produto"
+  const m = t.match(/(\d+)\s*(?:de\s+)?([\wá-ú%]+(?:\s+[\wá-ú%]+){0,4})$/)
   if (m) {
     const nome = m[2].trim()
     if (nome.length > 2 && !/^\d+$/.test(nome)) return nome
   }
-  // Padr├úo "quero X", "tem X", etc. (inten├º├úo de compra)
+  // Padrão "quero X", "tem X", etc. (intenção de compra)
   const compraPatterns = [
     /(?:gosto de|gostaria de|quero|vou querer|vou pedir|pedir|quisesse|queria)\s+(.+?)(?:\.|,|;|$| para| pra| por favor|\?)/i,
-    /(?:voc├¬ tem|voc├¬s tem|tu tem|vende|tem como)\s+(.+?)(?:\.|,|;|\?|$)/i,
+    /(?:você tem|vocês tem|tu tem|vende|tem como)\s+(.+?)(?:\.|,|;|\?|$)/i,
   ]
   for (const p of compraPatterns) {
     const pm = t.match(p)
@@ -137,11 +137,11 @@ function extrairProdutoSimples(texto: string): string | null {
       if (nome.length > 2) return nome
     }
   }
-  // Padr├úo de OFERTA do atendente: "hoje tem X", "temos X", etc.
+  // Padrão de OFERTA do atendente: "hoje tem X", "temos X", etc.
   const ofertaPatterns = [
-    /(?:hoje|temos|agora|nesse\s+momento|nessa\s+hora)\s+(?:tem|que|vai|disp├Áe|dispon├¡vel)\s+(.+?)(?:\.|,|;|$| e | com |$)/i,
-    /(?:tenho|tenha)\s+(?:dispon├¡vel|├á\s+venda)\s+(.+?)(?:\.|,|;|$| e )/i,
-    /(?:no\s+card├ípio|tem\s+no\s+card├ípio)\s+(?:hoje|agora)?\s*(.+?)(?:\.|,|;|$| e )/i,
+    /(?:hoje|temos|agora|nesse\s+momento|nessa\s+hora)\s+(?:tem|que|vai|dispõe|disponível)\s+(.+?)(?:\.|,|;|$| e | com |$)/i,
+    /(?:tenho|tenha)\s+(?:disponível|à\s+venda)\s+(.+?)(?:\.|,|;|$| e )/i,
+    /(?:no\s+cardápio|tem\s+no\s+cardápio)\s+(?:hoje|agora)?\s*(.+?)(?:\.|,|;|$| e )/i,
   ]
   for (const p of ofertaPatterns) {
     const pm = t.match(p)
@@ -184,7 +184,7 @@ function buscarProdutoCatalogo(
   return null
 }
 
-/** Estrat├®gia 1: lookup por replyToId */
+/** Estratégia 1: lookup por replyToId */
 async function resolverPorReply(
   replyToId: string,
   chatId: string,
@@ -213,7 +213,7 @@ async function resolverPorReply(
   }
 }
 
-/** Estrat├®gia 2: ├║ltimo produto mencionado pelo atendente */
+/** Estratégia 2: último produto mencionado pelo atendente */
 function resolverPorUltimoProduto(
   historico: Array<{ text: string; isOutgoing: boolean }>,
   catalogo: CatalogoItem[],
@@ -237,7 +237,7 @@ function resolverPorUltimoProduto(
   return null
 }
 
-/** Estrat├®gia 3: LLM com contexto */
+/** Estratégia 3: LLM com contexto */
 async function resolverPorLlm(
   mensagem: string,
   historico: Array<{ text: string; isOutgoing: boolean }>,
@@ -263,14 +263,14 @@ async function resolverPorLlm(
     .join('\n')
 
   const systemPrompt =
-    'Voc├¬ ├® um assistente que ajuda a resolver refer├¬ncias amb├¡guas em conversas de WhatsApp. ' +
-    'Dada uma conversa entre Atendente e Cliente, e a ├║ltima mensagem do Cliente que cont├®m ' +
-    'uma refer├¬ncia amb├¡gua (ex: "quero dois", "quero desse", "esse mesmo"), responda com ' +
-    'o nome do produto mais prov├ível que o cliente est├í pedindo. ' +
-    'Responda APENAS com o nome do produto, ou "INDETERMINADO" se n├úo for poss├¡vel saber.'
+    'Você é um assistente que ajuda a resolver referências ambíguas em conversas de WhatsApp. ' +
+    'Dada uma conversa entre Atendente e Cliente, e a última mensagem do Cliente que contém ' +
+    'uma referência ambígua (ex: "quero dois", "quero desse", "esse mesmo"), responda com ' +
+    'o nome do produto mais provável que o cliente está pedindo. ' +
+    'Responda APENAS com o nome do produto, ou "INDETERMINADO" se não for possível saber.'
 
   const userPrompt =
-    `Conversa:\n${contexto}\n\nMensagem amb├¡gua do cliente: "${mensagem}"\n\nQual produto o cliente quer? Responda apenas o nome do produto ou "INDETERMINADO".`
+    `Conversa:\n${contexto}\n\nMensagem ambígua do cliente: "${mensagem}"\n\nQual produto o cliente quer? Responda apenas o nome do produto ou "INDETERMINADO".`
 
   const body = {
     model: MODEL,
@@ -300,7 +300,7 @@ async function resolverPorLlm(
     const content = data.choices?.[0]?.message?.content?.trim()
     if (!content || content === 'INDETERMINADO') return null
 
-    const nome = content.replace(/[^a-zA-Z├Ç-├┐0-9\s%]/g, '').trim()
+    const nome = content.replace(/[^a-zA-ZÀ-ÿ0-9\s%]/g, '').trim()
     if (!nome || nome.length < 2) return null
 
     const match = buscarProdutoCatalogo(nome, catalogo)
@@ -341,10 +341,10 @@ export async function resolverAmbiguidade(params: {
       precoCentavos: p.precoCentavos,
     }))
   } catch {
-    // Cat├ílogo indispon├¡vel
+    // Catálogo indisponível
   }
 
-  // Estrat├®gia 1: reply lookup
+  // Estratégia 1: reply lookup
   if (params.replyToId) {
     const result = await resolverPorReply(params.replyToId, params.chatId, catalogo)
     if (result) {
@@ -354,7 +354,7 @@ export async function resolverAmbiguidade(params: {
     }
   }
 
-  // Estrat├®gia 2: ├║ltimo produto do atendente
+  // Estratégia 2: último produto do atendente
   const ultimoProduto = resolverPorUltimoProduto(params.historico, catalogo)
   if (ultimoProduto) {
     ultimoProduto.qtd = extrairQtdDoTexto(mensagem)
@@ -362,7 +362,7 @@ export async function resolverAmbiguidade(params: {
     return ultimoProduto
   }
 
-  // Estrat├®gia 3: LLM
+  // Estratégia 3: LLM
   const llmResult = await resolverPorLlm(mensagem, params.historico, params.chatId, catalogo)
   if (llmResult) {
     llmResult.qtd = extrairQtdDoTexto(mensagem)
