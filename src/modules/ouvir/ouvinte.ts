@@ -60,6 +60,13 @@ export function registerOuvinteListeners(
           return
         }
 
+        // Emite evento de processamento IMEDIATAMENTE (antes do throttle/LLM)
+        // para o dashboard mostrar um skeleton/bloco vazio sem delay
+        eventBus.emit('ouvir:processing', {
+          chatId,
+          startedAtIso: new Date().toISOString(),
+        } satisfies import('./types').OuvirProcessingEvent)
+
         // Atualiza ring buffer com TODAS as mensagens (inclusive outgoing)
         // antes de qualquer filtro de direção, para dar contexto ao resolver de ambiguidade
         pushHistory(chatId, text, msg.isOutgoing)
