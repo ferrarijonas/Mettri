@@ -169,6 +169,9 @@ export class AtendimentoPanel {
   /** Persistido via bridge em `mettri:atendimento:rag:auto-suggest`. */
   public ragAutoSuggestEnabled = false;
 
+  /** True enquanto o ouvinte está processando a mensagem (antes do LLM responder). */
+  public processandoOuvinte = false;
+
   /** Bloco Comercial (funil + rascunho): Fase 1 — estado local até o orquestrador existir. */
   private comercialBlockExpanded = true;
   private comercialDraftText = '';
@@ -1263,7 +1266,30 @@ export class AtendimentoPanel {
    * Botão "Enviar" envia a mensagem no WhatsApp.
    */
   private renderRespostaSugeridaBlock(): string {
-    if (!this.vm || this.vm.kind !== 'ready' || !this.vm.respostaSugerida) return '';
+    if (!this.vm || this.vm.kind !== 'ready') return '';
+
+    // Se está processando mas ainda não tem resposta, mostra skeleton
+    if (this.processandoOuvinte && !this.vm.respostaSugerida) {
+      return `
+        <div class="mt-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+          <div class="flex items-center gap-1.5 mb-2">
+            <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Confirmação rápida</span>
+            <span class="ml-auto text-[9px] text-muted-foreground/70">via DeepSeek</span>
+          </div>
+          <div class="animate-pulse space-y-2">
+            <div class="h-3 bg-emerald-500/10 rounded w-3/4"></div>
+            <div class="h-3 bg-emerald-500/10 rounded w-1/2"></div>
+          </div>
+          <div class="flex gap-2 mt-2.5">
+            <div class="flex-1 h-7 bg-emerald-500/10 rounded-lg animate-pulse"></div>
+            <div class="flex-1 h-7 bg-background/40 rounded-lg animate-pulse"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Se não tem resposta e não está processando, não mostra nada
+    if (!this.vm.respostaSugerida) return '';
 
     const texto = this.escapeHtml(this.vm.respostaSugerida)
 

@@ -60,6 +60,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   let confiancaPerfil: number | undefined;
   let ultimaIntencao: string | undefined;
   let ultimaRespostaSugerida: string | undefined;
+  let processandoOuvinte = false;
   let clearAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
@@ -113,6 +114,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
       lastClientKey = null;
     }
     ui.ragAutoSuggestEnabled = ragAutoSuggestEnabled;
+    ui.processandoOuvinte = processandoOuvinte;
     const ctrl = getRagMettriControllerState();
     ui.setRagConsultationFieldsFromController({
       suggestionText: ctrl.ragSuggestionText,
@@ -131,8 +133,15 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     container.appendChild(element);
   };
 
+  const onOuvinteProcessing = (data: { chatId: string; startedAtIso: string }) => {
+    if (data.chatId !== currentChatId) return;
+    processandoOuvinte = true;
+    rerender().catch(() => {});
+  };
+
   const onOuvinteUpdate = (data: OuvirProfileUpdatedEvent) => {
     if (data.chatId !== currentChatId) return;
+    processandoOuvinte = false;
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = data.camposAtualizados;
     confiancaPerfil = data.confiancaPerfil;
@@ -663,6 +672,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = undefined;
     confiancaPerfil = undefined;
+    processandoOuvinte = false;
 
     // Reprocessa última mensagem do cliente se perfil estiver desatualizado
     if (next) {
@@ -677,6 +687,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   return {
     async render() {
       eventBus.on('chat:active-changed', onChatChanged);
+      eventBus.on('ouvir:processing', onOuvinteProcessing);
       eventBus.on('ouvir:profile-updated', onOuvinteUpdate);
       unsubscribeRagController?.();
       unsubscribeRagController = subscribeRagMettriController(() => {
@@ -686,6 +697,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     },
     destroy() {
       eventBus.off('chat:active-changed', onChatChanged);
+      eventBus.off('ouvir:processing', onOuvinteProcessing as any);
       eventBus.off('ouvir:profile-updated', onOuvinteUpdate as any);
       unsubscribeRagController?.();
       unsubscribeRagController = null;

@@ -71,6 +71,12 @@ export interface LlmBudgetState {
   chamadasHoje: number
 }
 
+export interface OuvirProcessingEvent {
+  chatId: string
+  /** Timestamp ISO de quando o processamento começou */
+  startedAtIso: string
+}
+
 export interface OuvirProfileUpdatedEvent {
   chatId: string
   camposAtualizados: string[]
