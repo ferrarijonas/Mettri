@@ -2,25 +2,12 @@ import type { EventBus, EventHandler } from '../../ui/core/event-bus'
 import type { CapturedMessage } from '../../types'
 import { atualizarPerfilOperacionalCliente } from '../cadastro/cliente/atualizar-perfil-operacional-cliente'
 import type { CustomerOperationalSignals } from '../cadastro/cliente/types'
-import type { ValidadorDeps } from './validador-catalogo'
-import { ouvinteLlm } from './ouvinte-llm'
+import { ouvinteLlm } from './motor-llm'
+import { checkThrottle, checkCursor, limparLimitadores } from './limitador'
 import { customerProfileDB } from '../../storage/customer-profile-db'
 import { catalogoDB } from '../../storage/catalogo-db'
 import { messageDB } from '../../storage/message-db'
-import type {
-  ThrottleState,
-  CursorState,
-  OuvirProfileUpdatedEvent,
-  DecisaoUpdate,
-  CampoExtraido,
-} from './types'
-
-const THROTTLE_INTERVAL_MS = 5000
-const THROTTLE_MAX_BURST = 3
-const THROTTLE_WINDOW_MS = 60000
-
-const throttleMap = new Map<string, ThrottleState>()
-const cursorMap = new Map<string, CursorState>()
+import type { OuvirProfileUpdatedEvent } from './types'
 
 /** Ring buffer: últimas 10 mensagens por chatId (ambas direções). */
 const chatHistory = new Map<string, { text: string; isOutgoing: boolean }[]>()
@@ -32,88 +19,8 @@ function pushHistory(chatId: string, text: string, isOutgoing: boolean): void {
   chatHistory.set(chatId, hist)
 }
 
-function checkThrottle(chatId: string, timestamp: number): boolean {
-  const state = throttleMap.get(chatId)
-  const now = timestamp
-
-  if (!state) {
-    throttleMap.set(chatId, { chatId, timestamps: [now] })
-    return true
-  }
-
-  const recent = state.timestamps.filter(t => now - t < THROTTLE_WINDOW_MS)
-
-  if (recent.length >= THROTTLE_MAX_BURST) {
-    const elapsed = now - (recent[recent.length - 1] ?? now)
-    if (elapsed < THROTTLE_INTERVAL_MS) {
-      return false
-    }
-  }
-
-  recent.push(now)
-  state.timestamps = recent.slice(-10)
-  return true
-}
-
-function checkCursor(chatId: string, timestamp: number): boolean {
-  const last = cursorMap.get(chatId)?.ultimaMensagemProcessada
-  if (last !== undefined && timestamp <= last) {
-    return false
-  }
-  cursorMap.set(chatId, { chatId, ultimaMensagemProcessada: timestamp })
-  return true
-}
-
-/** Verifica se extrator achou preferenciasProduto na mensagem. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function achouProduto(campos: CampoExtraido[]): boolean {
-  return campos.some(c => c.campo === 'preferenciasProduto')
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function convertDecisoesParaSinais(decisoes: DecisaoUpdate[]): CustomerOperationalSignals {
-  const sinais: CustomerOperationalSignals = {}
-
-  for (const d of decisoes) {
-    if (d.confianca < 0.2) continue
-
-    const valor = d.valor
-
-    switch (d.campo) {
-      case 'nome':
-        if (typeof valor === 'string') sinais.nomeConfiavel = valor
-        break
-      case 'preferenciasProduto':
-        sinais.preferenciasProduto = Array.isArray(valor) ? valor : typeof valor === 'string' ? [valor] : undefined
-        break
-      case 'aversoesProduto':
-        sinais.aversoesProduto = Array.isArray(valor) ? valor : typeof valor === 'string' ? [valor] : undefined
-        break
-      case 'enderecoEntrega':
-        if (typeof valor === 'string') sinais.enderecoEntrega = valor
-        break
-      case 'formaPagamentoPreferida':
-        sinais.formaPagamentoPreferida = Array.isArray(valor) ? valor : typeof valor === 'string' ? [valor] : undefined
-        break
-      case 'observacoesLogisticas':
-        sinais.observacoesLogisticas = Array.isArray(valor) ? valor : typeof valor === 'string' ? [valor] : undefined
-        break
-    }
-  }
-
-  return sinais
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function extractCampoValue(valor: string | string[] | undefined): string {
-  if (!valor) return ''
-  if (Array.isArray(valor)) return valor.join(', ')
-  return valor
-}
-
 export function registerOuvinteListeners(
   eventBus: EventBus,
-  deps?: { catalogo?: ValidadorDeps },
 ): () => void {
   console.log('[ouvinte] registrando listeners...')
   const handler: EventHandler<{ message?: CapturedMessage }> = (data) => {
@@ -292,8 +199,7 @@ export function registerOuvinteListeners(
 
   return () => {
     eventBus.off('message:new', handler)
-    throttleMap.clear()
-    cursorMap.clear()
+    limparLimitadores()
     chatHistory.clear()
   }
 }
