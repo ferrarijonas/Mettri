@@ -1,12 +1,12 @@
 import type { CustomerOperationalProfile } from '../../storage/customer-profile-db'
 
-// ── Seções de prompt (arquivos .md na raiz /prompts/) ──
+// ── Seções de prompt (arquivos .md locais no módulo) ──
 // O esbuild resolve imports de .md como strings
 
-import identidadePadaria from '../../../prompts/identidade/padaria.md'
-import tomDeVoz from '../../../prompts/identidade/tom-de-voz.md'
-import extracaoSistema from '../../../prompts/extracao/extracao-sistema.md'
-import confirmacaoCompra from '../../../prompts/resposta/confirmacao-compra.md'
+import identidadePadaria from './prompts/identidade-padaria.md'
+import tomDeVoz from './prompts/tom-de-voz.md'
+import extracaoSistema from './prompts/extracao-sistema.md'
+import confirmacaoCompra from './prompts/resposta-confirmacao.md'
 
 export interface MontarPromptInput {
   /** Incluir seção de identidade (padaria + tom de voz) */

@@ -20,5 +20,5 @@
     "types": ["chrome"]
   },
   "include": ["src/**/*", "prompts/**/*.md"],
-  "exclude": ["node_modules", "dist", "tests", "legacy"]
+  "exclude": ["node_modules", "dist", "tests", "legacy", "src/archive"]
 }
