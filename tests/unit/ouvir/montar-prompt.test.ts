@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montarPrompt } from '../../../src/modules/ouvir/montar-prompt';
+import { montarPrompt } from '../../../src/modules/ouvir/monta-prompt';
 
 describe('montarPrompt', () => {
   it('deve montar system + user prompt com identidade e extracao', () => {
