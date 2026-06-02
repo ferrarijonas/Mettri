@@ -164,14 +164,18 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
     return { extras: {}, usouLlm: false, tokensEstimados: 0 }
   }
 
-  // System prompt montado por seções (identidade + extração + resposta)
+  // System prompt montado por seções (identidade + contexto + extração + resposta)
   const prompt = montarPrompt({
     identidade: true,
+    contextoConversa: true,
     extracao: true,
     resposta: true,
     profile: input.profile,
     mensagem: input.mensagem,
     catalogoCandidatos: input.catalogoCandidatos,
+    estadoPercebido: input.estadoPercebido,
+    historicoContexto: input.historicoContexto,
+    intencaoAnterior: input.intencaoAnterior,
   })
 
   try {

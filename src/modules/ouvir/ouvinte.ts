@@ -7,10 +7,20 @@ import { checkThrottle, checkCursor, limparLimitadores } from './limitador'
 import { customerProfileDB } from '../../storage/customer-profile-db'
 import { catalogoDB } from '../../storage/catalogo-db'
 import { messageDB } from '../../storage/message-db'
-import type { OuvirProfileUpdatedEvent } from './types'
+import { orderDB } from '../../storage/order-db'
+import type { OuvirProfileUpdatedEvent, OuvirStateEstimatedEvent, EstadoPercebido, MensagemHistorico } from './types'
 
 /** Ring buffer: últimas 10 mensagens por chatId (ambas direções). */
 const chatHistory = new Map<string, { text: string; isOutgoing: boolean }[]>()
+
+/** Contador de turnos consecutivos com confiança baixa por chatId */
+const turnosBaixaConfianca = new Map<string, number>()
+
+/** Última intenção classificada por chatId */
+const ultimaIntencaoPorChat = new Map<string, string>()
+
+/** Flag: intenção mudou no turno anterior (expande histórico no próximo turno) */
+const intentChangedFlag = new Map<string, boolean>()
 
 function pushHistory(chatId: string, text: string, isOutgoing: boolean): void {
   const hist = chatHistory.get(chatId) || []
@@ -18,6 +28,156 @@ function pushHistory(chatId: string, text: string, isOutgoing: boolean): void {
   if (hist.length > 10) hist.shift()
   chatHistory.set(chatId, hist)
 }
+
+// ── Estado Percebido ──
+
+/**
+ * Calcula o EstadoPercebido a partir do perfil operacional e dos pedidos ativos.
+ * Consulta orderDB para determinar a fase do pedido.
+ */
+/**
+ * Tenta obter clientKey a partir de um profile.
+ * CustomerOperationalProfile não tem clientKey no schema,
+ * mas alguns registros podem ter via passthrough.
+ * Fallback: retorna chatId para busca heurística.
+ */
+function getClientKeyFromProfile(profile: import('../../storage/customer-profile-db').CustomerOperationalProfile | null, chatId: string): string | null {
+  // Tenta acessar como any por passthrough
+  const p = profile as Record<string, unknown> | null
+  const key = p?.clientKey
+  if (typeof key === 'string' && key.length > 0) return key
+  return null
+}
+
+/**
+ * Calcula o EstadoPercebido a partir do perfil operacional.
+ * Usa o perfil para determinar fase, confiança e o que já foi coletado.
+ * A consulta ao orderDB é feita via clientKey se disponível, senão usa heurística.
+ */
+async function calcularEstadoPercebido(
+  chatId: string,
+  profile: import('../../storage/customer-profile-db').CustomerOperationalProfile | null,
+  intencaoAtual?: string,
+): Promise<EstadoPercebido> {
+  try {
+    const p = profile
+    const temProdutos = (p?.preferenciasProduto?.length ?? 0) > 0
+    const temEndereco = !!p?.enderecoEntrega
+    const temPagamento = (p?.formaPagamentoPreferida?.length ?? 0) > 0
+    const temPrazo = !!p?.urgenciaEntrega
+
+    let fase: EstadoPercebido['fase'] = 'indeterminado'
+    let confiancaEstado: EstadoPercebido['confiancaEstado'] = 'baixa'
+
+    // Tenta obter clientKey para consultar orderDB
+    const clientKey = getClientKeyFromProfile(profile, chatId)
+    let temPedidoAtivo = false
+
+    if (clientKey) {
+      try {
+        const pedidosAtivos = await orderDB.listActiveByClientKey(clientKey, 5)
+        if (pedidosAtivos.length > 0) {
+          temPedidoAtivo = true
+          const status = pedidosAtivos[0].status
+          if (status === 'lead') fase = 'lead'
+          else if (status === 'draft') fase = 'draft'
+          else if (status === 'open' || status === 'awaiting_payment') fase = 'open'
+          else if (status === 'completed') {
+            fase = intencaoAtual === 'suporte_pos_venda' ? 'pos_venda' : 'completed'
+          }
+        } else if (intencaoAtual === 'suporte_pos_venda') {
+          fase = 'pos_venda'
+        }
+      } catch {
+        // Fallback: continar sem orderDB
+      }
+    } else if (intencaoAtual === 'suporte_pos_venda') {
+      // Mesmo sem clientKey, se intenção é pós-venda, assumimos pós-venda
+      fase = 'pos_venda'
+    }
+
+    // Confiança: se tem pedido ativo E produtos → alta
+    // Se tem um dos dois → media
+    // Nenhum → baixa
+    const temPedidoEmAberto = temPedidoAtivo && fase !== 'completed' && fase !== 'pos_venda'
+    if (temPedidoEmAberto && temProdutos) {
+      confiancaEstado = 'alta'
+    } else if (temPedidoEmAberto || temProdutos) {
+      confiancaEstado = 'media'
+    } else {
+      confiancaEstado = 'baixa'
+    }
+
+    // Se está em pós-venda, confiança é media (contexto pode ser necessário)
+    if (fase === 'pos_venda') {
+      confiancaEstado = 'media'
+    }
+
+    // precisaContextoExtra: se confiança baixa por 2+ turnos consecutivos
+    const turnosBaixa = turnosBaixaConfianca.get(chatId) ?? 0
+    const precisaContextoExtra = confiancaEstado === 'baixa' && turnosBaixa >= 2
+
+    return {
+      fase,
+      coletado: {
+        produtos: temProdutos,
+        endereco: temEndereco,
+        pagamento: temPagamento,
+        prazo: temPrazo,
+      },
+      confiancaEstado,
+      precisaContextoExtra,
+      ultimaVerificacao: new Date().toISOString(),
+    }
+  } catch {
+    // Fallback silencioso: indeterminado + baixa
+    return {
+      fase: 'indeterminado',
+      coletado: { produtos: false, endereco: false, pagamento: false, prazo: false },
+      confiancaEstado: 'baixa',
+      precisaContextoExtra: true,
+      ultimaVerificacao: new Date().toISOString(),
+    }
+  }
+}
+
+/** Decide a quantidade de mensagens de histórico a enviar baseado no EstadoPercebido. */
+function decidirTamanhoHistorico(
+  estado: EstadoPercebido,
+  ringBufferSize: number,
+  intentChanged?: boolean,
+  produtoConfiancaBaixa?: boolean,
+): number {
+  if (ringBufferSize === 0) return 0 // Primeira mensagem
+
+  // Tabela de estratégia — usa Math.max para combinar condições sobrepostas
+  let tamanho = 1
+  if (estado.precisaContextoExtra) tamanho = Math.max(tamanho, 15)
+  if (estado.confiancaEstado === 'baixa') tamanho = Math.max(tamanho, 10)
+  if (intentChanged) tamanho = Math.max(tamanho, 8)
+  if (produtoConfiancaBaixa) tamanho = Math.max(tamanho, 6)
+  if (estado.confiancaEstado === 'media') tamanho = Math.max(tamanho, 5)
+  // confianca 'alta' ou fallback → 1 (já é o valor padrão)
+
+  return Math.min(tamanho, ringBufferSize)
+}
+
+/** Converte ring buffer para MensagemHistorico (formato do prompt). */
+function ringBufferParaContexto(
+  hist: { text: string; isOutgoing: boolean }[],
+  tamanho: number,
+  incluirUltima?: boolean,
+): MensagemHistorico[] {
+  const slice = hist.slice(-tamanho)
+  // Se incluirUltima for false e o tamanho for > 1, remove a última (que é a msg atual)
+  const msgs = incluirUltima === false && slice.length > 1 ? slice.slice(0, -1) : slice
+  return msgs.map(h => ({
+    papel: h.isOutgoing ? 'atendente' as const : 'cliente' as const,
+    texto: h.text,
+  }))
+}
+
+// ── Registro de listeners ──
 
 export function registerOuvinteListeners(
   eventBus: EventBus,
@@ -117,15 +277,62 @@ export function registerOuvinteListeners(
           catalogoCandidatos,
         })
 
+        // ── Estado Percebido ──
+        const intencaoAnterior = ultimaIntencaoPorChat.get(chatId)
+        const estado = await calcularEstadoPercebido(chatId, profile, intencaoAnterior)
+
+        // Emite evento de estado estimado (ZenSpec seção 10.1)
+        const ringBuffer = chatHistory.get(chatId) ?? []
+        eventBus.emit('ouvir:state-estimated', {
+          chatId,
+          estado,
+          historicoContextoCount: ringBuffer.length,
+        } satisfies OuvirStateEstimatedEvent)
+
+        // ── Tamanho do histórico ──
+        const intentChanged = intentChangedFlag.get(chatId) ?? false
+        if (intentChanged) intentChangedFlag.delete(chatId)
+        const produtoConfiancaBaixa = !!profile?.sugestoesPendentes?.length
+        const tamanhoHistorico = decidirTamanhoHistorico(estado, ringBuffer.length, intentChanged, produtoConfiancaBaixa)
+        const historicoContexto = tamanhoHistorico > 0
+          ? ringBufferParaContexto(ringBuffer, tamanhoHistorico, false)
+          : undefined
+
+        // Atualiza contador de turnos de baixa confiança
+        if (estado.confiancaEstado === 'baixa') {
+          turnosBaixaConfianca.set(chatId, (turnosBaixaConfianca.get(chatId) ?? 0) + 1)
+        } else {
+          turnosBaixaConfianca.set(chatId, 0)
+        }
+
+        console.log('[ouvinte-llm] estado percebido:', {
+          fase: estado.fase,
+          confianca: estado.confiancaEstado,
+          historicoEnviado: tamanhoHistorico,
+          precisaContextoExtra: estado.precisaContextoExtra,
+        })
+
         // Chamada LLM
         const llmOutput = await ouvinteLlm({
           mensagem: text,
           chatId,
           profile,
           catalogoCandidatos,
+          estadoPercebido: estado,
+          historicoContexto,
+          intencaoAnterior,
         })
 
         console.log('[ouvinte-llm] resultado:', JSON.stringify(llmOutput.extras))
+
+        // Atualiza intenção anterior para o próximo turno
+        if (llmOutput.extras.intencao) {
+          ultimaIntencaoPorChat.set(chatId, llmOutput.extras.intencao)
+          // Se intenção mudou, marca flag para expandir histórico no PRÓXIMO turno
+          if (intencaoAnterior && llmOutput.extras.intencao !== intencaoAnterior) {
+            intentChangedFlag.set(chatId, true)
+          }
+        }
 
         if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) {
           console.log('[ouvinte-llm] sem extração, pulando')
@@ -192,6 +399,8 @@ export function registerOuvinteListeners(
             confiancaPerfil: result.data?.confiancaPerfil ?? 0,
             intencao,
             respostaSugerida,
+            estadoPercebido: estado,
+            contextoEnviadoCount: tamanhoHistorico,
           }
           eventBus.emit('ouvir:profile-updated', event)
           console.log('[ouvinte-llm] evento emitido:', camposAtualizados)
@@ -258,12 +467,22 @@ export async function processarUltimaMensagem(chatId: string): Promise<boolean> 
       }
     } catch { /* catálogo indisponível */ }
 
+    // ── Estado Percebido (reprocessamento) ──
+    const estadoReprocess = await calcularEstadoPercebido(chatId, profile)
+    const ringBufferReprocess = chatHistory.get(chatId) ?? []
+    const tamanhoReprocess = decidirTamanhoHistorico(estadoReprocess, ringBufferReprocess.length)
+    const historicoReprocess = tamanhoReprocess > 0
+      ? ringBufferParaContexto(ringBufferReprocess, tamanhoReprocess, false)
+      : undefined
+
     // Chama LLM
     const llmOutput = await ouvinteLlm({
       mensagem: text,
       chatId,
       profile,
       catalogoCandidatos,
+      estadoPercebido: estadoReprocess,
+      historicoContexto: historicoReprocess,
     })
 
     if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) return false
