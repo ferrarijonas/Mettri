@@ -8,7 +8,7 @@ import { customerProfileDB } from '../../storage/customer-profile-db'
 import { catalogoDB } from '../../storage/catalogo-db'
 import { messageDB } from '../../storage/message-db'
 import { orderDB } from '../../storage/order-db'
-import type { OuvirProfileUpdatedEvent, EstadoPercebido, MensagemHistorico } from './types'
+import type { OuvirProfileUpdatedEvent, OuvirStateEstimatedEvent, EstadoPercebido, MensagemHistorico } from './types'
 
 /** Ring buffer: últimas 10 mensagens por chatId (ambas direções). */
 const chatHistory = new Map<string, { text: string; isOutgoing: boolean }[]>()
@@ -18,6 +18,9 @@ const turnosBaixaConfianca = new Map<string, number>()
 
 /** Última intenção classificada por chatId */
 const ultimaIntencaoPorChat = new Map<string, string>()
+
+/** Flag: intenção mudou no turno anterior (expande histórico no próximo turno) */
+const intentChangedFlag = new Map<string, boolean>()
 
 function pushHistory(chatId: string, text: string, isOutgoing: boolean): void {
   const hist = chatHistory.get(chatId) || []
@@ -142,19 +145,21 @@ async function calcularEstadoPercebido(
 function decidirTamanhoHistorico(
   estado: EstadoPercebido,
   ringBufferSize: number,
-  intencaoAtual?: string,
-  intencaoAnterior?: string,
+  intentChanged?: boolean,
+  produtoConfiancaBaixa?: boolean,
 ): number {
   if (ringBufferSize === 0) return 0 // Primeira mensagem
 
-  // Tabela de estratégia
-  if (estado.precisaContextoExtra) return Math.min(15, ringBufferSize) // Máximo
-  if (estado.confiancaEstado === 'baixa') return Math.min(10, ringBufferSize)
-  if (estado.confiancaEstado === 'media') return Math.min(5, ringBufferSize)
-  if (intencaoAtual && intencaoAnterior && intencaoAtual !== intencaoAnterior) return Math.min(8, ringBufferSize)
-  if (estado.confiancaEstado === 'alta') return Math.min(1, ringBufferSize)
+  // Tabela de estratégia — usa Math.max para combinar condições sobrepostas
+  let tamanho = 1
+  if (estado.precisaContextoExtra) tamanho = Math.max(tamanho, 15)
+  if (estado.confiancaEstado === 'baixa') tamanho = Math.max(tamanho, 10)
+  if (intentChanged) tamanho = Math.max(tamanho, 8)
+  if (produtoConfiancaBaixa) tamanho = Math.max(tamanho, 6)
+  if (estado.confiancaEstado === 'media') tamanho = Math.max(tamanho, 5)
+  // confianca 'alta' ou fallback → 1 (já é o valor padrão)
 
-  return Math.min(1, ringBufferSize)
+  return Math.min(tamanho, ringBufferSize)
 }
 
 /** Converte ring buffer para MensagemHistorico (formato do prompt). */
@@ -275,11 +280,20 @@ export function registerOuvinteListeners(
         // ── Estado Percebido ──
         const intencaoAnterior = ultimaIntencaoPorChat.get(chatId)
         const estado = await calcularEstadoPercebido(chatId, profile, intencaoAnterior)
-        const intencaoAtual = intencaoAnterior // será atualizada após LLM
+
+        // Emite evento de estado estimado (ZenSpec seção 10.1)
+        const ringBuffer = chatHistory.get(chatId) ?? []
+        eventBus.emit('ouvir:state-estimated', {
+          chatId,
+          estado,
+          historicoContextoCount: ringBuffer.length,
+        } satisfies OuvirStateEstimatedEvent)
 
         // ── Tamanho do histórico ──
-        const ringBuffer = chatHistory.get(chatId) ?? []
-        const tamanhoHistorico = decidirTamanhoHistorico(estado, ringBuffer.length, intencaoAtual, intencaoAnterior)
+        const intentChanged = intentChangedFlag.get(chatId) ?? false
+        if (intentChanged) intentChangedFlag.delete(chatId)
+        const produtoConfiancaBaixa = !!profile?.sugestoesPendentes?.length
+        const tamanhoHistorico = decidirTamanhoHistorico(estado, ringBuffer.length, intentChanged, produtoConfiancaBaixa)
         const historicoContexto = tamanhoHistorico > 0
           ? ringBufferParaContexto(ringBuffer, tamanhoHistorico, false)
           : undefined
@@ -314,6 +328,10 @@ export function registerOuvinteListeners(
         // Atualiza intenção anterior para o próximo turno
         if (llmOutput.extras.intencao) {
           ultimaIntencaoPorChat.set(chatId, llmOutput.extras.intencao)
+          // Se intenção mudou, marca flag para expandir histórico no PRÓXIMO turno
+          if (intencaoAnterior && llmOutput.extras.intencao !== intencaoAnterior) {
+            intentChangedFlag.set(chatId, true)
+          }
         }
 
         if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) {

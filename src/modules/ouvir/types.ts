@@ -97,6 +97,13 @@ export interface MensagemHistorico {
   texto: string
 }
 
+/** Evento emitido pelo ouvinte quando o estado percebido é calculado */
+export interface OuvirStateEstimatedEvent {
+  chatId: string
+  estado: EstadoPercebido
+  historicoContextoCount: number
+}
+
 export interface OuvirProfileUpdatedEvent {
   chatId: string
   camposAtualizados: string[]
