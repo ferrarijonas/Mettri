@@ -274,7 +274,7 @@ export class AtendimentoPanel {
           </div>
         </div>
 
-        <!-- Header do Cliente -->
+        <!-- Header do Cliente + Badge de Estado -->
         <div class="${ATD_SECTION} p-2.5">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
@@ -296,6 +296,10 @@ export class AtendimentoPanel {
                 const novoBadge = isNovoFlag
                   ? `<span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium border border-primary/15 bg-primary/8 text-primary/70">Novo</span>`
                   : '';
+                // Badge de estado percebido
+                const ep = (this.vm && this.vm.kind === 'ready' && this.vm.estadoPercebido)
+                  ? this.renderEstadoBadge(this.vm.estadoPercebido)
+                  : '';
                 return `
                 <button type="button" class="w-full text-left cursor-pointer" data-action="open-cadastro">
                   <div class="flex items-center gap-1.5">
@@ -304,7 +308,8 @@ export class AtendimentoPanel {
                     ${novoBadge}
                     ${demoBadge}
                   </div>
-                </button>`;
+                </button>
+                ${ep}`;
               })()}
               <div class="mt-0.5">
                 <button type="button" class="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-action="copy-text" data-text="${this.escapeAttr(this.vm.customer.phoneLabel)}">
@@ -325,15 +330,14 @@ export class AtendimentoPanel {
           </div>
         </div>
 
-        <!-- Aba de Intenção + Conteúdo do Pedido -->
+        <!-- Bloco P: Intenção + Estado + Produtos + Resposta (fundido, substitui funil) -->
         ${this.vm.kind === 'ready' ? `
         <div class="${ATD_SECTION} p-2.5">
           ${this.renderIntencaoChip()}
           ${this.renderPedidoOrderRecord()}
-          ${this.vm.comercial ? this.renderComercialPipelineCompact(this.vm.comercial) : this.renderFunilTimeline()}
           ${this.renderPedidoUnificado()}
-          ${this.renderPendenciasPedido()}
           ${this.renderDetalhesPedido()}
+          ${this.renderPendenciasPedido()}
           ${this.renderSugestaoAmbiguidade()}
           ${this.renderOuvinteDebug()}
           ${this.renderVitrineInline()}
@@ -1083,22 +1087,49 @@ export class AtendimentoPanel {
   private renderOuvinteDebug(): string {
     if (!this.vm || this.vm.kind !== 'ready') return ''
     const debug = this.vm.ouvinteDebug
+
+    // Se não tem nada novo, não mostra (bloco terciário — colapsável vai sumir)
     if (!debug) return ''
+    const temAlgoNovo = debug.ultimaMensagemProcessada ||
+      (debug.camposExtraidos && debug.camposExtraidos.length > 0) ||
+      debug.estadoPercebido ||
+      debug.contextoEnviadoCount !== undefined
+
+    if (!temAlgoNovo) return ''
+
+    // Estado percebido
+    const estadoHtml = debug.estadoPercebido
+      ? (() => {
+          const faseLabel: Record<string, string> = {
+            lead: 'Lead', draft: 'Draft', open: 'Aberto', completed: 'Completo',
+            pos_venda: 'Pós-venda', indeterminado: '?',
+          }
+          const confiancaIcon: Record<string, string> = { alta: '🟢', media: '🟡', baixa: '🔴' }
+          const fase = faseLabel[debug.estadoPercebido.fase] || debug.estadoPercebido.fase
+          const icon = confiancaIcon[debug.estadoPercebido.confiancaEstado] || '⚪'
+          return `<div class="text-[10px] text-muted-foreground">Confiança do estado: ${icon} ${debug.estadoPercebido.confiancaEstado} · Fase detectada: ${fase}</div>`
+        })()
+      : ''
+
+    const contextoHtml = debug.contextoEnviadoCount !== undefined
+      ? `<div class="text-[10px] text-muted-foreground">Histórico enviado: ${debug.contextoEnviadoCount} mensagens</div>`
+      : ''
 
     const ultMsg = debug.ultimaMensagemProcessada
-    const campos = debug.camposExtraidos
-
-    if (!ultMsg && (!campos || campos.length === 0)) return ''
 
     return `
-      <div class="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/[0.03] p-2">
+      <div class="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/[0.03] p-2"
+           style="cursor:pointer"
+           data-action="ouvinte:toggle">
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-blue-500/80">???? Debug Ouvinte</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-blue-500/80">🧠 Debug Ouvinte</span>
           <span class="h-px flex-1 bg-border/20"></span>
         </div>
-        ${ultMsg ? `<div class="text-[11px] text-muted-foreground mb-1">??ltima msg: <span class="text-blue-400 font-mono">${this.escapeHtml(ultMsg.substring(0, 50))}${ultMsg.length > 50 ? '...' : ''}</span></div>` : ''}
-        ${campos && campos.length > 0 ? `<div class="text-[10px] text-muted-foreground">Campos extra??dos: ${campos.map(c => `${c.campo}=${c.valor.substring(0, 20)}`).join(', ')}</div>` : ''}
-        ${debug.sugestaoPendente ? `<div class="text-[10px] text-amber-400 mt-1">?????? Sugest??o pendente: ${debug.sugestaoPendente.nomeExtraido}</div>` : ''}
+        ${ultMsg ? `<div class="text-[11px] text-muted-foreground mb-1">Última msg: <span class="text-blue-400 font-mono">${this.escapeHtml(ultMsg.substring(0, 50))}${ultMsg.length > 50 ? '...' : ''}</span></div>` : ''}
+        ${contextoHtml}
+        ${estadoHtml}
+        ${debug.camposExtraidos && debug.camposExtraidos.length > 0 ? `<div class="text-[10px] text-muted-foreground mt-1">Campos extraídos: ${debug.camposExtraidos.map(c => `${c.campo}=${c.valor.substring(0, 20)}`).join(', ')}</div>` : ''}
+        ${debug.sugestaoPendente ? `<div class="text-[10px] text-amber-400 mt-1">📌 Sugestão pendente: ${debug.sugestaoPendente.nomeExtraido}</div>` : ''}
       </div>
     `
   }
@@ -2145,6 +2176,40 @@ ${this.escapeHtml(info.suggestionOriginal)}
     if (!pa || !pa.numeroSequencial) return '';
     const padSeq = String(pa.numeroSequencial).padStart(4, '0');
     return `<span class="inline-flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-lg border border-border/20 bg-card text-[11px] font-semibold text-foreground/90 shadow-sm leading-none"><span class="font-mono tabular-nums">Pedido #${padSeq}</span></span>`;
+  }
+
+  /** Badge de estado percebido (fase + confiança) para o header do cliente. */
+  private renderEstadoBadge(ep: import('./view-model').EstadoPercebidoVm): string {
+    const faseLabel: Record<string, string> = {
+      lead: 'Lead',
+      draft: 'Draft',
+      open: 'Aberto',
+      completed: 'Completo',
+      pos_venda: 'Pós-venda',
+      indeterminado: '?',
+    };
+    const confiancaColor: Record<string, string> = {
+      alta: 'bg-green-500/20 text-green-400 border-green-500/30',
+      media: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      baixa: 'bg-red-500/20 text-red-400 border-red-500/30',
+    };
+    const confiancaDot: Record<string, string> = {
+      alta: 'bg-green-400',
+      media: 'bg-yellow-400',
+      baixa: 'bg-red-400',
+    };
+    const label = faseLabel[ep.fase] || ep.fase;
+    const confCls = confiancaColor[ep.confiancaEstado] || confiancaColor.baixa;
+    const dotCls = confiancaDot[ep.confiancaEstado] || confiancaDot.baixa;
+    return `
+      <div class="flex items-center gap-1.5 mt-1">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${confCls}">
+          <span class="w-1.5 h-1.5 rounded-full ${dotCls}"></span>
+          ${this.escapeHtml(label)}
+        </span>
+        <span class="text-[9px] text-muted-foreground/60">${ep.coletado.length > 0 ? `${ep.coletado.length}/4 preenchido` : 'novo'}</span>
+      </div>
+    `;
   }
 
   // ── Bloco PED-00XX (Aba de Pedido) ──

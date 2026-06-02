@@ -114,11 +114,22 @@ export interface SugestaoAmbiguidadeVm {
   fraseContexto: string;
 }
 
+/** Estado percebido do pedido (para exibição na UI) */
+export interface EstadoPercebidoVm {
+  fase: 'lead' | 'draft' | 'open' | 'completed' | 'pos_venda' | 'indeterminado';
+  confiancaEstado: 'alta' | 'media' | 'baixa';
+  coletado: string[];  // lista de etapas já coletadas (produto, endereco, pagamento, prazo)
+}
+
 /** Debug info do Ouvinte (exibido na UI para verificação) */
 export interface OuvinteDebugVm {
   ultimaMensagemProcessada?: string;
   camposExtraidos?: Array<{ campo: string; valor: string; confianca: string }>;
   sugestaoPendente?: SugestaoAmbiguidadeVm;
+  /** NOVO: Estado percebido do pedido */
+  estadoPercebido?: EstadoPercebidoVm;
+  /** NOVO: Quantidade de mensagens de histórico enviadas ao LLM */
+  contextoEnviadoCount?: number;
 }
 
 export type AtendimentoViewModel =
@@ -174,6 +185,8 @@ export type AtendimentoViewModel =
       vitrine: VitrineItemUi[];
       /** Sugestão de produto por ambiguidade (resolvida via reply/último produto/LLM) */
       sugestaoAmbiguidade: SugestaoAmbiguidadeVm | null;
+      /** Estado percebido do pedido (contexto adaptativo) */
+      estadoPercebido?: EstadoPercebidoVm;
       /** Debug info do Ouvinte (para testes E2E) */
       ouvinteDebug?: OuvinteDebugVm;
       /** Pendências de confirmação (ex: produto com qtd conflitante) */

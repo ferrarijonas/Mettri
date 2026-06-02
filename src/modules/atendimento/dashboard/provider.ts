@@ -6,7 +6,7 @@ import { digitsOnly } from '../../../storage/client-db';
 import { customerProfileDB } from '../../../storage/customer-profile-db';
 import { catalogoDB } from '../../../storage/catalogo-db';
 import { whatsappInterceptors } from '../../../infrastructure/whatsapp-interceptors';
-import type { AtendimentoViewModel, FunilEtapa, PedidoItemAuto, ProximaAcao, VitrineItemUi, IntencaoTipo, PedidoResumoVm, MetricaClienteVm, SugestaoAmbiguidadeVm } from './view-model';
+import type { AtendimentoViewModel, FunilEtapa, PedidoItemAuto, ProximaAcao, VitrineItemUi, IntencaoTipo, PedidoResumoVm, MetricaClienteVm, SugestaoAmbiguidadeVm, EstadoPercebidoVm } from './view-model';
 import { criarClienteContextoVitrine, fornecerFichaClienteParaAtendimento } from '../../cadastro';
 import {
   buildClientBadges,
@@ -335,6 +335,8 @@ export async function getAtendimentoViewModel(params?: {
   confiancaPerfil?: number
   intencao?: string  // vinda do ouvinte-llm, substitui classificarIntencao()
   respostaSugerida?: string  // vinda do ouvinte-llm
+  estadoPercebido?: EstadoPercebidoVm  // vindo do ouvinte-llm (contexto adaptativo)
+  contextoEnviadoCount?: number  // qtd de mensagens de histórico enviadas ao LLM
 }): Promise<AtendimentoViewModel> {
   const chatId = String(params?.chatId || (await getActiveChatIdDirect()) || '').trim();
   if (!chatId) {
@@ -599,11 +601,31 @@ export async function getAtendimentoViewModel(params?: {
     vitrine,
     /** Sugestão de produto por ambiguidade */
     sugestaoAmbiguidade,
+    /** Estado percebido do pedido (vindo do ouvinte-llm, contexto adaptativo) */
+    estadoPercebido: (() => {
+      const ep = params?.estadoPercebido
+      if (!ep) return undefined
+      return {
+        fase: ep.fase,
+        confiancaEstado: ep.confiancaEstado,
+        coletado: ep.coletado,
+      } as EstadoPercebidoVm
+    })(),
     /** Debug info do Ouvinte (para testes E2E) */
     ouvinteDebug: {
       ultimaMensagemProcessada: (perfil as any)?.ultimaMensagemProcessada,
       camposExtraidos: perfil?.preferenciasProduto?.map(v => ({ campo: 'preferenciasProduto', valor: v, confianca: perfil?.camposConfianca?.preferenciasProduto || 'media' })),
       sugestaoPendente: sugestaoAmbiguidade ?? undefined,
+      estadoPercebido: (() => {
+        const ep = params?.estadoPercebido
+        if (!ep) return undefined
+        return {
+          fase: ep.fase,
+          confiancaEstado: ep.confiancaEstado,
+          coletado: ep.coletado,
+        } as EstadoPercebidoVm
+      })(),
+      contextoEnviadoCount: params?.contextoEnviadoCount,
     },
     /** Pendências de confirmação */
     pendentesConfirmacao: perfil?.pendentesConfirmacao ?? [],

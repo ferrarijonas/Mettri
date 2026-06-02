@@ -77,12 +77,43 @@ export interface OuvirProcessingEvent {
   startedAtIso: string
 }
 
+/** Estado percebido do pedido (fase + confiança + coleta) */
+export interface EstadoPercebido {
+  fase: 'lead' | 'draft' | 'open' | 'completed' | 'pos_venda' | 'indeterminado'
+  coletado: {
+    produtos: boolean
+    endereco: boolean
+    pagamento: boolean
+    prazo: boolean
+  }
+  confiancaEstado: 'alta' | 'media' | 'baixa'
+  precisaContextoExtra: boolean
+  ultimaVerificacao: string
+}
+
+/** Mensagem do histórico para contexto */
+export interface MensagemHistorico {
+  papel: 'cliente' | 'atendente'
+  texto: string
+}
+
+/** Evento emitido pelo ouvinte quando o estado percebido é calculado */
+export interface OuvirStateEstimatedEvent {
+  chatId: string
+  estado: EstadoPercebido
+  historicoContextoCount: number
+}
+
 export interface OuvirProfileUpdatedEvent {
   chatId: string
   camposAtualizados: string[]
   confiancaPerfil: number
   intencao?: 'compra_nova' | 'suporte_pos_venda' | 'orcamento' | 'outro'
   respostaSugerida?: string
+  /** NOVO: Estado percebido do pedido */
+  estadoPercebido?: EstadoPercebido
+  /** NOVO: Quantidade de mensagens de histórico enviadas ao LLM */
+  contextoEnviadoCount?: number
 }
 
 export interface LlmExtractionResult {
@@ -110,6 +141,12 @@ export interface OuvinteLlmInput {
   chatId: string
   profile: CustomerOperationalProfile | null
   catalogoCandidatos: string[]
+  /** NOVO: Estado percebido do pedido */
+  estadoPercebido?: EstadoPercebido
+  /** NOVO: Histórico de mensagens para contexto */
+  historicoContexto?: MensagemHistorico[]
+  /** NOVO: Intenção classificada anteriormente */
+  intencaoAnterior?: string
 }
 
 export interface OuvinteLlmOutput {
