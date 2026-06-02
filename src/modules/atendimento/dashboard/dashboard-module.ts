@@ -62,6 +62,8 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
   let ultimaRespostaSugerida: string | undefined;
   let processandoOuvinte = false;
   let clearAnimationTimer: ReturnType<typeof setTimeout> | null = null;
+  let ultimoEstadoPercebido: import('../../ouvir/types').EstadoPercebido | undefined;
+  let ultimoContextoEnviadoCount: number | undefined;
 
   async function loadRagAutoSuggestFromStorage(): Promise<boolean> {
     try {
@@ -107,6 +109,17 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
       confiancaPerfil,
       intencao: ultimaIntencao,
       respostaSugerida: ultimaRespostaSugerida,
+      estadoPercebido: ultimoEstadoPercebido ? {
+        fase: ultimoEstadoPercebido.fase,
+        confiancaEstado: ultimoEstadoPercebido.confiancaEstado,
+        coletado: [
+          ...(ultimoEstadoPercebido.coletado.produtos ? ['produto'] : []),
+          ...(ultimoEstadoPercebido.coletado.endereco ? ['endereco'] : []),
+          ...(ultimoEstadoPercebido.coletado.pagamento ? ['pagamento'] : []),
+          ...(ultimoEstadoPercebido.coletado.prazo ? ['prazo'] : []),
+        ],
+      } : undefined,
+      contextoEnviadoCount: ultimoContextoEnviadoCount,
     });
     if (vm.kind === 'ready') {
       lastClientKey = vm.customer.clientKey || null;
@@ -150,6 +163,13 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
       ultimaRespostaSugerida = data.respostaSugerida;  // LLM gerou resposta (substitui)
     } else if (data.intencao && data.intencao !== 'compra_nova') {
       ultimaRespostaSugerida = undefined;  // conversa mudou de rumo, limpa
+    }
+    // Estado percebido do contexto adaptativo
+    if (data.estadoPercebido) {
+      ultimoEstadoPercebido = data.estadoPercebido;
+    }
+    if (data.contextoEnviadoCount !== undefined) {
+      ultimoContextoEnviadoCount = data.contextoEnviadoCount;
     }
     // Persiste até enviar/recusar/nova msg do cliente
     rerender().catch(() => {});
@@ -672,6 +692,8 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
     if (clearAnimationTimer) clearTimeout(clearAnimationTimer);
     updatedFields = undefined;
     confiancaPerfil = undefined;
+    ultimoEstadoPercebido = undefined;
+    ultimoContextoEnviadoCount = undefined;
     processandoOuvinte = false;
 
     // Reprocessa última mensagem do cliente se perfil estiver desatualizado
