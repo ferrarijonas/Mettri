@@ -16,6 +16,9 @@ interface TimelineItem {
   descricao: string;
 }
 
+const MAX_VISIVEIS = 5;
+const JANELA_ATIVO_MS = 60 * 60 * 1000; // 1 hora
+
 export class InspectorPopup {
   private popup: HTMLDivElement | null = null;
   private headerEl: HTMLDivElement | null = null;
@@ -24,19 +27,14 @@ export class InspectorPopup {
   private eventBus: EventBus | null = null;
   private disposers: (() => void)[] = [];
   private abas = new Map<string, TimelineItem[]>();
+  private lastActivity = new Map<string, number>();
+  private overflowAberto = false;
   private abaAtiva: string | null = null;
   private isDragging = false;
   private dragStart = { x: 0, y: 0, left: 0, top: 0 };
   private isResizing = false;
   private resizeStart = { x: 0, y: 0, w: 0, h: 0 };
-
-  init(eventBus: EventBus): () => void {
-    this.eventBus = eventBus;
-    this.criarPopup();
-    this.registrarListeners();
-    this.exporGlobal();
-    return () => this.destruir();
-  }
+  resolverNome: ((chatId: string) => string) | null = null;
 
   private exporGlobal(): void {
     (window as unknown as Record<string, unknown>).__mettriInspector = this;
@@ -105,7 +103,26 @@ export class InspectorPopup {
 #mettri-inspector-resize {
   position:absolute; bottom:0; right:0; width:14px; height:14px;
   cursor:nwse-resize; background:linear-gradient(135deg,transparent 50%,#3a3a5c 50%);
-}`;
+}
+#mettri-inspector-overflow {
+  padding:3px 8px; border-radius:6px 6px 0 0; cursor:pointer;
+  font-size:10px; background:#16213e; color:#888;
+  border:1px solid transparent; border-bottom:1px solid #3a3a5c;
+  white-space:nowrap; flex-shrink:0; position:relative;
+}
+#mettri-inspector-overflow:hover { color:#aaa; }
+#mettri-inspector-overflow-list {
+  display:none; position:absolute; top:100%; right:0; z-index:2147483647;
+  background:#1a1a2e; border:1px solid #3a3a5c; border-radius:6px;
+  max-height:200px; overflow-y:auto; min-width:160px;
+}
+#mettri-inspector-overflow-list.open { display:block; }
+.mettri-inspector-overflow-item {
+  padding:4px 10px; cursor:pointer; font-size:10px; color:#aaa;
+  border-bottom:1px solid #2a2a4a;
+}
+.mettri-inspector-overflow-item:hover { background:#16213e; color:#7ec8e3; }
+.mettri-inspector-overflow-item:last-child { border-bottom:none; }`;
     document.head.appendChild(style);
   }
 
@@ -200,6 +217,8 @@ export class InspectorPopup {
 
     this.disposers.push(
       this.onDisposable<AgentTurnoInicioEvent>(AGENT_EVENTS.TURNO_INICIO, (data) => {
+        // Limpa eventos anteriores — cada turno começa do zero
+        this.abas.set(data.chatId, []);
         this.adicionarEvento(data.chatId, {
           timestamp: new Date().toISOString(),
           chatId: data.chatId,
@@ -284,15 +303,25 @@ export class InspectorPopup {
     return str.length > 60 ? str.substring(0, 60) + '…' : str;
   }
 
+  init(eventBus: EventBus, resolverNome?: (chatId: string) => string): () => void {
+    this.eventBus = eventBus;
+    this.resolverNome = resolverNome ?? null;
+    this.criarPopup();
+    this.registrarListeners();
+    this.exporGlobal();
+    return () => this.destruir();
+  }
+
   private adicionarEvento(chatId: string, item: TimelineItem): void {
+    this.lastActivity.set(chatId, Date.now());
     if (!this.abas.has(chatId)) {
       this.abas.set(chatId, []);
-      this.renderizarAbas();
     }
     this.abas.get(chatId)!.push(item);
 
     if (this.abaAtiva === chatId) {
       this.renderizarTimeline();
+      this.renderizarAbas();
     } else if (!this.abaAtiva) {
       this.abaAtiva = chatId;
       this.renderizarAbas();
@@ -305,19 +334,89 @@ export class InspectorPopup {
   private renderizarAbas(): void {
     if (!this.tabBar) return;
     this.tabBar.innerHTML = '';
-    for (const [chatId] of this.abas) {
-      const tab = document.createElement('div');
-      tab.className = 'mettri-inspector-tab' + (chatId === this.abaAtiva ? ' active' : '');
-      const shortId = chatId.length > 12 ? chatId.substring(0, 10) + '…' : chatId;
-      tab.textContent = shortId;
-      tab.title = chatId;
-      tab.addEventListener('click', () => {
+
+    const agora = Date.now();
+    const ordenados = [...this.abas.keys()]
+      .sort((a, b) => (this.lastActivity.get(b) ?? 0) - (this.lastActivity.get(a) ?? 0));
+    const visiveis = ordenados
+      .filter((id) => (this.lastActivity.get(id) ?? 0) > agora - JANELA_ATIVO_MS)
+      .slice(0, MAX_VISIVEIS);
+    const inativos = ordenados.filter((id) => !visiveis.includes(id));
+
+    for (const chatId of visiveis) {
+      this.criarTab(chatId);
+    }
+
+    if (inativos.length > 0) {
+      this.criarOverflowBtn(inativos);
+    }
+  }
+
+  private criarTab(chatId: string): void {
+    if (!this.tabBar) return;
+    const tab = document.createElement('div');
+    tab.className = 'mettri-inspector-tab' + (chatId === this.abaAtiva ? ' active' : '');
+    const nome = this.resolverNome ? this.resolverNome(chatId) : chatId;
+    const label = nome.length > 16 ? nome.substring(0, 14) + '…' : nome;
+    tab.textContent = label;
+    tab.title = chatId + (nome !== chatId ? ' — ' + nome : '');
+    tab.addEventListener('click', () => {
+      this.abaAtiva = chatId;
+      this.fecharOverflow();
+      this.renderizarAbas();
+      this.renderizarTimeline();
+    });
+    this.tabBar.appendChild(tab);
+  }
+
+  private criarOverflowBtn(inativos: string[]): void {
+    if (!this.tabBar) return;
+    const container = document.createElement('div');
+    container.id = 'mettri-inspector-overflow';
+    container.textContent = `📋 +${inativos.length}`;
+    container.title = 'Conversas inativas';
+
+    const lista = document.createElement('div');
+    lista.id = 'mettri-inspector-overflow-list';
+    lista.className = this.overflowAberto ? 'open' : '';
+    for (const chatId of inativos) {
+      const item = document.createElement('div');
+      item.className = 'mettri-inspector-overflow-item';
+      const nome = this.resolverNome ? this.resolverNome(chatId) : chatId;
+      const label = nome.length > 20 ? nome.substring(0, 18) + '…' : nome;
+      item.textContent = label;
+      item.title = chatId + (nome !== chatId ? ' — ' + nome : '');
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.abaAtiva = chatId;
+        this.fecharOverflow();
         this.renderizarAbas();
         this.renderizarTimeline();
       });
-      this.tabBar.appendChild(tab);
+      lista.appendChild(item);
     }
+    container.appendChild(lista);
+
+    container.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.overflowAberto = !this.overflowAberto;
+      this.renderizarAbas();
+    });
+
+    // Fecha overflow ao clicar fora
+    const fechar = (e: MouseEvent) => {
+      if (this.overflowAberto && !container.contains(e.target as Node)) {
+        this.fecharOverflow();
+        this.renderizarAbas();
+      }
+    };
+    document.addEventListener('click', fechar, { once: true });
+
+    this.tabBar.appendChild(container);
+  }
+
+  private fecharOverflow(): void {
+    this.overflowAberto = false;
   }
 
   private renderizarTimeline(): void {

@@ -15,7 +15,7 @@ import type { AgentTurno, ToolCall } from './types';
 import { AGENT_EVENTS } from './types';
 import type { ToolRegistry } from './tool-registry';
 import type { EventBus } from '../../ui/core/event-bus';
-import { agenteDecidir, zodTypeToJsonSchema } from './agente-llm';
+import { agenteDecidir, zodTypeToJsonSchema } from '../ouvir/motor-llm';
 
 export interface AgentLoopOptions {
   maxTools?: number;
@@ -46,10 +46,18 @@ export class AgentLoop {
   /**
    * Processa uma mensagem recebida em um chat.
    * Executa o loop decisório com DeepSeek até responder ou estourar limites.
+   *
+   * @param context - Contexto enriquecido do ouvinte (profile, catálogo, estado, histórico)
    */
   async processarMensagem(
     chatId: string,
     mensagem: string,
+    context?: {
+      profile?: unknown;
+      catalogoCandidatos?: string[];
+      estadoPercebido?: unknown;
+      historicoContexto?: { papel: string; texto: string }[];
+    },
   ): Promise<void> {
     const ferramentasChamadas: ToolCall[] = [];
     const ferramentasDisponiveis = this.registry
@@ -105,7 +113,10 @@ export class AgentLoop {
         chatId,
         tools: toolsDescriptions,
         toolResults: ferramentasChamadas,
-        ferramentasDisponiveis,
+        profile: context?.profile as never,
+        catalogoCandidatos: context?.catalogoCandidatos,
+        estadoPercebido: context?.estadoPercebido as never,
+        historicoContexto: context?.historicoContexto as never,
       });
 
       // ── Processar decisão ──
