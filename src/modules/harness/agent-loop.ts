@@ -1,10 +1,10 @@
 /**
- * AgentLoop - Esqueleto do loop do agente com mock probabilístico.
+ * AgentLoop - Loop do agente com decisão via DeepSeek (function calling).
  *
- * Processa mensagens em um while com decisões mockadas:
- *   - 70% tool_use (chama tool aleatória do registry)
- *   - 20% responder (emite resposta-pronta e retorna)
- *   - 10% preciso_ferramenta (emite precisa-ferramenta e continua)
+ * Processa mensagens em um while consultando o LLM a cada iteração:
+ *   - Chama DeepSeek com as ferramentas disponíveis
+ *   - LLM decide: tool_use, responder ou preciso_ferramenta
+ *   - Executa a tool escolhida e repete até o LLM decidir responder
  *
  * Travas de segurança:
  *   - Máximo 8 ferramentas por turno
@@ -15,6 +15,7 @@ import type { AgentTurno, ToolCall } from './types';
 import { AGENT_EVENTS } from './types';
 import type { ToolRegistry } from './tool-registry';
 import type { EventBus } from '../../ui/core/event-bus';
+import { agenteDecidir, zodTypeToJsonSchema } from './agente-llm';
 
 export interface AgentLoopOptions {
   maxTools?: number;
@@ -44,7 +45,7 @@ export class AgentLoop {
 
   /**
    * Processa uma mensagem recebida em um chat.
-   * Executa o loop decisório mockado até responder ou estourar limites.
+   * Executa o loop decisório com DeepSeek até responder ou estourar limites.
    */
   async processarMensagem(
     chatId: string,
@@ -89,14 +90,42 @@ export class AgentLoop {
         return;
       }
 
-      // MOCK: decide próxima ação
-      const decisao = this.mockDecidir();
+      // CHAMADA REAL ao DeepSeek com function calling
+      const toolsDescriptions = this.registry.listarDisponiveis().map((t) => ({
+        type: 'function' as const,
+        function: {
+          name: t.nome,
+          description: t.descricao,
+          parameters: zodTypeToJsonSchema(t.inputSchema),
+        },
+      }));
+
+      const decisao = await agenteDecidir({
+        mensagem,
+        chatId,
+        tools: toolsDescriptions,
+        toolResults: ferramentasChamadas,
+        ferramentasDisponiveis,
+      });
+
+      // ── Processar decisão ──
 
       if (decisao.tipo === 'responder') {
+        if (!decisao.texto) {
+          // LLM respondeu vazio — provável erro/fallback, encerra
+          this.turno.status = 'erro';
+          this.eventBus.emit(AGENT_EVENTS.ERRO, {
+            chatId,
+            erro:
+              'Agente retornou resposta vazia — possível erro de comunicação com DeepSeek',
+            gravidade: 'N3',
+          });
+          return;
+        }
         this.turno.status = 'dormindo';
         this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
           chatId,
-          texto: `[resposta simulada para: ${mensagem}]`,
+          texto: decisao.texto,
           ferramentasChamadas: [...ferramentasChamadas],
         });
         return;
@@ -120,16 +149,32 @@ export class AgentLoop {
           ultimaToolRepeticao.count = 1;
         }
 
+        const inicioTool = Date.now();
+        this.eventBus.emit(AGENT_EVENTS.TOOL_CALL, {
+          chatId,
+          nome: decisao.nome,
+          argumentos: decisao.argumentos,
+          duracaoMs: 0,
+        });
+
         const resultado = await this.registry.executar(
           decisao.nome,
-          decisao.args ?? {},
+          decisao.argumentos,
         );
+
+        const duracaoTool = Date.now() - inicioTool;
+
+        this.eventBus.emit(AGENT_EVENTS.TOOL_RESULT, {
+          chatId,
+          nome: decisao.nome,
+          resultado,
+        });
 
         ferramentasChamadas.push({
           nome: decisao.nome,
-          argumentos: (decisao.args as Record<string, unknown>) ?? {},
+          argumentos: decisao.argumentos,
           resultado: resultado.dados,
-          duracaoMs: 0,
+          duracaoMs: duracaoTool,
           erro: resultado.erro,
         });
 
@@ -142,8 +187,8 @@ export class AgentLoop {
           chatId,
           nomeSugerido: decisao.nomeSugerido ?? 'ferramenta_desconhecida',
           descricao: decisao.descricao ?? 'Preciso de uma ferramenta adicional',
-          entradaEsperada: {},
-          saidaEsperada: {},
+          entradaEsperada: decisao.entradaEsperada ?? {},
+          saidaEsperada: decisao.saidaEsperada ?? {},
           porQuePreciso: decisao.porQuePreciso ?? '',
         });
         // Continua o loop sem incrementar contador de tools
@@ -158,41 +203,6 @@ export class AgentLoop {
       erro: `Agente excedeu limite de ${this.options.maxTools} ferramentas por turno`,
       gravidade: 'N2',
     });
-  }
-
-  /**
-   * Mock decisório: 70% tool_use, 20% responder, 10% preciso_ferramenta.
-   */
-  private mockDecidir():
-    | { tipo: 'responder' }
-    | { tipo: 'tool_use'; nome: string; args?: unknown }
-    | {
-        tipo: 'preciso_ferramenta';
-        nomeSugerido?: string;
-        descricao?: string;
-        porQuePreciso?: string;
-      } {
-    const r = Math.random();
-
-    if (r < 0.7) {
-      const tools = this.registry.listarDisponiveis();
-      if (tools.length === 0) {
-        return { tipo: 'responder' };
-      }
-      const tool = tools[Math.floor(Math.random() * tools.length)];
-      return { tipo: 'tool_use', nome: tool.nome, args: {} };
-    }
-
-    if (r < 0.9) {
-      return { tipo: 'responder' };
-    }
-
-    return {
-      tipo: 'preciso_ferramenta',
-      nomeSugerido: 'calcular_frete',
-      descricao: 'Preciso consultar frete por CEP',
-      porQuePreciso: 'O cliente perguntou sobre prazo de entrega',
-    };
   }
 
   /** Retorna o turno atual, se houver */

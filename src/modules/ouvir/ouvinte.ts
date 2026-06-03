@@ -404,6 +404,17 @@ export function registerOuvinteListeners(
           }
           eventBus.emit('ouvir:profile-updated', event)
           console.log('[ouvinte-llm] evento emitido:', camposAtualizados)
+
+          // Dispara o Agent Harness quando uma intenção é extraída com sucesso
+          const mettriHarness = (window as unknown as Record<string, unknown>).__mettriHarness as
+            | { loop: { processarMensagem: (chatId: string, msg: string) => Promise<void> } }
+            | undefined
+          if (intencao && intencao !== 'outro' && mettriHarness?.loop) {
+            console.log('[ouvinte] disparando AgentLoop para:', chatId.substring(0, 20), text.substring(0, 40))
+            mettriHarness.loop.processarMensagem(chatId, text).catch((err: unknown) => {
+              console.error('[ouvinte] AgentLoop error:', err)
+            })
+          }
         }
       } catch (error) {
         console.error('[ouvinte] Erro no pipeline:', error)
