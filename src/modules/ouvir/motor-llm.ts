@@ -11,6 +11,8 @@
 import { MettriBridgeClient } from '../../content/bridge-client'
 import type { LlmExtractionResult, OuvinteLlmInput, OuvinteLlmOutput } from './types'
 import { montarPrompt } from './monta-prompt'
+import type { ToolDescription } from '../harness/types'
+import { parsearRespostaTools } from '../harness/llm-tool-parser'
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions'
 const MODEL = 'deepseek-chat'
@@ -131,6 +133,7 @@ function normalizeResult(raw: Record<string, unknown>): LlmExtractionResult {
   // Garante que arrays vazios sejam removidos
   for (const key of Object.keys(out)) {
     if (Array.isArray(out[key]) && (out[key] as unknown[]).length === 0) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete out[key]
     }
   }
@@ -179,6 +182,25 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
   })
 
   try {
+    const hasTools = input.tools !== undefined && input.tools.length > 0
+
+    // ── Monta body dinamicamente ──
+    const body: Record<string, unknown> = {
+      model: MODEL,
+      messages: [
+        { role: 'system', content: prompt.systemPrompt },
+        { role: 'user', content: prompt.userPrompt },
+      ],
+      temperature: 0,
+      max_tokens: hasTools ? 1000 : 500,
+    }
+
+    // Adiciona tools se fornecidas (DeepSeek function calling)
+    if (hasTools && input.tools) {
+      body.tools = input.tools as ToolDescription[]
+      body.tool_choice = 'auto'
+    }
+
     const result = await bridge.netFetch({
       url: DEEPSEEK_URL,
       method: 'POST',
@@ -186,15 +208,7 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: prompt.systemPrompt },
-          { role: 'user', content: prompt.userPrompt },
-        ],
-        temperature: 0,
-        max_tokens: 500,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!result.ok) {
@@ -202,21 +216,40 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
     }
 
     const data = JSON.parse(result.text) as {
-      choices?: { message?: { content?: string } }[]
+      choices?: { message?: { content?: string | null; tool_calls?: unknown[] } }[]
       usage?: { total_tokens?: number }
     }
-    const content = data.choices?.[0]?.message?.content
-    if (!content) {
+    const message = data.choices?.[0]?.message
+    const content = message?.content ?? null
+    const toolCallsRaw = message?.tool_calls
+    const tokensEstimados = data.usage?.total_tokens ?? 0
+
+    // ── Parseia resposta com suporte a tools ──
+    const llmToolResponse = parsearRespostaTools(content, toolCallsRaw)
+
+    // Se for tool_use, não tem extração de perfil — retorna só o tool response
+    if (llmToolResponse.tipo === 'tool_use') {
+      return {
+        extras: {},
+        usouLlm: true,
+        tokensEstimados,
+        llmToolResponse,
+      }
+    }
+
+    // Se for responder com texto vazio (fallback), retorna vazio
+    if (llmToolResponse.tipo === 'responder' && !llmToolResponse.texto) {
       return { extras: {}, usouLlm: false, tokensEstimados: 0 }
     }
 
-    const extras = parseResponse(content)
-    const tokensEstimados = data.usage?.total_tokens ?? 0
+    // ── Parseia extração de perfil normal ──
+    const extras = parseResponse(content ?? '')
 
     return {
       extras,
       usouLlm: true,
       tokensEstimados,
+      llmToolResponse,
     }
   } catch {
     return { extras: {}, usouLlm: false, tokensEstimados: 0 }

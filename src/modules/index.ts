@@ -10,6 +10,11 @@ import type { EventBus } from '../ui/core/event-bus';
 import type { MettriModule } from './harness/types';
 import { ToolRegistry } from './harness/tool-registry';
 import { AgentLoop } from './harness/agent-loop';
+import { consultarCatalogo } from './harness/tools/consultar-catalogo';
+import { consultarPerfil } from './harness/tools/consultar-perfil';
+import { consultarHistorico } from './harness/tools/consultar-historico';
+import { registrarPedido } from './harness/tools/registrar-pedido';
+import { enviarMensagem } from './harness/tools/enviar-mensagem';
 import { AtendimentoModule } from './atendimento/atendimento-module';
 import { ClientesModule } from './clientes/clientes-module';
 import { ClientesDirectoryModule } from './clientes/directory/directory-module';
@@ -93,6 +98,14 @@ export const harnessModule: MettriModule = {
   id: 'harness',
   init: async (eventBus: EventBus) => {
     const registry = new ToolRegistry(eventBus);
+
+    // Registra as 5 ferramentas de negócio iniciais
+    registry.registrar(consultarCatalogo);
+    registry.registrar(consultarPerfil);
+    registry.registrar(consultarHistorico);
+    registry.registrar(registrarPedido);
+    registry.registrar(enviarMensagem);
+
     const loop = new AgentLoop(registry, eventBus);
 
     // Registra como singleton para debug no console

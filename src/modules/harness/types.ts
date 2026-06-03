@@ -107,6 +107,35 @@ export interface AgentErroEvent {
   gravidade: 'N1' | 'N2' | 'N3' | 'N4';
 }
 
+// ── ToolDescription (formato da API DeepSeek para function calling) ──
+
+/**
+ * Descrição de tool no formato da API DeepSeek/OpenAI.
+ * Usado no body do request `/v1/chat/completions` no campo `tools`.
+ */
+export interface ToolDescription {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: Record<string, unknown>  // JSON Schema
+  }
+}
+
+// ── LlmToolResponse (resposta do motor-llm com suporte a tools) ──
+
+/**
+ * Resposta parseada do LLM quando há suporte a function calling.
+ * Discriminated union com 3 variantes:
+ * - `responder`: LLM respondeu com texto (sem tool call)
+ * - `tool_use`: LLM decidiu chamar uma ferramenta
+ * - `preciso_ferramenta`: LLM indicou que precisa de uma ferramenta que não existe
+ */
+export type LlmToolResponse =
+  | { tipo: 'responder'; texto: string }
+  | { tipo: 'tool_use'; nome: string; argumentos: Record<string, unknown> }
+  | { tipo: 'preciso_ferramenta'; nomeSugerido: string; descricao: string; entradaEsperada: Record<string, string>; saidaEsperada: Record<string, string>; porQuePreciso: string }
+
 // ── Event names (constantes para evitar typos) ──
 
 export const AGENT_EVENTS = {
