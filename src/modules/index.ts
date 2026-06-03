@@ -11,16 +11,6 @@ import type { MettriModule } from './harness/types';
 import { ToolRegistry } from './harness/tool-registry';
 import { AgentLoop } from './harness/agent-loop';
 import { AtendimentoModule } from './atendimento/atendimento-module';
-
-// Global augmentation para expor harness no console
-declare global {
-  interface Window {
-    __mettriHarness?: {
-      registry: ToolRegistry;
-      loop: AgentLoop;
-    };
-  }
-}
 import { ClientesModule } from './clientes/clientes-module';
 import { ClientesDirectoryModule } from './clientes/directory/directory-module';
 import { HistoryModule } from './clientes/history/history-module';
@@ -44,6 +34,16 @@ import { CampanhasModule } from './campanhas/campanhas-module';
 import { CampanhasDashboardModule } from './campanhas/dashboard/dashboard-module';
 import { PedidosModule } from './pedidos/pedidos-module';
 import { PedidosDashboardModule } from './pedidos/dashboard/dashboard-module';
+
+// Global augmentation para expor harness no console (sem as any)
+declare global {
+  interface Window {
+    __mettriHarness?: {
+      registry: ToolRegistry;
+      loop: AgentLoop;
+    };
+  }
+}
 
 /**
  * Registra todos os módulos no registry
