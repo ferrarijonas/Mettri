@@ -6,7 +6,21 @@
  */
 
 import type { ModuleRegistry } from '../ui/core/module-registry';
+import type { EventBus } from '../ui/core/event-bus';
+import type { MettriModule } from './harness/types';
+import { ToolRegistry } from './harness/tool-registry';
+import { AgentLoop } from './harness/agent-loop';
 import { AtendimentoModule } from './atendimento/atendimento-module';
+
+// Global augmentation para expor harness no console
+declare global {
+  interface Window {
+    __mettriHarness?: {
+      registry: ToolRegistry;
+      loop: AgentLoop;
+    };
+  }
+}
 import { ClientesModule } from './clientes/clientes-module';
 import { ClientesDirectoryModule } from './clientes/directory/directory-module';
 import { HistoryModule } from './clientes/history/history-module';
@@ -64,3 +78,28 @@ export function registerAllModules(registry: ModuleRegistry): void {
   registry.register(EnviarDivulgarModule);
   registry.register(PedidosDashboardModule);
 }
+
+/**
+ * Harness Module - Módulo de infraestrutura (sem UI) para o Agent Harness.
+ *
+ * Expõe ToolRegistry e AgentLoop como singleton em window.__mettriHarness
+ * para acesso via console do navegador durante desenvolvimento.
+ *
+ * Uso:
+ *   import { harnessModule } from './modules'
+ *   const cleanup = await harnessModule.init(eventBus)
+ */
+export const harnessModule: MettriModule = {
+  id: 'harness',
+  init: async (eventBus: EventBus) => {
+    const registry = new ToolRegistry(eventBus);
+    const loop = new AgentLoop(registry, eventBus);
+
+    // Registra como singleton para debug no console
+    window.__mettriHarness = { registry, loop };
+
+    return () => {
+      delete window.__mettriHarness;
+    };
+  },
+};
