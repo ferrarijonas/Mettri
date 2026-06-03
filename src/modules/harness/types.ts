@@ -50,19 +50,25 @@ export interface AgentTurno {
   iniciadoEm: string;
 }
 
-// ── Memória (esqueleto, sem persistência ainda) ──
+// ── Memória (4 tipos taxonômicos, persistência IndexedDB) ──
 
-export type MemoriaTipo = 'cliente' | 'feedback' | 'conversa' | 'regra';
+export type MemoriaTipo = 'cliente' | 'licao' | 'negocio' | 'referencia';
 
-export type MemoriaEscopo = 'global' | `chat:${string}`;
-
+/**
+ * Registro de memória persistente.
+ * - `cliente`: perfil, preferências, restrições (por chatId)
+ * - `licao`: aprendizados de interações (por chatId)
+ * - `negocio`: como o negócio opera (global)
+ * - `referencia`: links, códigos, contatos externos (global)
+ */
 export interface Memoria {
-  id: string;
+  id?: number;
   tipo: MemoriaTipo;
-  escopo: MemoriaEscopo;
-  conteudo: string;
-  criadaEm: string;
-  validaAte?: string;
+  descricao: string;
+  chatId?: string;
+  dados?: unknown;
+  criada_em: string;
+  atualizada_em: string;
 }
 
 // ── Eventos agent:* ──

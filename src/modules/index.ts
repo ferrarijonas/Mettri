@@ -18,6 +18,7 @@ import { enviarMensagem } from './harness/tools/enviar-mensagem';
 import { AtendimentoModule } from './atendimento/atendimento-module';
 import { ClientesModule } from './clientes/clientes-module';
 import { InspectorPopup } from './harness/inspector-popup';
+import { memoryStore } from './harness/memory-store';
 import { ClientesDirectoryModule } from './clientes/directory/directory-module';
 import { HistoryModule } from './clientes/history/history-module';
 import { InfrastructureModule } from './infrastructure/infrastructure-module';
@@ -47,6 +48,7 @@ declare global {
     __mettriHarness?: {
       registry: ToolRegistry;
       loop: AgentLoop;
+      memoryStore: typeof memoryStore;
     };
   }
 }
@@ -111,10 +113,30 @@ export const harnessModule: MettriModule = {
 
     // Inicializa inspector popup
     const inspector = new InspectorPopup();
-    const disposeInspector = inspector.init(eventBus);
+    const disposeInspector = inspector.init(eventBus, (chatId) => {
+      try {
+        const store = (window as any).Store;
+        if (store?.Chat) {
+          const chat = typeof store.Chat.get === 'function' ? store.Chat.get(chatId) : null;
+          if (chat) return chat.name || chat.formattedTitle || chat.pushname || chatId;
+          // Fallback: percorrer modelos
+          if (typeof store.Chat.getModelsArray === 'function') {
+            const chats = store.Chat.getModelsArray();
+            if (Array.isArray(chats)) {
+              const found = chats.find((c: any) => {
+                const id = typeof c.id === 'string' ? c.id : c.id?._serialized;
+                return id === chatId;
+              });
+              if (found) return found.name || found.formattedTitle || found.pushname || chatId;
+            }
+          }
+        }
+      } catch {}
+      return chatId;
+    });
 
     // Registra como singleton para debug no console
-    window.__mettriHarness = { registry, loop };
+    window.__mettriHarness = { registry, loop, memoryStore };
 
     return () => {
       disposeInspector();

@@ -12,13 +12,7 @@ export const consultarCatalogo: Tool = {
   }),
   executar: async (input) => {
     const { busca } = input as { busca: string };
-    const accountId = catalogoDB.getCurrentUserWid();
-    if (!accountId) {
-      return {
-        sucesso: false,
-        erro: 'Catálogo não disponível. Nenhum usuário logado.',
-      };
-    }
+    const accountId = catalogoDB.getCurrentUserWid() || 'default';
     try {
       const produtos = await catalogoDB.listByAccount(accountId);
       const termo = busca.toLowerCase();

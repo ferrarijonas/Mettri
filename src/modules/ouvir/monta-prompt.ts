@@ -8,8 +8,10 @@ import tomDeVoz from './prompts/tom-de-voz.md'
 import extracaoSistema from './prompts/extracao-sistema.md'
 import confirmacaoCompra from './prompts/resposta-confirmacao.md'
 import contextoConversa from './prompts/contexto-conversa.md'
+import decisaoSistema from './prompts/decisao-sistema.md'
 
 import type { EstadoPercebido, MensagemHistorico } from './types'
+import type { ContextoMemorias } from '../harness/memory-store'
 
 export interface MontarPromptInput {
   /** Incluir seção de identidade (padaria + tom de voz) */
@@ -18,6 +20,8 @@ export interface MontarPromptInput {
   extracao?: boolean
   /** Incluir seção de geração de resposta de confirmação */
   resposta?: boolean
+  /** Incluir seção de decisão de ferramentas (tool-use instructions) */
+  decisao?: boolean
   /** Incluir seção de contexto de conversa (adaptativo) */
   contextoConversa?: boolean
   /** Perfil do cliente para montar o user prompt (delta) */
@@ -32,6 +36,10 @@ export interface MontarPromptInput {
   historicoContexto?: MensagemHistorico[]
   /** NOVO: Intenção previamente classificada */
   intencaoAnterior?: string
+  /** Chat ID do cliente (necessário para tools que precisam preencher chatId) */
+  chatId?: string
+  /** NOVO: Memórias persistentes para contexto (4 tipos taxonômicos) */
+  memorias?: ContextoMemorias
 }
 
 export interface MontarPromptOutput {
@@ -84,6 +92,11 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
       ativo: input.resposta === true,
       conteudo: confirmacaoCompra,
     },
+    {
+      id: 'decisao',
+      ativo: input.decisao === true,
+      conteudo: decisaoSistema,
+    },
   ]
 
   // System prompt: concatena seções ativas
@@ -132,15 +145,51 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
     userData.intencao_anterior = input.intencaoAnterior
   }
 
+  // Adiciona chatId se seção de decisão estiver ativa (necessário para tools)
+  if (input.decisao && input.chatId) {
+    userData.chat_id = input.chatId
+  }
+
+  // ── User Prompt: 3 seções com boundary explícito ──
+
+  // Seção 1: DIRETRIZES DO NEGÓCIO
+  const secoesUser: string[] = []
+
+  if (input.memorias) {
+    const m = input.memorias
+
+    // Seção 1: Diretrizes do negócio (têm precedência)
+    if (m.negocio.length > 0 || m.referencias.length > 0) {
+      secoesUser.push(
+        'DIRETRIZES DO NEGÓCIO (siga estritamente — têm precedência)',
+      )
+      for (const item of m.negocio) secoesUser.push(`• ${item}`)
+      for (const item of m.referencias) secoesUser.push(`• ${item}`)
+    }
+
+    // Seção 2: Preferências do cliente
+    if (m.cliente.length > 0 || m.licoes.length > 0) {
+      secoesUser.push('', 'PREFERÊNCIAS DO CLIENTE')
+      for (const item of m.cliente) secoesUser.push(`• ${item}`)
+      for (const item of m.licoes) secoesUser.push(`• ${item}`)
+    }
+
+    // Freshness warnings (se houver)
+    if (m.freshnessWarnings.length > 0) {
+      secoesUser.push('', ...m.freshnessWarnings)
+    }
+  }
+
+  // Seção final: CONVERSA ATUAL
+  secoesUser.push('', 'CONVERSA ATUAL')
+
   const catalogoStatus = input.catalogoCandidatos.length > 0
     ? `Produtos disponíveis no catálogo: [${input.catalogoCandidatos.join(', ')}]`
     : 'Catálogo não disponível. Extraia produtos livremente do texto.'
 
-  const userPrompt = [
-    catalogoStatus,
-    '---',
-    JSON.stringify(userData),
-  ].join('\n')
+  secoesUser.push(catalogoStatus, '---', JSON.stringify(userData))
+
+  const userPrompt = secoesUser.join('\n')
 
   return { systemPrompt, userPrompt }
 }

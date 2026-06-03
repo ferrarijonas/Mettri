@@ -9,6 +9,7 @@ import { catalogoDB } from '../../storage/catalogo-db'
 import { messageDB } from '../../storage/message-db'
 import { orderDB } from '../../storage/order-db'
 import type { OuvirProfileUpdatedEvent, OuvirStateEstimatedEvent, EstadoPercebido, MensagemHistorico } from './types'
+import { memoryStore } from '../harness/memory-store'
 
 /** Ring buffer: últimas 10 mensagens por chatId (ambas direções). */
 const chatHistory = new Map<string, { text: string; isOutgoing: boolean }[]>()
@@ -406,12 +407,22 @@ export function registerOuvinteListeners(
           console.log('[ouvinte-llm] evento emitido:', camposAtualizados)
 
           // Dispara o Agent Harness quando uma intenção é extraída com sucesso
+          // Passa contexto rico (profile, catálogo, estado, histórico, memórias) para o agente
+          // Busca memórias persistentes para enriquecer o contexto do LLM
+          // Degradação graciosa: se falhar, contexto segue sem memórias
+          const memorias = await memoryStore.prepararContexto(chatId, text).catch(() => undefined)
           const mettriHarness = (window as unknown as Record<string, unknown>).__mettriHarness as
-            | { loop: { processarMensagem: (chatId: string, msg: string) => Promise<void> } }
+            | { loop: { processarMensagem: (chatId: string, msg: string, context?: Record<string, unknown>) => Promise<void> } }
             | undefined
           if (intencao && intencao !== 'outro' && mettriHarness?.loop) {
             console.log('[ouvinte] disparando AgentLoop para:', chatId.substring(0, 20), text.substring(0, 40))
-            mettriHarness.loop.processarMensagem(chatId, text).catch((err: unknown) => {
+            mettriHarness.loop.processarMensagem(chatId, text, {
+              profile,
+              catalogoCandidatos,
+              estadoPercebido: estado,
+              historicoContexto,
+              memorias,
+            }).catch((err: unknown) => {
               console.error('[ouvinte] AgentLoop error:', err)
             })
           }
