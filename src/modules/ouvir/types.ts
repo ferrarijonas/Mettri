@@ -1,4 +1,5 @@
 import type { CustomerOperationalProfile } from '../../storage/customer-profile-db'
+import type { LlmToolResponse, ToolDescription } from '../harness/types'
 
 export type CampoConfianca = 'desconhecido' | 'baixa' | 'media' | 'alta'
 
@@ -147,10 +148,14 @@ export interface OuvinteLlmInput {
   historicoContexto?: MensagemHistorico[]
   /** NOVO: Intenção classificada anteriormente */
   intencaoAnterior?: string
+  /** NOVO: Ferramentas disponíveis para function calling (DeepSeek tools) */
+  tools?: ToolDescription[]
 }
 
 export interface OuvinteLlmOutput {
   extras: LlmExtractionResult
   usouLlm: boolean
   tokensEstimados: number
+  /** NOVO: Resposta parseada do LLM com suporte a function calling */
+  llmToolResponse?: LlmToolResponse
 }
