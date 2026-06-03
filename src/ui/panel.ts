@@ -13,6 +13,7 @@ import { ActiveChatService } from '../infrastructure/active-chat-service';
 import { ModuleUpdater } from '../infrastructure/module-updater';
 import { registerRagAutoListeners } from '../modules/atendimento/rag-mettri-controller';
 import { registerOuvinteListeners } from '../modules/ouvir';
+import { harnessModule } from '../modules';
 
 type PanelSettings = Record<string, unknown> & {
   historyEnabled?: unknown;
@@ -748,6 +749,9 @@ export class MettriPanel {
     }
 
     try {
+      // Inicializa o Agent Harness (ToolRegistry + AgentLoop + Inspector Popup)
+      await harnessModule.init(this.eventBus);
+
       this.panelShell = new PanelShell({
         container: this.container,
         registry: this.registry,
