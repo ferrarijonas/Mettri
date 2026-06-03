@@ -17,6 +17,7 @@ import { registrarPedido } from './harness/tools/registrar-pedido';
 import { enviarMensagem } from './harness/tools/enviar-mensagem';
 import { AtendimentoModule } from './atendimento/atendimento-module';
 import { ClientesModule } from './clientes/clientes-module';
+import { InspectorPopup } from './harness/inspector-popup';
 import { ClientesDirectoryModule } from './clientes/directory/directory-module';
 import { HistoryModule } from './clientes/history/history-module';
 import { InfrastructureModule } from './infrastructure/infrastructure-module';
@@ -108,10 +109,15 @@ export const harnessModule: MettriModule = {
 
     const loop = new AgentLoop(registry, eventBus);
 
+    // Inicializa inspector popup
+    const inspector = new InspectorPopup();
+    const disposeInspector = inspector.init(eventBus);
+
     // Registra como singleton para debug no console
     window.__mettriHarness = { registry, loop };
 
     return () => {
+      disposeInspector();
       delete window.__mettriHarness;
     };
   },
