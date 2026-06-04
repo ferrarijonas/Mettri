@@ -30,14 +30,13 @@ describe('VectorIndexLocal (RAG)', () => {
     indexPath = join(tempDir, 'index.json');
   });
 
-  it('upsertMany com array vazio não cria arquivo', async () => {
+  it('upsertMany com array vazio não lança erro e índice continua vazio', async () => {
     const index = new VectorIndexLocal(indexPath);
 
     await index.upsertMany([]);
 
-    // Se não lançou erro e não precisou escrever nada, consideramos sucesso.
-    // A existência ou não do arquivo não é crítica aqui.
-    expect(true).toBe(true);
+    const results = await index.query(new Array(EMBEDDING_DIMENSION).fill(0), 5);
+    expect(results).toEqual([]);
   });
 
   it('upsertMany persiste registros e é idempotente', async () => {
