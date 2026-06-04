@@ -260,6 +260,57 @@ describe('orquestrador_indexacao_rag (RAG)', () => {
     expect(index.items).toHaveLength(0);
   });
 
+  it('integração: chain fonte → embed_index → guardar com MessageDB real (fake-indexeddb)', async () => {
+    // justificado: fake-indexeddb é polyfill fiel do IndexedDB para Node.js
+    await import('fake-indexeddb/auto');
+    const { messageDB } = await import('../../../src/storage/message-db');
+    const { CapturedMessageSchema } = await import('../../../src/types/schemas');
+
+    // Aguarda init do messageDB
+    await messageDB.setUserWid('test_integration_rag');
+
+    // Popula com 2 mensagens
+    const chatId = 'chat-integration-test';
+    const msg1 = CapturedMessageSchema.parse({
+      id: 'int-msg-1',
+      chatId,
+      chatName: 'Test',
+      sender: 'Cliente',
+      text: 'Quero pão francês',
+      timestamp: new Date('2026-01-01T10:00:00Z'),
+      isOutgoing: false,
+      type: 'text',
+    });
+    const msg2 = CapturedMessageSchema.parse({
+      id: 'int-msg-2',
+      chatId,
+      chatName: 'Test',
+      sender: 'Loja',
+      text: 'Temos sim, quantos?',
+      timestamp: new Date('2026-01-01T10:01:00Z'),
+      isOutgoing: true,
+      type: 'text',
+    });
+    await messageDB.saveMessage(msg1);
+    await messageDB.saveMessage(msg2);
+
+    // Executa orquestrador com dependências reais (fonte via messageDB)
+    const index = new FakeVectorIndex();
+    const bridge = { embed: async () => [0.1, 0.2, 0.3] } as unknown as MettriBridgeClient;
+
+    await orquestrador_indexacao_rag({
+      chatId,
+      db: messageDB,
+      bridge,
+      index,
+    });
+
+    // Verifica que os chunks foram embedados e guardados
+    expect(index.items.length).toBeGreaterThanOrEqual(1);
+    const chunkChatIds = index.items.map(item => item.chunk.chatId);
+    expect(chunkChatIds).toContain(chatId);
+  });
+
   it('propaga erro quando guardar falha', async () => {
     const chatId = 'chat-erro-guardar';
 

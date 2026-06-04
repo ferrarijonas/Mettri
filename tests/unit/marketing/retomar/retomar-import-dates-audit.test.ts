@@ -42,7 +42,6 @@ describe('retomar-import-dates-audit (Clientes Inativos.xlsx)', () => {
     if (!XLSX_PATH) {
       // eslint-disable-next-line no-console
       console.log('[skip] sem Clientes Inativos.xlsx');
-      expect(true).toBe(true);
       return;
     }
 
@@ -51,7 +50,6 @@ describe('retomar-import-dates-audit (Clientes Inativos.xlsx)', () => {
     if (!isZip) {
       // eslint-disable-next-line no-console
       console.log('[skip] não é XLSX zip:', XLSX_PATH);
-      expect(true).toBe(true);
       return;
     }
 

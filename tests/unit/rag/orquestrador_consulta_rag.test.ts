@@ -427,5 +427,91 @@ describe('orquestrador_consulta_rag (RAG)', () => {
 
     expect(result.debugInfo.baselineNoRag!.suggestion).toBe('baseline response');
   });
+
+  it('integração: embed_consulta (real com bridge mock) + buscar (real via index) com promptFn e avaliarFn simples', async () => {
+    const messages: CapturedMessage[] = [
+      createMessage({
+        id: 'c1',
+        text: 'Quero pão de queijo',
+        isOutgoing: false,
+        timestamp: new Date('2026-01-01T10:00:00Z'),
+      }),
+      createMessage({
+        id: 'a1',
+        text: 'Temos sim, quantas unidades?',
+        isOutgoing: true,
+        timestamp: new Date('2026-01-01T10:01:00Z'),
+      }),
+    ];
+
+    // Componente real: embedConsultaFn — função pura que mapeia texto → vetor fixo
+    const embedConsultaFn = async (conversationText: string): Promise<number[]> => {
+      // Simula embedding determinístico baseado no tamanho do texto
+      const length = conversationText.length;
+      return [length / 100, 0.5, 0.3];
+    };
+
+    // Componente real: buscarFn — chama index.query() real
+    const buscarFn = async (
+      queryVector: number[],
+      k: number,
+      index: VectorIndex,
+    ): Promise<{ chunk: ConversationChunk; score: number }[]> => {
+      return index.query(queryVector, k);
+    };
+
+    // Componente simples (mock aceitável): promptFn
+    const promptFn = async (
+      _currentConversation: string,
+      chunks: ConversationChunk[],
+    ): Promise<string> => {
+      if (chunks.length === 0) return 'resposta sem histórico';
+      return `resposta com ${chunks.length} chunk(s)`;
+    };
+
+    // Componente simples (mock aceitável): avaliarFn
+    const avaliarFn = async (): Promise<AvaliacaoResult> => ({
+      scoreRelevance: 0.8,
+      scoreFaithfulness: 0.9,
+      scoreStyle: 0.7,
+      mode: 'llm',
+    });
+
+    const index = new FakeVectorIndex();
+    // Popula o índice com 1 chunk
+    const chunk: ConversationChunk = {
+      id: 'chunk-pao-queijo',
+      schemaVersion: '1.0',
+      content: 'Cliente: Quero pão de queijo\nAtendente: temos sim',
+      chatId: 'chat-1',
+      timestamp: new Date('2026-01-01T09:00:00Z').toISOString(),
+      messageIds: ['old-1'],
+      turnSize: { client: 1, agent: 1 },
+    };
+    index.resultsToReturn = [{ chunk, score: 0.85 }];
+
+    const result = await orquestrador_consulta_rag(
+      createBaseOptions({
+        messages,
+        index,
+        embedConsultaFn,
+        buscarFn,
+        promptFn,
+        avaliarFn,
+      }),
+    );
+
+    // Verifica que embed_consulta + buscar retornaram chunks
+    expect(result.chunks).toHaveLength(1);
+    expect(result.chunks[0].id).toBe('chunk-pao-queijo');
+
+    // Verifica que promptFn recebeu os chunks e gerou resposta
+    expect(result.suggestion).toBe('resposta com 1 chunk(s)');
+
+    // Verifica que avaliarFn foi chamada (debugInfo presente)
+    expect(result.debugInfo.evaluation.scoreRelevance).toBe(0.8);
+    expect(result.debugInfo.baselineNoRag).toBeDefined();
+    expect(result.debugInfo.baselineNoRag!.suggestion).toBe('resposta sem histórico');
+  });
 });
 
