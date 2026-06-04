@@ -48,7 +48,6 @@ describe('diagnose-retomar-faixas (Clientes Inativos.xlsx)', () => {
     if (!XLSX_PATH) {
       // eslint-disable-next-line no-console
       console.log('[skip] sem ficheiro Clientes Inativos.xlsx em', XLSX_CANDIDATES);
-      expect(true).toBe(true);
       return;
     }
 
@@ -57,7 +56,6 @@ describe('diagnose-retomar-faixas (Clientes Inativos.xlsx)', () => {
     if (!isZip) {
       // eslint-disable-next-line no-console
       console.log('[skip] ficheiro não parece XLSX (zip):', XLSX_PATH, 'bytes', buf.length);
-      expect(true).toBe(true);
       return;
     }
     const u8 = new Uint8Array(buf.length);

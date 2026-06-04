@@ -1,71 +1,58 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+// justificado: IndexedDB não disponível em Node.js, fake-indexeddb é polyfill fiel
+import 'fake-indexeddb/auto';
+import { describe, it, expect } from 'vitest';
 import { MessageCapturer } from '../../src/core/message-capturer';
 import { SelectorsConfigSchema } from '../../src/types/schemas';
+import { CapturedMessageSchema } from '../../src/types/schemas';
 import { validSelectorsConfig, invalidSelectorsConfigWrongDate } from '../fixtures/test-data';
 
-// Mock do messageDB
-vi.mock('../../src/storage/message-db', () => ({
-  messageDB: {
-    saveMessage: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// Mock do selectors.json
-vi.mock('../../../config/selectors.json', () => ({
-  default: validSelectorsConfig,
-}));
-
+/**
+ * MessageCapturer — testes sem mocks de módulo.
+ *
+ * Dependências de infraestrutura (DataScraper, webhookService, whatsappInterceptors)
+ * não estão disponíveis em Node.js — start() lança erro conforme design.
+ * As funções de validação Zod e o registro de callbacks são testáveis diretamente.
+ * message-db e client-db usam IndexedDB real (fake-indexeddb via setup global).
+ */
 describe('MessageCapturer', () => {
-  let capturer: MessageCapturer;
-
-  beforeEach(() => {
-    // Reset mocks
-    vi.clearAllMocks();
-    capturer = new MessageCapturer();
+  it('deve criar instância sem erro', () => {
+    const capturer = new MessageCapturer();
+    expect(capturer).toBeDefined();
+    expect(capturer).toBeInstanceOf(MessageCapturer);
   });
 
-  describe('Validação de selectorsConfig', () => {
-    it('deve validar config válido ao importar', () => {
-      // O config é validado no momento do import (linha 8 de message-capturer.ts)
-      // Se chegou aqui sem erro, a validação passou
-      expect(() => {
-        SelectorsConfigSchema.parse(validSelectorsConfig);
-      }).not.toThrow();
-    });
-
-    it('deve rejeitar config inválido', () => {
-      expect(() => {
-        SelectorsConfigSchema.parse(invalidSelectorsConfigWrongDate);
-      }).toThrow();
-    });
+  it('deve registrar callback sem erro', () => {
+    const capturer = new MessageCapturer();
+    const callback = () => {};
+    expect(() => capturer.onMessage(callback)).not.toThrow();
   });
 
-  describe('onMessage', () => {
-    it('deve registrar callback', () => {
-      const callback = vi.fn();
-      capturer.onMessage(callback);
-      // Callback foi registrado sem erro
-      expect(true).toBe(true);
-    });
+  it('deve falhar ao start sem webpack disponível', async () => {
+    const capturer = new MessageCapturer();
+    await expect(capturer.start()).rejects.toThrow('Webpack não disponível');
   });
 
-  describe('start e stop', () => {
-    it('deve falhar de forma controlada quando webpack não está disponível', async () => {
-      await expect(capturer.start()).rejects.toThrow('Webpack não disponível');
-      // stop deve ser seguro mesmo após falha
-      capturer.stop();
-      expect(capturer).toBeDefined();
-    });
+  it('stop deve ser seguro mesmo sem start', () => {
+    const capturer = new MessageCapturer();
+    expect(() => capturer.stop()).not.toThrow();
+  });
+
+  it('getStats deve retornar estado inicial', () => {
+    const capturer = new MessageCapturer();
+    const stats = capturer.getStats();
+    expect(stats.isUsingWebpack).toBe(false);
+    expect(stats.webpackMessages).toBe(0);
+    expect(stats.webpackEvents).toBe(0);
+  });
+
+  it('resetAndRetry deve falhar sem webpack', async () => {
+    const capturer = new MessageCapturer();
+    await expect(capturer.resetAndRetry()).rejects.toThrow();
   });
 });
 
-// Testes adicionais para validação de dados DOM
-describe('Validação de dados extraídos do DOM', () => {
-  it('deve validar dados antes de criar CapturedMessage', async () => {
-    // Este teste verifica que a validação acontece em extractMessage()
-    // Como extractMessage() é privado, testamos indiretamente através do comportamento
-    // A validação real acontece quando uma mensagem é capturada do DOM
-
+describe('Validação de CapturedMessageSchema (Zod)', () => {
+  it('deve validar dados válidos', () => {
     const validData = {
       id: 'msg-123',
       chatId: 'chat-456',
@@ -77,15 +64,13 @@ describe('Validação de dados extraídos do DOM', () => {
       type: 'text' as const,
     };
 
-    // Se os dados são válidos, devem passar na validação
-    const { CapturedMessageSchema } = await import('../../src/types/schemas');
     const result = CapturedMessageSchema.safeParse(validData);
     expect(result.success).toBe(true);
   });
 
-  it('deve rejeitar dados inválidos extraídos do DOM', async () => {
+  it('deve rejeitar dados com ID vazio', () => {
     const invalidData = {
-      id: '', // ID vazio
+      id: '',
       chatId: 'chat-456',
       chatName: 'João Silva',
       sender: 'João Silva',
@@ -95,8 +80,19 @@ describe('Validação de dados extraídos do DOM', () => {
       type: 'text' as const,
     };
 
-    const { CapturedMessageSchema } = await import('../../src/types/schemas');
     const result = CapturedMessageSchema.safeParse(invalidData);
     expect(result.success).toBe(false);
+  });
+
+  it('deve validar config de seletores válido', () => {
+    expect(() => {
+      SelectorsConfigSchema.parse(validSelectorsConfig);
+    }).not.toThrow();
+  });
+
+  it('deve rejeitar config de seletores inválido', () => {
+    expect(() => {
+      SelectorsConfigSchema.parse(invalidSelectorsConfigWrongDate);
+    }).toThrow();
   });
 });
