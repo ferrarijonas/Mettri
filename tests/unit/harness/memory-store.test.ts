@@ -50,19 +50,20 @@ describe('MemoryStore', () => {
   });
 
   it('deve retornar memórias de cliente e licao filtradas por chatId', async () => {
-    // Cliente A
-    await memoryDB.merge({ tipo: 'cliente', descricao: 'prefere entrega rápida', chatId: 'a@c.us' });
+    // Cliente A — ambas menções contêm "pão" para match único
+    await memoryDB.merge({ tipo: 'cliente', descricao: 'prefere pão integral', chatId: 'a@c.us' });
     await memoryDB.merge({ tipo: 'licao', descricao: 'sempre pede pão integral', chatId: 'a@c.us' });
     // Cliente B (não deve aparecer para A)
     await memoryDB.merge({ tipo: 'cliente', descricao: 'prefere pagamento dinheiro', chatId: 'b@c.us' });
 
-    const ctx = await store.prepararContexto('a@c.us', 'entrega');
+    const ctx = await store.prepararContexto('a@c.us', 'pão');
     expect(ctx.cliente).toHaveLength(1);
-    expect(ctx.cliente[0]).toContain('entrega');
+    expect(ctx.cliente[0]).toContain('integral');
     expect(ctx.licoes).toHaveLength(1);
+    expect(ctx.licoes[0]).toContain('pão integral');
 
     // Cliente B não aparece na busca do A
-    const ctxB = await store.prepararContexto('b@c.us', 'prefere');
+    const ctxB = await store.prepararContexto('b@c.us', 'pagamento');
     expect(ctxB.cliente).toHaveLength(1);
     expect(ctxB.cliente[0]).toContain('pagamento');
   });
@@ -99,7 +100,7 @@ describe('MemoryStore', () => {
 
   // ── salvarTurno ──
 
-  it('deve persistir turno com erro como licao', async () => {
+  it('deve persistir turno com erro como aprendizado global (negocio)', async () => {
     const turno: AgentTurno = {
       chatId: 'c@c.us',
       mensagemAtual: 'quero 2 pães',
@@ -117,13 +118,14 @@ describe('MemoryStore', () => {
     const id = await store.salvarTurno(turno);
     expect(id).toBeTypeOf('number');
 
-    // Verifica se foi persistida como licao
-    const licoes = await memoryDB.getPorTipo('licao', 'c@c.us');
-    expect(licoes.length).toBeGreaterThanOrEqual(1);
-    expect(licoes[0].descricao).toContain('erro');
+    // Ferramenta com erro → salvo como negocio (global, sem chatId)
+    const negocios = await memoryDB.getPorTipo('negocio');
+    const encontrado = negocios.find(n => n.descricao.includes('erro'));
+    expect(encontrado).toBeDefined();
+    expect(encontrado!.descricao).toContain('buscarPreco');
   });
 
-  it('deve persistir turno com tool calls bem-sucedidas como licao', async () => {
+  it('deve persistir turno com tool calls bem-sucedidas como aprendizado global (negocio)', async () => {
     const turno: AgentTurno = {
       chatId: 'c@c.us',
       mensagemAtual: 'qual o preço?',

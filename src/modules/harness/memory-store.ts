@@ -1,5 +1,7 @@
 import type { AgentTurno } from './types';
 import { memoryDB, type MemoriaComFreshness, type MemoriaInput } from '../../storage/memory-db';
+import { extrairMemoriasLLM } from './extrator-memorias';
+import type { SalvarTurnoContexto } from './extrator-memorias';
 
 /**
  * Estrutura de contexto preparado para injeção no prompt do LLM.
@@ -86,38 +88,76 @@ export class MemoryStore {
   }
 
   /**
-   * Persiste um turno do AgentLoop como memória tipo `licao`.
+   * Persiste turno como memórias, usando LLM extraction primeiro.
    *
-   * Só persiste se o turno contiver aprendizados detectáveis:
-   * - Correções: se `status` for 'erro'
-   * - Confirmações: se houve tool calls bem-sucedidas
-   * - Padrões: detectados na mensagem
+   * Tenta extrair memórias com DeepSeek (4 taxonomias + escopo).
+   * Se falhar (sem API key, timeout), cai no fallback regex.
    *
-   * @returns o ID da memória criada, ou null se não houver aprendizado
+   * @returns ID da primeira memória salva, ou null
    */
-  async salvarTurno(turno: AgentTurno): Promise<number | null> {
+  async salvarTurno(turno: AgentTurno, contexto?: SalvarTurnoContexto): Promise<number | null> {
     try {
-      const aprendizados = this.extrairAprendizados(turno);
-      if (!aprendizados) return null;
+      // Tenta LLM first
+      const memorias = await extrairMemoriasLLM({
+        turno,
+        profile: contexto?.profile,
+        historicoContexto: contexto?.historicoContexto,
+        envInfo: contexto?.envInfo,
+        today: contexto?.today,
+      });
 
-      const input: MemoriaInput = {
-        tipo: 'licao',
-        descricao: aprendizados,
-        chatId: turno.chatId,
-        dados: {
-          mensagemAtual: turno.mensagemAtual,
-          ferramentasChamadas: turno.ferramentasChamadas.map(f => ({
-            nome: f.nome,
-            sucesso: !f.erro,
-          })),
-        },
-      };
+      if (memorias.length > 0) {
+        let primeiroId: number | null = null;
+        for (const m of memorias) {
+          const input: MemoriaInput = {
+            tipo: m.tipo,
+            descricao: m.descricao,
+            chatId: m.escopo === 'cliente' ? turno.chatId : undefined,
+            dados: {
+              ...(m.dados ?? {}),
+              origemTurno: turno.chatId,
+              ferramentas: turno.ferramentasChamadas.map(f => f.nome),
+            },
+          };
+          const record = await memoryDB.merge(input);
+          if (primeiroId === null) primeiroId = record.id ?? null;
+        }
+        return primeiroId;
+      }
 
-      const record = await memoryDB.merge(input);
-      return record.id ?? null;
+      // Fallback: regex
+      return await this.salvarTurnoFallback(turno);
     } catch {
-      return null;
+      // Degradação total — nem LLM nem fallback funcionaram
+      try { return await this.salvarTurnoFallback(turno); } catch { return null; }
     }
+  }
+
+  /**
+   * Fallback regex para quando LLM não está disponível.
+   */
+  private async salvarTurnoFallback(turno: AgentTurno): Promise<number | null> {
+    const aprendizados = this.extrairAprendizados(turno);
+    if (!aprendizados) return null;
+
+    const temPreferencia = this.extrairPreferencias(turno.mensagemAtual).length > 0;
+    const ehGlobal = !temPreferencia;
+
+    const input: MemoriaInput = {
+      tipo: ehGlobal ? 'negocio' : 'licao',
+      descricao: aprendizados,
+      chatId: ehGlobal ? undefined : turno.chatId,
+      dados: {
+        mensagemAtual: turno.mensagemAtual,
+        ferramentasChamadas: turno.ferramentasChamadas.map(f => ({
+          nome: f.nome,
+          sucesso: !f.erro,
+        })),
+      },
+    };
+
+    const record = await memoryDB.merge(input);
+    return record.id ?? null;
   }
 
   /**
