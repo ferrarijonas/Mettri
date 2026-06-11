@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { Tool } from '../types';
+import { sendMessageService } from '../../../infrastructure/services/send-message';
+import { isSendEnabled } from '../agent-state';
 
 export const enviarMensagem: Tool = {
   nome: 'enviar_mensagem',
@@ -11,23 +13,12 @@ export const enviarMensagem: Tool = {
     texto: z.string().min(1).describe('Texto da mensagem a ser enviada'),
   }),
   executar: async (input) => {
+    if (!isSendEnabled()) {
+      return { sucesso: false, erro: 'Envio de mensagens desativado no painel.' };
+    }
     const { chatId, texto } = input as { chatId: string; texto: string };
     try {
-      const sendFn = (window as unknown as Record<string, unknown>)?.Mettri as
-        | Record<string, unknown>
-        | undefined;
-      const sendTextMsg = sendFn?.sendTextMsgToChat as
-        | ((chatId: string, text: string) => unknown)
-        | undefined;
-
-      if (typeof sendTextMsg !== 'function') {
-        return {
-          sucesso: false,
-          erro: 'Função sendTextMsgToChat não disponível. O WhatsApp Web pode não estar totalmente carregado.',
-        };
-      }
-
-      await sendTextMsg(chatId, texto);
+      await sendMessageService.sendText(chatId, texto);
       return { sucesso: true, dados: { enviado: true } };
     } catch (err) {
       return {

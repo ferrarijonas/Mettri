@@ -77,6 +77,13 @@ export interface AgentTurnoInicioEvent {
   chatId: string;
   mensagem: string;
   ferramentasDisponiveis: string[];
+  /** Total de memórias carregadas para este turno */
+  totalMemoriasCarregadas?: number;
+  /** Informações resumidas do ambiente */
+  envInfo?: {
+    businessName: string;
+    today: string;
+  };
 }
 
 export interface AgentToolCallEvent {
@@ -138,7 +145,7 @@ export interface ToolDescription {
  * - `preciso_ferramenta`: LLM indicou que precisa de uma ferramenta que não existe
  */
 export type LlmToolResponse =
-  | { tipo: 'responder'; texto: string }
+  | { tipo: 'responder'; texto: string; erro?: string }
   | { tipo: 'tool_use'; nome: string; argumentos: Record<string, unknown> }
   | { tipo: 'preciso_ferramenta'; nomeSugerido: string; descricao: string; entradaEsperada: Record<string, string>; saidaEsperada: Record<string, string>; porQuePreciso: string }
 
@@ -151,6 +158,8 @@ export const AGENT_EVENTS = {
   RESPOSTA_PRONTA: 'agent:resposta-pronta',
   PRECISA_FERRAMENTA: 'agent:precisa-ferramenta',
   ERRO: 'agent:erro',
+  /** Reservado para T-045 (compactação de contexto) */
+  COMPACTING: 'agent:compacting',
 } as const;
 
 // ── MettriModule (para módulos sem UI, apenas init) ──

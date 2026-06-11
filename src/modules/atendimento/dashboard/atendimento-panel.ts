@@ -1,5 +1,6 @@
 import type { AtendimentoViewModel, ComercialPanelVm, CampoConfianca } from './view-model';
 import type { RagConsultaDebugInfo, RagExperimentStats } from '../../../modules/rag';
+import { isSendEnabled, setSendEnabled, loadSendEnabled } from '../../../modules/harness/agent-state';
 
 type ActionHandler = (actionId: string, payload?: unknown) => void;
 type RetomarEtiquetaVm = Extract<AtendimentoViewModel, { kind: 'ready' }>['retomar']['etiquetas'][number];
@@ -187,7 +188,7 @@ export class AtendimentoPanel {
     this.onAction = params.onAction ?? null;
   }
 
-  public async render(vm: AtendimentoViewModel): Promise<HTMLElement> {
+  public render(vm: AtendimentoViewModel): HTMLElement {
     if (vm.kind === 'ready') {
       if (this.lastComercialChatId !== vm.customer.chatId) {
         this.comercialDraftText = '';
@@ -204,6 +205,8 @@ export class AtendimentoPanel {
     const root = document.createElement('div');
     root.className = 'flex flex-col gap-4';
     this.container = root;
+
+    loadSendEnabled();
     this.renderContent();
     this.bindListeners();
     return root;
@@ -257,6 +260,14 @@ export class AtendimentoPanel {
         .campo-atualizado { animation: flash-update 1.5s ease-out; }
       </style>
       <div class="relative flex flex-col gap-3 min-h-0">
+        <!-- Toggle de envio do agente -->
+        <div class="${ATD_SECTION} p-2.5 flex items-center justify-between">
+          <span class="text-xs font-medium text-foreground/90">📤 Enviar mensagens</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="mettri-send-toggle" class="sr-only peer">
+            <div class="w-9 h-5 bg-muted-foreground/30 rounded-full peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+          </label>
+        </div>
         <!-- Drawer de Notas -->
         <div class="absolute inset-0 z-[1000] ${this.notesOpen ? '' : 'hidden'}" data-notes-drawer>
           <div class="absolute inset-0 bg-black/50" data-action="notes:close"></div>
@@ -364,6 +375,7 @@ export class AtendimentoPanel {
     if (this.vm.kind === 'ready') {
       this.bindRagAutoSuggestListener();
     }
+    this.bindSendToggleListener();
   }
 
   private bindListeners(): void {
@@ -628,6 +640,16 @@ export class AtendimentoPanel {
 
     // Se drawer começar aberto (raramente), garantir wiring
     this.bindNotesListeners();
+  }
+
+  private bindSendToggleListener(): void {
+    if (!this.container) return;
+    const el = this.container.querySelector('#mettri-send-toggle') as HTMLInputElement | null;
+    if (!el) return;
+    el.checked = isSendEnabled();
+    el.addEventListener('change', () => {
+      setSendEnabled(el.checked);
+    });
   }
 
   private bindRagAutoSuggestListener(): void {
