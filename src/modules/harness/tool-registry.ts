@@ -71,26 +71,6 @@ export class ToolRegistry {
       return resultado;
     }
 
-    // Confirmação humana para ferramentas de escrita
-    if (tool.precisaConfirmacao && typeof window !== 'undefined' && (window as unknown as { confirm?: (msg: string) => boolean }).confirm) {
-      const argsStr = JSON.stringify(parsed.data, null, 2);
-      const ok = (window as unknown as { confirm: (msg: string) => boolean }).confirm(
-        `🧑‍🌾 Mettri — Confirmar ação\n\nFerramenta: ${nome}\n\nDados:\n${argsStr}\n\nExecutar?`,
-      );
-      if (!ok) {
-        const resultado: ToolResultado = {
-          sucesso: false,
-          erro: `Usuário cancelou a execução de "${nome}".`,
-        };
-        this.eventBus.emit(AGENT_EVENTS.TOOL_RESULT, {
-          chatId: '_system_',
-          nome,
-          resultado,
-        });
-        return resultado;
-      }
-    }
-
     const inicio = performance.now();
 
     // Emite agent:tool-call com duração 0 (ainda executando)
