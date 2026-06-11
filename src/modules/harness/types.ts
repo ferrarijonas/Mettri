@@ -120,6 +120,17 @@ export interface AgentErroEvent {
   gravidade: 'N1' | 'N2' | 'N3' | 'N4';
 }
 
+export interface AgentMemoriaSalvaEvent {
+  chatId: string;
+  memoriaId: number;
+  tipo: 'licao' | 'cliente' | 'negocio' | 'referencia';
+  descricao: string;
+  ferramentasUsadas: string[];
+  totalFerramentas: number;
+  status: string;
+  duracaoMs: number;
+}
+
 // ── ToolDescription (formato da API DeepSeek para function calling) ──
 
 /**
@@ -158,6 +169,8 @@ export const AGENT_EVENTS = {
   RESPOSTA_PRONTA: 'agent:resposta-pronta',
   PRECISA_FERRAMENTA: 'agent:precisa-ferramenta',
   ERRO: 'agent:erro',
+  /** Memória persistida após um turno */
+  MEMORIA_SALVA: 'agent:memoria-salva',
   /** Reservado para T-045 (compactação de contexto) */
   COMPACTING: 'agent:compacting',
 } as const;

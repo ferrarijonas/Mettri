@@ -175,27 +175,66 @@ export class MemoryStore {
   private extrairAprendizados(turno: AgentTurno): string | null {
     const partes: string[] = [];
 
-    // Erro → aprendizado de correção
+    // 1. Erro → aprendizado de correção
     if (turno.status === 'erro') {
-      partes.push('correção aplicada');
+      const toolsComErro = turno.ferramentasChamadas.filter(f => f.erro);
+      if (toolsComErro.length > 0) {
+        partes.push(`correção aplicada em: ${toolsComErro.map(f => f.nome).join(', ')}`);
+      } else {
+        partes.push('turno encerrado com erro');
+      }
     }
 
-    // Tool calls → aprendizado de comportamento
-    const toolsComErro = turno.ferramentasChamadas.filter(f => f.erro);
+    // 2. Tools usadas com sucesso
     const toolsSucesso = turno.ferramentasChamadas.filter(f => !f.erro);
-
     if (toolsSucesso.length > 0) {
       const nomes = toolsSucesso.map(f => f.nome).join(', ');
       partes.push(`ferramentas utilizadas com sucesso: ${nomes}`);
     }
 
+    // 3. Tools com erro (detalhado)
+    const toolsComErro = turno.ferramentasChamadas.filter(f => f.erro);
     if (toolsComErro.length > 0) {
       const erros = toolsComErro.map(f => `${f.nome}: ${f.erro}`).join('; ');
       partes.push(`ferramentas com erro: ${erros}`);
     }
 
+    // 4. Preferências detectadas na mensagem do cliente
+    const preferencias = this.extrairPreferencias(turno.mensagemAtual);
+    if (preferencias.length > 0) {
+      partes.push(`preferências detectadas: ${preferencias.join('; ')}`);
+    }
+
+    // 5. Duração como métrica de saúde
+    const inicio = new Date(turno.iniciadoEm).getTime();
+    const duracao = Date.now() - inicio;
+    if (duracao > 20000) {
+      partes.push(`turno longo (${Math.round(duracao / 1000)}s) — revisar`);
+    }
+
     if (partes.length === 0) return null;
     return partes.join(' | ');
+  }
+
+  /**
+   * Detecta preferências explícitas do cliente na mensagem.
+   * Usa padrões regex simples — sem NLP. Melhorável com uso real.
+   */
+  private extrairPreferencias(mensagem: string): string[] {
+    const preferencias: string[] = [];
+    const patterns = [
+      /gosto\s+(mais|muito)\s+de\s+([^,.]+)/i,
+      /prefiro\s+([^,.]+)/i,
+      /não\s+gosto\s+de\s+([^,.]+)/i,
+      /odeio\s+([^,.]+)/i,
+    ];
+    for (const pattern of patterns) {
+      const match = mensagem.match(pattern);
+      if (match) {
+        preferencias.push(match[0].trim().toLowerCase());
+      }
+    }
+    return preferencias;
   }
 }
 
