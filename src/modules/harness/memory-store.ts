@@ -1,6 +1,6 @@
 import type { AgentTurno } from './types';
-import { memoryDB, type MemoriaComFreshness, type MemoriaInput } from '../../storage/memory-db';
-import { extrairMemoriasLLM } from './extrator-memorias';
+import { memoryDB, type MemoriaComFreshness, type MemoriaInput, type MemoriaRecord } from '../../storage/memory-db';
+import { extrairMemoriasLLM, selecionarMemoriasLLM } from './extrator-memorias';
 import type { SalvarTurnoContexto } from './extrator-memorias';
 
 /**
@@ -44,47 +44,93 @@ export class MemoryStore {
     if (!chatId || !mensagem) return resultado;
 
     try {
-      // 1. Busca memórias por chatId (cliente + licao)
-      const [clienteRecords, licaoRecords] = await Promise.all([
-        this.buscarPorTipo(chatId, mensagem, 'cliente', 3),
-        this.buscarPorTipo(chatId, mensagem, 'licao', 3),
+      // 1. Busca TODAS as memórias candidatas (sem filtro keyword)
+      const [clienteTodas, licaoTodas, negocioTodas, referenciaTodas] = await Promise.all([
+        memoryDB.getPorTipo('cliente', chatId),
+        memoryDB.getPorTipo('licao', chatId),
+        memoryDB.getPorTipo('negocio'),
+        memoryDB.getPorTipo('referencia'),
       ]);
 
-      // 2. Busca memórias globais (negocio + referencia)
-      const [negocioRecords, referenciaRecords] = await Promise.all([
-        this.buscarPorTipo(null, mensagem, 'negocio', 5),
-        this.buscarPorTipo(null, mensagem, 'referencia', 3),
-      ]);
+      // 2. Tenta seleção via LLM; falha = fallback keyword
+      const todas = [
+        ...clienteTodas.map(r => ({ ...r, _tipo: 'cliente' as const })),
+        ...licaoTodas.map(r => ({ ...r, _tipo: 'licao' as const })),
+        ...negocioTodas.map(r => ({ ...r, _tipo: 'negocio' as const })),
+        ...referenciaTodas.map(r => ({ ...r, _tipo: 'referencia' as const })),
+      ];
 
-      // 3. Popula resultado
+      if (todas.length === 0) return resultado;
+
+      const candidatas = todas.map(r => ({
+        id: r.id,
+        descricao: r.descricao,
+        tipo: r._tipo,
+      }));
+
+      const indices = await selecionarMemoriasLLM(mensagem, candidatas);
+
+      // 3. Filtra registros selecionados (ou fallback keyword)
+      let clienteRecords: MemoriaComFreshness[];
+      let licaoRecords: MemoriaComFreshness[];
+      let negocioRecords: MemoriaComFreshness[];
+      let referenciaRecords: MemoriaComFreshness[];
+
+      if (indices !== null) {
+        const selecionados = new Set(indices);
+        const filtered = todas.filter((_, i) => selecionados.has(i));
+        clienteRecords = filtered.filter(r => r._tipo === 'cliente').map(this.withFreshness);
+        licaoRecords = filtered.filter(r => r._tipo === 'licao').map(this.withFreshness);
+        negocioRecords = filtered.filter(r => r._tipo === 'negocio').map(this.withFreshness);
+        referenciaRecords = filtered.filter(r => r._tipo === 'referencia').map(this.withFreshness);
+      } else {
+        // Fallback: keyword match nos 4 tipos
+        const [c, l, n, r] = await Promise.all([
+          this.buscarPorTipo(chatId, mensagem, 'cliente', 3),
+          this.buscarPorTipo(chatId, mensagem, 'licao', 3),
+          this.buscarPorTipo(null, mensagem, 'negocio', 5),
+          this.buscarPorTipo(null, mensagem, 'referencia', 3),
+        ]);
+        clienteRecords = c;
+        licaoRecords = l;
+        negocioRecords = n;
+        referenciaRecords = r;
+      }
+
+      // 4. Popula resultado
       for (const r of clienteRecords) {
         resultado.cliente.push(this.formatarMemoria(r));
         if (r.freshnessWarning) resultado.freshnessWarnings.push(r.freshnessWarning);
       }
-
       for (const r of licaoRecords) {
         resultado.licoes.push(this.formatarMemoria(r));
         if (r.freshnessWarning) resultado.freshnessWarnings.push(r.freshnessWarning);
       }
-
       for (const r of negocioRecords) {
         resultado.negocio.push(this.formatarMemoria(r));
         if (r.freshnessWarning) resultado.freshnessWarnings.push(r.freshnessWarning);
       }
-
       for (const r of referenciaRecords) {
         resultado.referencias.push(this.formatarMemoria(r));
         if (r.freshnessWarning) resultado.freshnessWarnings.push(r.freshnessWarning);
       }
 
-      // Deduplica warnings
       resultado.freshnessWarnings = [...new Set(resultado.freshnessWarnings)];
-
       return resultado;
     } catch {
-      // Degradação graciosa: se IndexedDB falhar, contexto segue sem memórias
       return resultado;
     }
+  }
+
+  /** Adiciona freshness warning a um MemoriaRecord */
+  private withFreshness(r: MemoriaRecord & { _tipo?: string }): MemoriaComFreshness {
+    const dias = Math.floor(
+      (Date.now() - new Date(r.atualizada_em).getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return {
+      ...r,
+      freshnessWarning: dias > 2 ? `⚠️ registrada há ${dias} dia${dias > 1 ? 's' : ''}` : undefined,
+    };
   }
 
   /**
