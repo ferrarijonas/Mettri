@@ -17,6 +17,8 @@ import type { ToolRegistry } from './tool-registry';
 import type { EventBus } from '../../ui/core/event-bus';
 import { agenteDecidir, zodTypeToJsonSchema } from '../ouvir/motor-llm';
 import type { ContextoMemorias } from './memory-store';
+import { memoryStore } from './memory-store';
+import type { AgentMemoriaSalvaEvent } from './types';
 import { getEnvInfo, getToday } from './env-config';
 
 export interface AgentLoopOptions {
@@ -108,6 +110,7 @@ export class AgentLoop {
       // Verifica timeout
       if (Date.now() - inicio > this.options.maxDuracaoMs) {
         this.turno.status = 'erro';
+        await this.salvarEAprender(this.turno);
         this.eventBus.emit(AGENT_EVENTS.ERRO, {
           chatId,
           erro: `Timeout: agente excedeu ${this.options.maxDuracaoMs}ms de processamento`,
@@ -152,6 +155,7 @@ export class AgentLoop {
       if (decisao.tipo === 'responder') {
         if (!decisao.texto) {
           this.turno.status = 'erro';
+          await this.salvarEAprender(this.turno);
           this.eventBus.emit(AGENT_EVENTS.ERRO, {
             chatId,
             erro: decisao.erro || 'Agente retornou resposta vazia',
@@ -160,6 +164,7 @@ export class AgentLoop {
           return;
         }
         this.turno.status = 'dormindo';
+        await this.salvarEAprender(this.turno);
         this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
           chatId,
           texto: decisao.texto,
@@ -174,6 +179,7 @@ export class AgentLoop {
           ultimaToolRepeticao.count++;
           if (ultimaToolRepeticao.count >= this.options.maxRepeticoes) {
             this.turno.status = 'erro';
+            await this.salvarEAprender(this.turno);
             this.eventBus.emit(AGENT_EVENTS.ERRO, {
               chatId,
               erro: `Agente repetiu a ferramenta "${decisao.nome}" ${this.options.maxRepeticoes} vezes consecutivas`,
@@ -222,6 +228,7 @@ export class AgentLoop {
           errosConsecutivos++;
           if (errosConsecutivos >= 3) {
             this.turno.status = 'dormindo';
+            await this.salvarEAprender(this.turno);
             this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
               chatId,
               texto: `Puxa, estou tendo dificuldade para processar isso agora. Vou passar para um atendente humano que pode ajudar melhor.`,
@@ -252,11 +259,38 @@ export class AgentLoop {
 
     // Estourou limite de ferramentas
     this.turno.status = 'erro';
+    await this.salvarEAprender(this.turno);
     this.eventBus.emit(AGENT_EVENTS.ERRO, {
       chatId,
       erro: `Agente excedeu limite de ${this.options.maxTools} ferramentas por turno`,
       gravidade: 'N2',
     });
+  }
+
+  /**
+   * Tenta salvar o turno como aprendizado e emite evento se persisted.
+   * Fire-and-forget: erros são capturados — nunca trava o fluxo de resposta.
+   */
+  private async salvarEAprender(turno: AgentTurno): Promise<void> {
+    try {
+      const memoriaId = await memoryStore.salvarTurno(turno);
+      if (memoriaId !== null) {
+        this.eventBus.emit(AGENT_EVENTS.MEMORIA_SALVA, {
+          chatId: turno.chatId,
+          memoriaId,
+          tipo: 'licao',
+          descricao: turno.status === 'erro'
+            ? `correção: ${turno.ferramentasChamadas.filter(f => f.erro).map(f => f.nome).join(', ') || 'turno com erro'}`
+            : `sucesso: ${turno.ferramentasChamadas.filter(f => !f.erro).map(f => f.nome).join(', ') || 'resposta direta'}`,
+          ferramentasUsadas: turno.ferramentasChamadas.map(f => f.nome),
+          totalFerramentas: turno.ferramentasChamadas.length,
+          status: turno.status,
+          duracaoMs: Date.now() - new Date(turno.iniciadoEm).getTime(),
+        } satisfies AgentMemoriaSalvaEvent);
+      }
+    } catch {
+      // Degradação graciosa — falha ao salvar não interrompe o fluxo
+    }
   }
 
   /** Retorna o turno atual, se houver */

@@ -7,6 +7,7 @@ import type {
   AgentRespostaProntaEvent,
   AgentPrecisaFerramentaEvent,
   AgentErroEvent,
+  AgentMemoriaSalvaEvent,
 } from './types';
 
 interface TimelineItem {
@@ -310,6 +311,28 @@ export class InspectorPopup {
           tipo: 'erro',
           descricao: `❌ [${data.gravidade}] ${data.erro}`,
           raw: data as unknown as Record<string, unknown>,
+        });
+      }),
+    );
+
+    this.disposers.push(
+      this.onDisposable<AgentMemoriaSalvaEvent>(AGENT_EVENTS.MEMORIA_SALVA, (data) => {
+        if (data.chatId !== this.chatIdAtivo) return;
+        const nome = this.resolverNome ? this.resolverNome(data.chatId) : '';
+        const detalhes = [
+          `Tipo: ${data.tipo}`,
+          `Chat: ${nome || data.chatId.substring(0, 20)}`,
+          `Aprendizado: ${data.descricao}`,
+          `Turno: ${data.totalFerramentas} ferramentas, status: ${data.status}`,
+          `Duração: ${Math.round(data.duracaoMs / 1000)}s`,
+          `ID: #${data.memoriaId}`,
+        ];
+        this.adicionarEvento({
+          timestamp: new Date().toISOString(),
+          chatId: data.chatId,
+          tipo: 'info',
+          descricao: `🧠 Memória salva — ${data.tipo}`,
+          detalhes,
         });
       }),
     );
