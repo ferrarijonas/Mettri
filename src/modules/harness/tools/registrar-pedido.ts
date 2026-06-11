@@ -11,7 +11,20 @@ const ItemSchema = z.object({
 export const registrarPedido: Tool = {
   nome: 'registrar_pedido',
   descricao:
-    'Cria um novo pedido com os itens especificados para o cliente. Retorna o ID do pedido criado.',
+    'Cria um novo pedido com os itens especificados.\n' +
+    'QUANDO USAR:\n' +
+    '  - Cliente confirmou explicitamente o que quer comprar\n' +
+    '  - Você já consultou o catálogo e sabe preço e disponibilidade\n' +
+    '  - Cliente já forneceu (ou já temos no perfil) endereço e forma de pagamento\n' +
+    '  - Use APENAS quando tiver todos os dados necessários\n' +
+    'QUANDO NÃO USAR:\n' +
+    '  - Ainda está consultando o catálogo (faça isso primeiro)\n' +
+    '  - Cliente não confirmou o pedido explicitamente\n' +
+    '  - Faltam dados obrigatórios: endereço de entrega ou forma de pagamento\n' +
+    '  - Cliente está apenas perguntando preços (use consultar_catalogo)\n' +
+    'EXEMPLOS:\n' +
+    '  - registrar_pedido({chatId: "55119@c.us", itens: [{nome: "Pão Integral", quantidade: 2, preco: 8.50}]}) → {orderId: "ORD-123"}\n' +
+    '  - registrar_pedido com itens vazios → erro: mínimo 1 item',
   categoria: 'escrita',
   inputSchema: z.object({
     chatId: z.string().describe('ID do chat do cliente'),

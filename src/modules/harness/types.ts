@@ -14,6 +14,7 @@ import type { EventBus } from '../../ui/core/event-bus';
 
 export interface Tool {
   nome: string;
+  /** Descrição principal: quando usar + quando NÃO + exemplos */
   descricao: string;
   categoria: 'leitura' | 'escrita' | 'comunicacao' | 'acao';
   inputSchema: ZodType<unknown>;
@@ -22,6 +23,12 @@ export interface Tool {
   precisaConfirmacao: boolean;
   quandoPrecisei?: string;
   criadaEm?: string;
+  /** Opcional: dicas para o LLM sobre quando chamar esta tool */
+  quandoUsar?: string;
+  /** Opcional: dicas para o LLM sobre quando NÃO chamar */
+  quandoNaoUsar?: string;
+  /** Opcional: exemplos de uso (args → resultado) */
+  exemplos?: string[];
 }
 
 export interface ToolCall {

@@ -5,10 +5,23 @@ import { catalogoDB } from '../../../storage/catalogo-db';
 export const consultarCatalogo: Tool = {
   nome: 'consultar_catalogo',
   descricao:
-    'Busca produtos no catálogo pelo nome ou palavra-chave. Retorna nome, preço em reais e disponibilidade.',
+    'Busca produtos no catálogo pelo nome.\n' +
+    'QUANDO USAR:\n' +
+    '  - Cliente pediu um produto ou serviço específico ("quero pão", "tem bolo?")\n' +
+    '  - Cliente perguntou preço ou disponibilidade ("quanto custa?", "tem integral?")\n' +
+    '  - Cliente pediu sugestão ("o que você recomenda?")\n' +
+    '  - Preencher automaticamente o catálogo no início da conversa\n' +
+    'QUANDO NÃO USAR:\n' +
+    '  - Cliente já confirmou o pedido (use registrar_pedido)\n' +
+    '  - Cliente quer histórico de pedidos (use consultar_historico)\n' +
+    '  - Cliente está perguntando sobre entrega ou endereço (não está no catálogo)\n' +
+    'EXEMPLOS:\n' +
+    '  - consultar_catalogo({busca: "pão integral"}) → [{nome: "Pão Integral", preco: 8.50, disponivel: true}]\n' +
+    '  - consultar_catalogo({busca: ""}) → erro: termo de busca vazio\n' +
+    '  - consultar_catalogo({busca: "produto inexistente"}) → {produtos: []}',
   categoria: 'leitura',
   inputSchema: z.object({
-    busca: z.string().describe('Nome ou palavra-chave do produto'),
+    busca: z.string().describe('Nome ou palavra-chave do produto/serviço (mín. 2 caracteres)'),
   }),
   executar: async (input) => {
     const { busca } = input as { busca: string };
