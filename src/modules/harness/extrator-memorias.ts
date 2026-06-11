@@ -26,6 +26,48 @@ export interface MemoriaExtraida {
   dados?: Record<string, unknown>;
 }
 
+// ── Helpers compartilhados ──
+
+/** Pega API key do DeepSeek via bridge (timeout rápido para fallback) */
+async function getApiKey(): Promise<string> {
+  try {
+    const bridge = new MettriBridgeClient(300);
+    const storage = await bridge.storageGet([STORAGE_KEY_API]);
+    return typeof storage[STORAGE_KEY_API] === 'string'
+      ? (storage[STORAGE_KEY_API] as string)
+      : '';
+  } catch { return ''; }
+}
+
+/** Chama DeepSeek com mensagens e retorna texto da resposta, ou null */
+async function callDeepSeek(
+  apiKey: string,
+  systemPrompt: string,
+  userPrompt: string,
+  timeoutMs = 30_000,
+): Promise<string | null> {
+  try {
+    const llm = new MettriBridgeClient(timeoutMs);
+    const response = await llm.netFetch({
+      url: DEEPSEEK_URL,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0,
+        max_tokens: 1000,
+      }),
+    });
+    if (!response.ok) return null;
+    const data = JSON.parse(response.text) as { choices?: { message?: { content?: string | null } }[] };
+    return data.choices?.[0]?.message?.content ?? null;
+  } catch { return null; }
+}
+
 // ── Prompt ──
 
 const EXTRACTION_SYSTEM_PROMPT = `Você é um analisador de conversas de vendas. Após cada interação entre um atendente (IA) e um cliente, você deve extrair memórias importantes.
@@ -76,22 +118,8 @@ export async function extrairMemoriasLLM(
 ): Promise<MemoriaExtraida[]> {
   const { turno } = params;
 
-  // 1. Pega API key (timeout curto — falha rápido se não houver bridge)
-  let apiKey = '';
-  try {
-    const bridge = new MettriBridgeClient(300);
-    const storage = await bridge.storageGet([STORAGE_KEY_API]);
-    apiKey = typeof storage[STORAGE_KEY_API] === 'string'
-      ? (storage[STORAGE_KEY_API] as string)
-      : '';
-  } catch {
-    return [];
-  }
-
+  const apiKey = await getApiKey();
   if (!apiKey) return [];
-
-  // 2. Monta mensagens
-  const systemPrompt = EXTRACTION_SYSTEM_PROMPT;
 
   const toolsBlock = turno.ferramentasChamadas.length > 0
     ? turno.ferramentasChamadas.map(t =>
@@ -114,40 +142,76 @@ export async function extrairMemoriasLLM(
     '\nExtraia memórias relevantes como JSON array:',
   ].filter(Boolean).join('\n');
 
-  const messages: Record<string, unknown>[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt },
-  ];
+  const content = await callDeepSeek(apiKey, EXTRACTION_SYSTEM_PROMPT, userPrompt);
+  if (!content) return [];
 
-  // 3. Chama DeepSeek
+  const parsed = parseLLMOutput(content);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+// ── Seleção de memórias (retrieval via LLM) ──
+
+const SELECTION_SYSTEM_PROMPT = `Você é um selecionador de memórias para um assistente de vendas.
+
+Dada a mensagem do cliente e uma lista de memórias disponíveis (cada uma com índice, tipo e descrição), escolha APENAS as memórias que são CLARAMENTE relevantes para ajudar o assistente a responder.
+
+Seja seletivo — não inclua memórias duvidosas. Se nenhuma for relevante, retorne array vazio.
+
+Retorne APENAS um JSON array de números com os índices selecionados, sem markdown:
+[0, 3, 5]`;
+
+/** Item de memória candidata para seleção */
+export interface MemoriaCandidata {
+  id?: number;
+  descricao: string;
+  tipo: string;
+}
+
+/**
+ * Chama DeepSeek para selecionar memórias relevantes para a mensagem do cliente.
+ * @returns índices das memórias selecionadas, ou null se falhar
+ */
+export async function selecionarMemoriasLLM(
+  mensagem: string,
+  candidatas: MemoriaCandidata[],
+): Promise<number[] | null> {
+  if (candidatas.length === 0) return [];
+
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const lista = candidatas.map((m, i) =>
+    `[${i}] ${m.tipo}: ${m.descricao}`
+  ).join('\n');
+
+  const userPrompt = `Mensagem do cliente: "${mensagem}"\n\nMemórias disponíveis:\n${lista}\n\nSelecione os índices relevantes:`;
+
+  const content = await callDeepSeek(apiKey, SELECTION_SYSTEM_PROMPT, userPrompt, 15_000);
+  if (!content) return null;
+
+  return parseSelectionOutput(content);
+}
+
+/**
+ * Parseia output do LLM para array de índices.
+ * Aceita: [0, 3, 5] ou ```json [0, 3, 5] ``` ou "0, 3, 5"
+ */
+function parseSelectionOutput(content: string): number[] | null {
+  // Tenta bloco ```json```
+  const jsonBlock = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const jsonStr = jsonBlock ? jsonBlock[1].trim() : content.trim();
+
   try {
-    const llm = new MettriBridgeClient(30_000);
-    const response = await llm.netFetch({
-      url: DEEPSEEK_URL,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0,
-        max_tokens: 1000,
-      }),
-    });
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
+      return parsed;
+    }
+  } catch { /* fallback abaixo */ }
 
-    if (!response.ok) return [];
-
-    const data = JSON.parse(response.text) as {
-      choices?: { message?: { content?: string | null } }[];
-    };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return [];
-
-    // 4. Parse JSON do conteúdo
-    const parsed = parseLLMOutput(content);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  // Fallback: "0, 3, 5" ou "0 3 5"
+  const nums = content.match(/\d+/g);
+  if (nums) return nums.map(Number);
+  return null;
 }
 
 /**
