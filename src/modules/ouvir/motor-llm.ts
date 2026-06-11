@@ -13,6 +13,8 @@ import type { LlmExtractionResult, OuvinteLlmInput, OuvinteLlmOutput, EstadoPerc
 import type { CustomerOperationalProfile } from '../../storage/customer-profile-db'
 import { montarPrompt } from './monta-prompt'
 import type { ToolDescription, LlmToolResponse } from '../harness/types'
+import type { ContextoMemorias } from '../harness/memory-store'
+import type { EnvInfo } from '../harness/env-config'
 import { parsearRespostaTools } from '../harness/llm-tool-parser'
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions'
@@ -160,12 +162,12 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
   try {
     const obj = await bridge.storageGet([STORAGE_KEY_API])
     apiKey = typeof obj[STORAGE_KEY_API] === 'string' ? (obj[STORAGE_KEY_API] as string) : ''
-  } catch {
-    return { extras: {}, usouLlm: false, tokensEstimados: 0 }
+  } catch (err) {
+    return { extras: {}, usouLlm: false, tokensEstimados: 0, erro: `bridge: ${(err as Error)?.message || String(err)}` }
   }
 
   if (!apiKey) {
-    return { extras: {}, usouLlm: false, tokensEstimados: 0 }
+    return { extras: {}, usouLlm: false, tokensEstimados: 0, erro: 'API key não configurada (Settings > DeepSeek)' }
   }
 
   // System prompt montado por seções (identidade + contexto + extração + resposta)
@@ -196,6 +198,12 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
       max_tokens: hasTools ? 1000 : 500,
     }
 
+    // DEBUG: log prompt
+    console.log('[deepseek-debug] mensagem:', input.mensagem)
+    console.log('[deepseek-debug] catalogo:', JSON.stringify(input.catalogoCandidatos))
+    console.log('[deepseek-debug] systemPrompt (final 300):', prompt.systemPrompt.slice(-300))
+    console.log('[deepseek-debug] userPrompt (final 300):', prompt.userPrompt.slice(-300))
+
     // Adiciona tools se fornecidas (DeepSeek function calling)
     if (hasTools && input.tools) {
       body.tools = input.tools as ToolDescription[]
@@ -213,7 +221,15 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
     })
 
     if (!result.ok) {
-      return { extras: {}, usouLlm: false, tokensEstimados: 0 }
+      const msg = result.status === 402
+        ? 'DeepSeek: saldo insuficiente'
+        : result.status === 401
+          ? 'DeepSeek: chave API inválida'
+          : result.status === 429
+            ? 'DeepSeek: limite de taxa excedido'
+            : `DeepSeek: HTTP ${result.status}`
+      console.warn(`[deepseek] ${msg}`)
+      return { extras: {}, usouLlm: false, tokensEstimados: 0, erro: msg }
     }
 
     const data = JSON.parse(result.text) as {
@@ -224,6 +240,9 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
     const content = message?.content ?? null
     const toolCallsRaw = message?.tool_calls
     const tokensEstimados = data.usage?.total_tokens ?? 0
+
+    // DEBUG: log raw response
+    console.log('[deepseek-debug] raw content:', (content ?? '(null)').slice(0, 500))
 
     // ── Parseia resposta com suporte a tools ──
     const llmToolResponse = parsearRespostaTools(content, toolCallsRaw)
@@ -238,9 +257,9 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
       }
     }
 
-    // Se for responder com texto vazio (fallback), retorna vazio
+    // Se for responder com texto vazio (fallback), retorna erro
     if (llmToolResponse.tipo === 'responder' && !llmToolResponse.texto) {
-      return { extras: {}, usouLlm: false, tokensEstimados: 0 }
+      return { extras: {}, usouLlm: false, tokensEstimados: 0, erro: llmToolResponse.erro || 'DeepSeek respondeu vazio' }
     }
 
     // ── Parseia extração de perfil normal ──
@@ -252,8 +271,9 @@ export async function ouvinteLlm(input: OuvinteLlmInput): Promise<OuvinteLlmOutp
       tokensEstimados,
       llmToolResponse,
     }
-  } catch {
-    return { extras: {}, usouLlm: false, tokensEstimados: 0 }
+  } catch (err) {
+    console.warn('[deepseek] exceção na chamada LLM:', err)
+    return { extras: {}, usouLlm: false, tokensEstimados: 0, erro: `DeepSeek: ${(err as Error)?.message || String(err)}` }
   }
 }
 
@@ -268,6 +288,14 @@ export interface AgenteDecidirInput {
   catalogoCandidatos?: string[];
   estadoPercebido?: EstadoPercebido;
   historicoContexto?: MensagemHistorico[];
+  /** Memórias persistentes para contexto (4 tipos) */
+  memorias?: ContextoMemorias;
+  /** Informações de ambiente */
+  envInfo?: EnvInfo;
+  /** Data formatada */
+  today?: string;
+  /** Informações das ferramentas para gerar seção dinâmica no prompt */
+  toolInfos?: { nome: string; descricao: string; categoria: string }[];
 }
 
 /**
@@ -388,12 +416,12 @@ export async function agenteDecidir(
     const bridgeClient = new MettriBridgeClient(5000);
     const storage = await bridgeClient.storageGet([STORAGE_KEY_API]);
     apiKey = typeof storage[STORAGE_KEY_API] === 'string' ? (storage[STORAGE_KEY_API] as string) : '';
-  } catch {
-    return { tipo: 'responder', texto: '' };
+  } catch (err) {
+    return { tipo: 'responder', texto: '', erro: `bridge: ${(err as Error)?.message || String(err)}` };
   }
 
   if (!apiKey) {
-    return { tipo: 'responder', texto: '' };
+    return { tipo: 'responder', texto: '', erro: 'API key não configurada (Settings > DeepSeek)' };
   }
 
   // Usa montarPrompt com seção decisao (em vez de extracao/resposta)
@@ -407,6 +435,10 @@ export async function agenteDecidir(
     profile: input.profile ?? null,
     estadoPercebido: input.estadoPercebido,
     historicoContexto: input.historicoContexto,
+    memorias: input.memorias,
+    envInfo: input.envInfo,
+    today: input.today,
+    tools: input.toolInfos,
   });
 
   // Monta mensagens com tool results no histórico
@@ -463,20 +495,27 @@ export async function agenteDecidir(
     });
 
     if (!response.ok) {
-      return { tipo: 'responder', texto: '' };
+      const msg = response.status === 402
+        ? 'DeepSeek: saldo insuficiente'
+        : response.status === 401
+          ? 'DeepSeek: chave API inválida'
+          : response.status === 429
+            ? 'DeepSeek: limite de taxa excedido'
+            : `DeepSeek: HTTP ${response.status}`;
+      return { tipo: 'responder', texto: '', erro: msg };
     }
 
     const data = JSON.parse(response.text) as {
       choices?: { message?: { content?: string | null; tool_calls?: unknown[] } }[];
     };
     const choice = data.choices?.[0];
-    if (!choice) return { tipo: 'responder', texto: '' };
+    if (!choice) return { tipo: 'responder', texto: '', erro: 'DeepSeek: resposta sem choices' };
 
     const content: string | null = choice.message?.content ?? null;
     const toolCalls: unknown[] = choice.message?.tool_calls ?? [];
 
     return parsearRespostaTools(content, toolCalls);
-  } catch {
-    return { tipo: 'responder', texto: '' };
+  } catch (err) {
+    return { tipo: 'responder', texto: '', erro: `DeepSeek: ${(err as Error)?.message || String(err)}` };
   }
 }

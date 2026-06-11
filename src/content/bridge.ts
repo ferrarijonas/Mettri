@@ -109,7 +109,7 @@ async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number
   const headers = p?.headers && typeof p.headers === 'object' ? (p.headers as Record<string, string>) : undefined;
   const body = typeof p?.body === 'string' ? p.body : undefined;
 
-  // Preferir buscar via service worker (mais robusto que fetch do content script).
+  // Tenta via service worker primeiro (mais robusto que fetch do content script).
   try {
     const result = await new Promise<{ ok: boolean; status: number; text: string }>((resolve, reject) => {
       chrome.runtime.sendMessage(
@@ -125,22 +125,10 @@ async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number
       );
     });
     return result;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : 'NET_FETCH failed';
-
-    // Importante: NÃO cair no fetch do content script para URLs externas,
-    // porque isso vira "CORS" do WhatsApp e confunde o diagnóstico.
-    // Só fazemos fallback quando a URL é do mesmo origin da página.
-    try {
-      const isSameOrigin = new URL(url).origin === window.location.origin;
-      if (!isSameOrigin) {
-        return { ok: false, status: 0, text: `NET_FETCH (service worker) falhou: ${msg}` };
-      }
-    } catch {
-      // Se a URL for inválida, só devolve erro.
-      return { ok: false, status: 0, text: `NET_FETCH (service worker) falhou: ${msg}` };
-    }
-
+  } catch {
+    // Fallback: fetch direto do isolated world.
+    // O content script MV3 tem host_permissions, então consegue acessar
+    // URLs externas (ex: api.deepseek.com) sem CORS da página.
     const res = await fetch(url, {
       method,
       headers,

@@ -16,6 +16,8 @@ import { AGENT_EVENTS } from './types';
 import type { ToolRegistry } from './tool-registry';
 import type { EventBus } from '../../ui/core/event-bus';
 import { agenteDecidir, zodTypeToJsonSchema } from '../ouvir/motor-llm';
+import type { ContextoMemorias } from './memory-store';
+import { getEnvInfo, getToday } from './env-config';
 
 export interface AgentLoopOptions {
   maxTools?: number;
@@ -37,9 +39,9 @@ export class AgentLoop {
     this.registry = registry;
     this.eventBus = eventBus;
     this.options = {
-      maxTools: options?.maxTools ?? 8,
-      maxDuracaoMs: options?.maxDuracaoMs ?? 30_000,
-      maxRepeticoes: options?.maxRepeticoes ?? 3,
+      maxTools: options?.maxTools ?? 15,
+      maxDuracaoMs: options?.maxDuracaoMs ?? 90_000,
+      maxRepeticoes: options?.maxRepeticoes ?? 5,
     };
   }
 
@@ -57,6 +59,7 @@ export class AgentLoop {
       catalogoCandidatos?: string[];
       estadoPercebido?: unknown;
       historicoContexto?: { papel: string; texto: string }[];
+      memorias?: ContextoMemorias;
     },
   ): Promise<void> {
     const ferramentasChamadas: ToolCall[] = [];
@@ -64,11 +67,25 @@ export class AgentLoop {
       .listarDisponiveis()
       .map((t) => t.nome);
 
-    // Emite início do turno
+    // Carrega informações de ambiente
+    const envInfo = await getEnvInfo();
+    const today = getToday(envInfo.timezone);
+
+    // Conta memórias carregadas para o evento
+    const totalMemorias = context?.memorias
+      ? context.memorias.cliente.length
+        + context.memorias.licoes.length
+        + context.memorias.negocio.length
+        + context.memorias.referencias.length
+      : 0;
+
+    // Emite início do turno com contexto enriquecido
     this.eventBus.emit(AGENT_EVENTS.TURNO_INICIO, {
       chatId,
       mensagem,
       ferramentasDisponiveis,
+      totalMemoriasCarregadas: totalMemorias,
+      envInfo: { businessName: envInfo.businessName, today },
     });
 
     this.turno = {
@@ -85,6 +102,7 @@ export class AgentLoop {
       nome: '',
       count: 0,
     };
+    let errosConsecutivos = 0;
 
     while (ferramentasUsadas < this.options.maxTools) {
       // Verifica timeout
@@ -99,7 +117,8 @@ export class AgentLoop {
       }
 
       // CHAMADA REAL ao DeepSeek com function calling
-      const toolsDescriptions = this.registry.listarDisponiveis().map((t) => ({
+      const ferramentas = this.registry.listarDisponiveis();
+      const toolsDescriptions = ferramentas.map((t) => ({
         type: 'function' as const,
         function: {
           name: t.nome,
@@ -107,28 +126,35 @@ export class AgentLoop {
           parameters: zodTypeToJsonSchema(t.inputSchema),
         },
       }));
+      const toolInfos = ferramentas.map((t) => ({
+        nome: t.nome,
+        descricao: t.descricao,
+        categoria: t.categoria,
+      }));
 
       const decisao = await agenteDecidir({
         mensagem,
         chatId,
         tools: toolsDescriptions,
+        toolInfos,
         toolResults: ferramentasChamadas,
         profile: context?.profile as never,
         catalogoCandidatos: context?.catalogoCandidatos,
         estadoPercebido: context?.estadoPercebido as never,
         historicoContexto: context?.historicoContexto as never,
+        memorias: context?.memorias,
+        envInfo,
+        today,
       });
 
       // ── Processar decisão ──
 
       if (decisao.tipo === 'responder') {
         if (!decisao.texto) {
-          // LLM respondeu vazio — provável erro/fallback, encerra
           this.turno.status = 'erro';
           this.eventBus.emit(AGENT_EVENTS.ERRO, {
             chatId,
-            erro:
-              'Agente retornou resposta vazia — possível erro de comunicação com DeepSeek',
+            erro: decisao.erro || 'Agente retornou resposta vazia',
             gravidade: 'N3',
           });
           return;
@@ -190,6 +216,23 @@ export class AgentLoop {
         });
 
         ferramentasUsadas++;
+
+        // Stuck detector: 3 erros consecutivos (qualquer tool) → fallback
+        if (resultado.erro) {
+          errosConsecutivos++;
+          if (errosConsecutivos >= 3) {
+            this.turno.status = 'dormindo';
+            this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
+              chatId,
+              texto: `Puxa, estou tendo dificuldade para processar isso agora. Vou passar para um atendente humano que pode ajudar melhor.`,
+              ferramentasChamadas: [...ferramentasChamadas],
+            });
+            return;
+          }
+        } else {
+          errosConsecutivos = 0;
+        }
+
         continue;
       }
 

@@ -698,7 +698,7 @@ const createAtendimentoDashboardPanel: PanelFactory = async (
 
     // Reprocessa última mensagem do cliente se perfil estiver desatualizado
     if (next) {
-      processarUltimaMensagem(next).then(reprocessou => {
+      processarUltimaMensagem(next, eventBus).then(reprocessou => {
         if (reprocessou) rerender().catch(() => {});
       }).catch(() => {});
     }

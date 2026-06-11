@@ -158,4 +158,6 @@ export interface OuvinteLlmOutput {
   tokensEstimados: number
   /** NOVO: Resposta parseada do LLM com suporte a function calling */
   llmToolResponse?: LlmToolResponse
+  /** Mensagem de erro da API (saldo, key inválida, etc.) */
+  erro?: string
 }

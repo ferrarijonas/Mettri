@@ -12,7 +12,7 @@ if (-not (Test-Path $ChromePath)) {
     exit 1
 }
 
-$UserDataDir = Join-Path $env:TEMP "mettri-chrome-debug"
+$UserDataDir = Join-Path $env:LOCALAPPDATA "mettri-chrome-profile"
 $RemoteDebuggingPort = 9222
 
 Write-Host "Iniciando Chrome em modo debug..." -ForegroundColor Green

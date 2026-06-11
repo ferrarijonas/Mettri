@@ -12,6 +12,7 @@ import decisaoSistema from './prompts/decisao-sistema.md'
 
 import type { EstadoPercebido, MensagemHistorico } from './types'
 import type { ContextoMemorias } from '../harness/memory-store'
+import type { EnvInfo } from '../harness/env-config'
 
 export interface MontarPromptInput {
   /** Incluir seção de identidade (padaria + tom de voz) */
@@ -30,16 +31,22 @@ export interface MontarPromptInput {
   mensagem: string
   /** Candidatos do catálogo (top 5) */
   catalogoCandidatos: string[]
-  /** NOVO: Estado percebido do pedido */
+  /** Estado percebido do pedido */
   estadoPercebido?: EstadoPercebido
-  /** NOVO: Histórico de mensagens para contexto (já filtrado pelo tamanho ideal) */
+  /** Histórico de mensagens para contexto */
   historicoContexto?: MensagemHistorico[]
-  /** NOVO: Intenção previamente classificada */
+  /** Intenção previamente classificada */
   intencaoAnterior?: string
   /** Chat ID do cliente (necessário para tools que precisam preencher chatId) */
   chatId?: string
-  /** NOVO: Memórias persistentes para contexto (4 tipos taxonômicos) */
+  /** Memórias persistentes para contexto (4 tipos taxonômicos) */
   memorias?: ContextoMemorias
+  /** Informações de ambiente (data, cidade, negócio, modelo) */
+  envInfo?: EnvInfo
+  /** Data formatada para exibição no bloco <ambiente> */
+  today?: string
+  /** Ferramentas disponíveis para gerar seção de decisão dinâmica */
+  tools?: { nome: string; descricao: string; categoria: string }[]
 }
 
 export interface MontarPromptOutput {
@@ -47,6 +54,31 @@ export interface MontarPromptOutput {
   systemPrompt: string
   /** User prompt: dados dinâmicos (mensagem + catálogo + perfil) */
   userPrompt: string
+}
+
+function gerarSecaoTools(tools: { nome: string; descricao: string; categoria: string }[]): string {
+  return [
+    'Com base na mensagem do cliente e nas ferramentas disponíveis, decida qual chamar ou responda diretamente.',
+    '',
+    'FERRAMENTAS DISPONÍVEIS:',
+    ...tools.map(t => `  • ${t.nome} (${t.categoria}): ${t.descricao}`),
+    '',
+    'REGRAS:',
+    '  - Ferramentas de LEITURA → pode chamar sem confirmar',
+    '  - Ferramentas de ESCRITA → confirme com o cliente antes',
+    '  - Se uma ferramenta retornar erro, corrija e tente 1 vez, depois responda com o que sabe',
+    '  - Após usar as ferramentas necessárias, RESPONDA o cliente',
+    '',
+    'RESPOSTA DIRETA:',
+    '  - Seja natural e humano, como Jonas da padaria',
+    '  - NUNCA inclua JSON, metadados, intenções ou justificativas na sua resposta',
+    '  - Responda APENAS o texto que o cliente vai ler',
+    '',
+    'COMO EVITAR CICLOS:',
+    '  - 2 a 3 tools por turno é suficiente na maioria dos casos',
+    '  - Se passou de 5 tools, responda imediatamente',
+    '  - Não alterne entre ferramentas sem propósito',
+  ].join('\n')
 }
 
 // ── Seções registradas (estáticas, cacheáveis) ──
@@ -71,6 +103,27 @@ interface Secao {
  *   ]
  */
 export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
+  // ── Camada 1: Identidade do sistema Mettri ──
+  const linhasIdentidade: string[] = [
+    'Você é a Mettri, atendente de IA para WhatsApp.',
+  ]
+
+  // ── Camada 2: Bloco <ambiente> ──
+  if (input.envInfo) {
+    const e = input.envInfo
+    linhasIdentidade.push('', '<ambiente>')
+    linhasIdentidade.push(`Negócio: ${e.businessName}`)
+    linhasIdentidade.push(`Cidade: ${e.city}`)
+    linhasIdentidade.push(`Fuso: ${e.timezone}`)
+    linhasIdentidade.push(`Hoje: ${input.today ?? '(indisponível)'}`)
+    linhasIdentidade.push(`Versão: ${e.version}`)
+    linhasIdentidade.push(`Modelo: ${e.modelName}`)
+    linhasIdentidade.push('</ambiente>')
+  }
+
+  const prefixoIdentidade = linhasIdentidade.join('\n')
+
+  // ── Seções existentes ──
   const secoes: Secao[] = [
     {
       id: 'identidade',
@@ -95,15 +148,16 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
     {
       id: 'decisao',
       ativo: input.decisao === true,
-      conteudo: decisaoSistema,
+      conteudo: (input.tools?.length ? gerarSecaoTools(input.tools) : decisaoSistema),
     },
   ]
 
-  // System prompt: concatena seções ativas
-  const systemPrompt = secoes
+  // System prompt: prefixo + seções ativas
+  const corpo = secoes
     .filter(s => s.ativo)
     .map(s => s.conteudo.trim())
     .join('\n\n---\n\n')
+  const systemPrompt = `${prefixoIdentidade}\n\n---\n\n${corpo}`
 
   // User prompt: monta o JSON com dados dinâmicos
   const perfilVazio: Record<string, null> = {}
