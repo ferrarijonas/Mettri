@@ -73,6 +73,14 @@ export class AgentLoop {
     const envInfo = await getEnvInfo();
     const today = getToday(envInfo.timezone);
 
+    // Contexto extra para extração de memórias (passado ao salvarEAprender)
+    const memoriaExtraContext = {
+      profile: context?.profile,
+      historicoContexto: context?.historicoContexto,
+      envInfo: { businessName: envInfo.businessName },
+      today,
+    };
+
     // Conta memórias carregadas para o evento
     const totalMemorias = context?.memorias
       ? context.memorias.cliente.length
@@ -110,7 +118,7 @@ export class AgentLoop {
       // Verifica timeout
       if (Date.now() - inicio > this.options.maxDuracaoMs) {
         this.turno.status = 'erro';
-        await this.salvarEAprender(this.turno);
+        await this.salvarEAprender(this.turno, memoriaExtraContext);
         this.eventBus.emit(AGENT_EVENTS.ERRO, {
           chatId,
           erro: `Timeout: agente excedeu ${this.options.maxDuracaoMs}ms de processamento`,
@@ -155,7 +163,7 @@ export class AgentLoop {
       if (decisao.tipo === 'responder') {
         if (!decisao.texto) {
           this.turno.status = 'erro';
-          await this.salvarEAprender(this.turno);
+          await this.salvarEAprender(this.turno, memoriaExtraContext);
           this.eventBus.emit(AGENT_EVENTS.ERRO, {
             chatId,
             erro: decisao.erro || 'Agente retornou resposta vazia',
@@ -164,7 +172,7 @@ export class AgentLoop {
           return;
         }
         this.turno.status = 'dormindo';
-        await this.salvarEAprender(this.turno);
+        await this.salvarEAprender(this.turno, memoriaExtraContext);
         this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
           chatId,
           texto: decisao.texto,
@@ -179,7 +187,7 @@ export class AgentLoop {
           ultimaToolRepeticao.count++;
           if (ultimaToolRepeticao.count >= this.options.maxRepeticoes) {
             this.turno.status = 'erro';
-            await this.salvarEAprender(this.turno);
+            await this.salvarEAprender(this.turno, memoriaExtraContext);
             this.eventBus.emit(AGENT_EVENTS.ERRO, {
               chatId,
               erro: `Agente repetiu a ferramenta "${decisao.nome}" ${this.options.maxRepeticoes} vezes consecutivas`,
@@ -228,7 +236,7 @@ export class AgentLoop {
           errosConsecutivos++;
           if (errosConsecutivos >= 3) {
             this.turno.status = 'dormindo';
-            await this.salvarEAprender(this.turno);
+            await this.salvarEAprender(this.turno, memoriaExtraContext);
             this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
               chatId,
               texto: `Puxa, estou tendo dificuldade para processar isso agora. Vou passar para um atendente humano que pode ajudar melhor.`,
@@ -259,7 +267,7 @@ export class AgentLoop {
 
     // Estourou limite de ferramentas
     this.turno.status = 'erro';
-    await this.salvarEAprender(this.turno);
+    await this.salvarEAprender(this.turno, memoriaExtraContext);
     this.eventBus.emit(AGENT_EVENTS.ERRO, {
       chatId,
       erro: `Agente excedeu limite de ${this.options.maxTools} ferramentas por turno`,
@@ -271,14 +279,32 @@ export class AgentLoop {
    * Tenta salvar o turno como aprendizado e emite evento se persisted.
    * Fire-and-forget: erros são capturados — nunca trava o fluxo de resposta.
    */
-  private async salvarEAprender(turno: AgentTurno): Promise<void> {
+  /**
+   * Tenta determinar se um turno gerou aprendizado global ou por cliente.
+   * Espelha a lógica de MemoryStore.salvarTurno para o evento.
+   */
+  private detectarTipoMemoria(turno: AgentTurno): 'licao' | 'negocio' {
+    const mensagem = (turno.mensagemAtual || '').toLowerCase();
+    const temPreferencia = /gosto\s+(mais|muito)\s+de|prefiro|não\s+gosto\s+de|odeio/i.test(mensagem);
+    return temPreferencia ? 'licao' : 'negocio';
+  }
+
+  private async salvarEAprender(
+    turno: AgentTurno,
+    extraContext?: {
+      profile?: unknown;
+      historicoContexto?: { papel: string; texto: string }[];
+      envInfo?: { businessName: string };
+      today?: string;
+    },
+  ): Promise<void> {
     try {
-      const memoriaId = await memoryStore.salvarTurno(turno);
+      const memoriaId = await memoryStore.salvarTurno(turno, extraContext);
       if (memoriaId !== null) {
         this.eventBus.emit(AGENT_EVENTS.MEMORIA_SALVA, {
           chatId: turno.chatId,
           memoriaId,
-          tipo: 'licao',
+          tipo: this.detectarTipoMemoria(turno),
           descricao: turno.status === 'erro'
             ? `correção: ${turno.ferramentasChamadas.filter(f => f.erro).map(f => f.nome).join(', ') || 'turno com erro'}`
             : `sucesso: ${turno.ferramentasChamadas.filter(f => !f.erro).map(f => f.nome).join(', ') || 'resposta direta'}`,
