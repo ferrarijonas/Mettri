@@ -7,6 +7,7 @@
 import type { Tool, ToolResultado } from './types';
 import { AGENT_EVENTS } from './types';
 import type { EventBus } from '../../ui/core/event-bus';
+import { tocarSomPedidoFechado } from './som-pedido';
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
@@ -98,6 +99,11 @@ export class ToolRegistry {
         nome,
         resultado,
       });
+
+      // 🎵 Som de comemoração quando um pedido é fechado
+      if (nome === 'registrar_pedido' && resultado.sucesso) {
+        tocarSomPedidoFechado().catch(() => {});
+      }
 
       return resultado;
     } catch (err) {
