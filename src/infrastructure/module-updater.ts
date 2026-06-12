@@ -122,6 +122,28 @@ export class ModuleUpdater {
   }
 
   /**
+   * Fetch que tenta bridge netFetch primeiro (contorna CSP), com fallback para fetch direto.
+   */
+  private async safeFetch(url: string, options?: { method?: string; headers?: Record<string, string> }): Promise<{ ok: boolean; status: number; text: string }> {
+    const method = options?.method ?? 'GET';
+    const headers = options?.headers ?? {};
+
+    // Tentar via bridge netFetch (roteia via service worker, contorna CSP do WA Web)
+    const bridgeClient = (window as any).__mettriBridgeClient;
+    if (typeof bridgeClient?.netFetch === 'function') {
+      try {
+        return await bridgeClient.netFetch({ url, method, headers });
+      } catch {
+        // Fallback: fetch direto
+      }
+    }
+
+    // Fallback: fetch direto (funciona no service worker ou se CSP permitir)
+    const direct = await fetch(url, { method, headers });
+    return { ok: direct.ok, status: direct.status, text: await direct.text() };
+  }
+
+  /**
    * Verifica se há atualizações disponíveis
    */
   async checkForUpdates(): Promise<UpdateCheckResult> {
@@ -149,12 +171,9 @@ export class ModuleUpdater {
 
     try {
       const manifestUrl = `${this.baseUrl}/manifest.json`;
-      const response = await fetch(manifestUrl, {
+      const response = await this.safeFetch(manifestUrl, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache',
-        },
+        headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' },
       });
 
       if (!response.ok) {
@@ -167,7 +186,7 @@ export class ModuleUpdater {
         };
       }
 
-      const manifest: ModuleManifest = await response.json();
+      const manifest: ModuleManifest = JSON.parse(response.text);
       const hasUpdate = this.compareVersions(manifest.version, this.currentVersion) > 0;
 
       // Verificar quais módulos precisam atualização
@@ -266,17 +285,15 @@ export class ModuleUpdater {
   private async downloadAndCacheModule(moduleInfo: { id: string; url: string; hash: string; version: string }): Promise<void> {
     console.log(`[ModuleUpdater] Baixando módulo ${moduleInfo.id} de ${moduleInfo.url}...`);
 
-    const response = await fetch(moduleInfo.url, {
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
+    const response = await this.safeFetch(moduleInfo.url, {
+      headers: { 'Cache-Control': 'no-cache' },
     });
 
     if (!response.ok) {
       throw new Error(`Falha ao baixar ${moduleInfo.id}: ${response.status}`);
     }
 
-    const code = await response.text();
+    const code = response.text;
 
     // Verificar hash
     if (moduleInfo.hash) {

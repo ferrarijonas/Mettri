@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://www.beedelivery.com.br/central/entregas",
+    "method": "GET",
+    "type": "document",
+    "postData": null
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr",
+    "postData": null
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch",
+    "postData": null
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/entregas/entregasjson",
+    "method": "GET",
+    "type": "xhr",
+    "postData": null
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "status": 400,
+  "statusText": "",
+  "headers": {
+    "cache-control": "no-cache, private",
+    "cf-cache-status": "DYNAMIC",
+    "cf-ray": "a0a9ecb33f479882-UDI",
+    "content-type": "application/json",
+    "date": "Fri, 12 Jun 2026 15:35:18 GMT",
+    "server": "cloudflare"
+  },
+  "body": "\"Endere\\u00e7o indispon\\u00edvel. Tente novamente em alguns instantes!\""
+}

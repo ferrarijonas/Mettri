@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/entregas/entregasjson",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/colmeias",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  }
+]

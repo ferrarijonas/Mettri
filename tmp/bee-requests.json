@@ -1,0 +1,85 @@
+[
+  {
+    "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-Z33DRFJ241&gtm=45je66a1v9119046635za20gzd9101522289&_p=1781276939683&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=EAAIAAQ&are=1&cid=41927401.1781271064&frm=0&ir=1&pscdl=noapi&rcb=0&sr=1680x1050&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B149.0.7827.114%7CChromium%3B149.0.7827.114%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=10.0.0&uaw=0&ul=pt-br&_s=1&tag_exp=115938466~115938469~117776793~119381662~119456239~119456247&sid=1781275243&sct=2&seg=1&dl=https%3A%2F%2Fwww.beedelivery.com.br%2Fcentral%2Fentregas&dt=Bee%20-%20Central&en=page_view&tfd=7774",
+    "method": "POST",
+    "resourceType": "fetch"
+  },
+  {
+    "url": "https://r.clarity.ms/collect",
+    "method": "POST",
+    "resourceType": "xhr",
+    "postData": "\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0000\n����� \u0010�_�α�8\f�1��K{�7�\u0003k��[0^co�V}���>H^�\u00027y�\u0015\u0012\f�|�\f�O�p�\u0017��5`�TV\u0002��\u0015G8O����6�\u0002�|�Խ\u0005\u00042��\u0016�Z�y����t<^���������.ߋ>��i9�vZ\u0017��\u0017\u0013A#\u00188u]�U!!I� \t�S$��Z��L�so�4vDJ\t�(���i҇��\u0012k$\u00145V(\u0014�\u0014\u000f��(�k�l�k�\u0011���|�H\r���R!|\u0006�ޙ\u0018?�Mdgs���C\n�ཝ�C���Ip\u0017旃\u0000\u0014m�\"Ui��\u0000§0�������\u0010c`��|g2\r\u001f�D��)�\u0010�9,�eϛ7���\f!#��s����GB`G�NQ�'2�\u0007o�~4cd�\rc�C\u001coo�����\u001fg�Y\f3_�����\u0002���lƽlvaq\\7��� \rKf\u000b5��;S��]j������^�\u0002\u0000\u0000"
+  },
+  {
+    "url": "https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/fullscreen.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/14/5995/9068.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-c.global.ssl.fastly.net/rastertiles/voyager/14/5994/9068.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-b.global.ssl.fastly.net/rastertiles/voyager/14/5996/9068.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/14/5994/9069.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-c.global.ssl.fastly.net/rastertiles/voyager/14/5996/9069.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-b.global.ssl.fastly.net/rastertiles/voyager/14/5993/9068.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-c.global.ssl.fastly.net/rastertiles/voyager/14/5997/9068.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-c.global.ssl.fastly.net/rastertiles/voyager/14/5993/9069.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/14/5997/9069.png",
+    "method": "GET",
+    "resourceType": "image"
+  },
+  {
+    "url": "https://r.clarity.ms/collect",
+    "method": "POST",
+    "resourceType": "xhr",
+    "postData": "\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0000\n�\\]o�F\u0016�+��%\u0001����p�.�.�\b�ݗ\u0016}\u0011�b$�enh� \u0019;ޢ�}AQdH�Q�Z\u0012�\u000b�@LQ����;s�^��\u000f\u0012�͒���Z\u0011����\u001c$�\u001a�m��A���\u0003\u0001R���&\u0010 ̛�9\u0002�\u0001�����.������1^��\ri�\u0010ʧx����r�\tY]�t��\n;_�\u0015\u0010On�K&�0�@X\u0006�r�J\u0003�R(`�P\t\u0014X����\u001f|t��|�h�e���}���n����wqD�\u0003\t�@��ɀd�a�&��h李\u0007\u001f5���\u0000]��\tn(X`�\u001a`���\\�\"��YNis�ۣ��Y�p�}H�W��\f����@l|Y���l��p�j��wi��i\\Ui|�:}��P�U#\u0005\u000e�R\u0010�m��\u0012\u0014p\u0007\u0006\u0018��P�P��B�n�S� `�k�\\)�\u0014�,0��\u0006׼��\u0000�V�\u0015��\u0010t�@\u0003w\u0012�p��\u0000��w\u0004�&�U�h�O�p\u001f�M�<\u0004�ώ�ba)�\u001fG׽�Q\u0013I��\u0017�\"[�\u001c�]\u001a\u0016홻2�.��H��o�2�M��e�V��e�����M\u001d�����\f�g�4ټ_T��5�\u000f���͛���菨�1���O���\u001f/N�I���d���K���mt\u00135����HR��\u001b5|,|��G�\u0003�\u0002�d@���\u0016�/�\u0001��g!��O�:�iخ���\u000e䴴�~=k��n�6\u001c�\u000esj��喀0\u0016�� ��%���\u0011�o?x�Ī#z�LK�Vϩm\u001fvL�O�@�\u0019�e�2g�9\u0006ȝڧ�n��Y�B<�6QtҌ9�ȥ>P�`�VG��d/�\u0013��Y�$���;��l\u001f�O\u0003\u001ebwtȨ��\u001f'��b�'��Y�\u001amq\u0006�\u0014b�\u0004i�i�ۧ�^��b�\u0000��f��g�m^��D����Al�H���\u00101E�_�����&��\u0006��\u0003��\u0003���uO^��\nY��$oh��͢\u0013�\u0017k��^�祯�P�I\u001a��C��w��39WΩ����E�{����\u0007�l뻛�+]|�>�\u000b���_~\u0006�S�`�\t��X�\u0001k�z�(0��\u0002�Ϩ�\u0011dr��]Q^�Dj1���H�W\"Y3\u0012}B$�M�p=\u000e��8�=��\u0011q'��R# ��@��RK�\u0010�! �a�\u000e��g�+q�\u0019b�tf\u0019�#ag\u000b�9!\u0012A�4\u0010�\u0003�g\u0003\"N9E��<�-�\u0003\u0011g���@��\fq�\"m��.�{jg4|1Ks�\r���i�\u0017~��O7\u0011�Xqt��h)����nq�\u0004+/\u0017�)JD�(Í��(��N����\u0014+�M��\u0012}9V̅Y�Z�?O�hGt�5E^x�L���Hi\u0017ڑt\\�\u0014saR&\u0004g�\u0013�&ʰ\u0004�����(��2{|�(���������zW�>s�kO_�P���+P���}\u001d���\u001bS�&\n�\u0000��2�D��^�b*�DU|�\u0004ԧCutG\u0017S�&\n˳`2�K�/l>b�&j����9]���dLe'\u000b�]ea@\f�\u0018e�\t|��(FY`\f�,0�Q\u0016\u0018�'\u000b�u� ڮ̨�}�\nJ\\Z\u0016�Z�\u00135�d-+�~��2��\r��.�\u0014)�N�p\u000eq�0n!�V��\u0010\\\"�Bp|;\bn'�z=K�\u0013N�/�J׬��-�JM|'{\u0016T�s��Ŕ#l\u0002�f_�j�\u0012W\r\u001f0#\u0004F\tG�\u0004�\u0006c\u0013�[|\u0012.��\u00062\rw\u0018{\u001b�a�p�P�m�����\u001f\u0012#\u0019J\u0005��$\\(�\u0012.4B\tw(%����Z\u0018�\u0012�$>\t\u0017���ez,�8\u001b�\u0012c#]bl�#thI��t���.Q6�9�F��\u001b�^\u001b�Cf��(�\n��+��\fW\u0002��+��\f\u0017(]�J\"\u0014q��i�\u0012��_\u001d�#b4JG�F�e�F��\b\u001d�Z��p�1J��\u0018%��p���\u0005-���!1F��\u001b��\u000e�\u000e��\u001bt\nn\u0004F\u0001W\f�~\u001b���.\r�F�v}#��H\u001f1cQ:�\u0011��\fJG�A�H�8\u001d�\n�#�`t�+��t�9��Ց>\"ơt�[�\u0012nQ:�-BG���H�(\u001d�\u0016�#]#t��Α�������t�;��t�ё��I�C�H7\u0018\u001d�\u000e�#�`t��ޑn���\u00013\bkp�M�\u0019:�f�T�a�l���\u0010�Eg>�lk��<�����&�c�oZׅ��R��\u001b�R�L�\u000bW����������\u0003!l\u0002^�~\u0000\u0000"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/googleAutoComplete?input=Rua+Oscar+Alves,+100+-+Santa+M%C3%B4nica,+Uberl%C3%A2ndia",
+    "method": "GET",
+    "resourceType": "xhr"
+  },
+  {
+    "url": "https://r.clarity.ms/collect",
+    "method": "POST",
+    "resourceType": "xhr",
+    "postData": "\u001f�\b\u0000\u0000\u0000\u0000\u0000\u0000\n�VK��6\u0010�\nS��(��#Q�\u001a���\u0018�E�F2Φ�\u0018P\u00125M�ZR(�gl\u0004�)r�,c�\u0014��O\u0012P��1�d\u0011$\bDu}XU�z�&�\u0016\f�\u000b�\u0017�B&�\t2Ic�1Mb��m\u001b#�}�\u0005���KJ\u0003\bL�\r�\u0000Y�t|`�}?䗗���0�2��\u001a�pQv��]���N7���;=�\u0012AC�X0�\u0018C�,�)��eK\\0)�\fc���\u0004���\u0007��?��� ��\u0000\b�~���0���T��SF\u0013d,(%2N�\u001e�<=���(dL,\u00152;W �d��Gv��\\̸�\u0019��\u0013�L�\tG�LP�b�i���\u0013�%.8e�!E�Lq�\u0002��A \n3\u0014�CS\"W(�:�\u000b�r�W)�12)ԘN�D6R!E���\u0012�r�D觖\u000b\u001e!\u001c\u0013�\u0019C�z��ӯ�\u0002������O�9\u0011I]�e\u0016�Z�(6I\u001ce���\u00142�\u0019Mt�i\b�\u001f\u001a3_\u0019{��9����H�\r�ۮ�Im���\u00117�\n\u001ef��U�ENWv3�D����;#o\"�Vf�\u00136#�ָ��v9���\u0016������*'bZ����9a4�����ܻ�����\f%2���b!\u0010���\u000e\u0010�F\u000fü1�n��z�\u001ar\u0014ֺ\u001f\u0015�ʼ��Pwn���m�7����{$,\u0019\t��_̦\u0005\u0019��o��G�\n�\t�\u0002�8M>�z�SHdiB�ũDx�����5 �j^�6*Wz�]t8���\u0001�V7\u001b3�ӻq��\u0011\u0013}(GG.��Ƚ����G!�\" �zm��|�1���ݽiO�\u0014�%!ǝv�m�F�h��\u001e\u0010*;�1���\u0000�X�d\u0019��#\\]�|u\u0003\b��7󕭪1���\u0019�m���g�P��c��p\b�\\\u0005N>�0[vmTv�׶5�Cp8YE����^١o�CNڮ53@��\t�8\tw���H�������\\��I�#�pɆ@<K��\u0006߾|z\r���7�\u0011M]U�\f���m�.�\u001a]�\u00060�Y�Nq�I\u0000эE�'ih�p��B!\\���z �����U`6�qQ�2�}��;�v\u0011\u001fsS��\u001e\u0002?w�פ2d�ʦ��\b�\u0005���~��\b�\u001e5\u0003�\u001agk[�\u001bFCv�=X��d�����؁��i�n�\u001b�Ȱ�\u00039~�|\u0016��ɋg�₉��G�8���Z.�\u001d���a5\t\u0000\u0000"
+  }
+]

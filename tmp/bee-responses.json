@@ -1,0 +1,8 @@
+[
+  {
+    "url": "https://www.beedelivery.com.br/central/googleAutoComplete?input=Rua+Oscar+Alves,+100+-+Santa+M%C3%B4nica,+Uberl%C3%A2ndia",
+    "status": 200,
+    "contentType": "application/json",
+    "body": "{\"predictions\":[],\"status\":\"ZERO_RESULTS\"}"
+  }
+]

@@ -1,0 +1,537 @@
+[
+  {
+    "url": "https://www.beedelivery.com.br/central/selecionar",
+    "method": "GET",
+    "type": "document"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/entregas",
+    "method": "GET",
+    "type": "document"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/bs4/bootstrap-4.4.1.min.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/lightbox.min.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/select2.min.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/metronic/assets/vendors/general/select2/dist/css/select2.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/select2-bootstrap.min.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/central/main.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@500;600;700&display=swap",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/icons/add2home.svg",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/icons/share.svg",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/novo-painel-button.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/bee-logo-black.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/site-v3/img/imgherobeta.jpg",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/logo-bee.svg",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/site-v3/img/Banner_migrac%CC%A7a%CC%83o_Bee2B.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/css/central/pedidosPendentesIfood.css",
+    "method": "GET",
+    "type": "stylesheet"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/icons/unlock-code.svg",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/finalizarentrega.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/multa.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/sementregas.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/brandqrcode.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/semhistorico.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.mask.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.maskedinput.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bootstrap.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/boostrap-autocomplete.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/axios.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/object-to-formdata.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/lightbox.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/app.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bundle-pusher.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/MovingMarker.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/blockui.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/dateFormat.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/sweetalert2.all.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/select2.full.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/central/main.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/card-sem-resultados.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/card-info-beneficios.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/card-aviso.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/modal-central.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bannerPedidosPendentesIfood.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bannerPedidosPendentesAnotaAi.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bannerPedidosPendentesSaipos.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.maskMoney.min.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/validarSenhaComponent.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/uuid-helper.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/autocomplete-google.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/alocarEntregadorPorCpf.js",
+    "method": "GET",
+    "type": "script"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/icons/colmeia-disable.svg",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/manifest.json",
+    "method": "GET",
+    "type": "manifest"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/central/guia1.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/linkManualEmpresa",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/map-marker-empresa.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/sombra-pequena.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/moto-disp-bag.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/sombra-media.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/moto-disp-bau.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/chat-franquia/true",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/prev.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/next.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/loading.gif",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/close.png",
+    "method": "GET",
+    "type": "image"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/central/entregas/entregasjson",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "blob:https://www.beedelivery.com.br/7b72f893-4077-423c-8b42-1ac87ae3efdf",
+    "method": "GET",
+    "type": "document"
+  },
+  {
+    "url": "https://chat.bee.com.br/api-publica/mensagens/EMP168556",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://chat.bee.com.br/api-publica/conversa/iniciada/EMP168556",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://chat.bee.com.br/api-publica/departamentos/check-horario/1ea1789b-d143-4a88-872f-3daf41a218fe",
+    "method": "GET",
+    "type": "xhr"
+  },
+  {
+    "url": "https://chat.bee.com.br/api/authchat",
+    "method": "POST",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/cdn-cgi/rum?",
+    "method": "POST",
+    "type": "xhr"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/images/icons/bee-logo-144x144.png",
+    "method": "GET",
+    "type": "other"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.mask.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.maskedinput.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bootstrap.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/boostrap-autocomplete.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/axios.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/object-to-formdata.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/lightbox.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/app.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bundle-pusher.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/MovingMarker.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/blockui.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/dateFormat.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/sweetalert2.all.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/select2.full.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-Z33DRFJ241&gtm=45je66a1v9119046635za20gzd9101522289&_p=1781277293453&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=EAAIAAQ&are=1&cid=41927401.1781271064&frm=0&ir=1&pscdl=noapi&rcb=13&sr=1680x1050&uaa=x86&uab=64&uafvl=Google%2520Chrome%3B149.0.7827.114%7CChromium%3B149.0.7827.114%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=10.0.0&uaw=0&ul=pt-br&_s=1&tag_exp=115938465~115938468~119456239~119456247&sid=1781275243&sct=2&seg=1&dl=https%3A%2F%2Fwww.beedelivery.com.br%2Fcentral%2Fentregas&dt=Bee%20-%20Central&en=page_view&tfd=8056",
+    "method": "POST",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.mask.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/central/main.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/card-sem-resultados.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/card-info-beneficios.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/card-aviso.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/modal-central.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bannerPedidosPendentesIfood.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bannerPedidosPendentesAnotaAi.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/bannerPedidosPendentesSaipos.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/select2.full.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/jquery.maskMoney.min.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/validarSenhaComponent.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/uuid-helper.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/autocomplete-google.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/alocarEntregadorPorCpf.js",
+    "method": "GET",
+    "type": "fetch"
+  },
+  {
+    "url": "https://www.beedelivery.com.br/js/uuid-helper.js",
+    "method": "GET",
+    "type": "fetch"
+  }
+]

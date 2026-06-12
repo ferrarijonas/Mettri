@@ -1,0 +1,1220 @@
+[
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "tipo_transporte_input",
+    "name": "tipo_transporte_input",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "dinamicaId",
+    "name": "dinamicaId",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "volta-nao-alterarRegiao",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Não precisa retornar"
+  },
+  {
+    "id": "volta-sim-alterarRegiao",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Precisa retornar"
+  },
+  {
+    "id": "alterar_regiao_id",
+    "name": "alterar_regiao_id",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Região"
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_latitude",
+    "name": "origem_latitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_longitude",
+    "name": "origem_longitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "sn_coleta",
+    "name": "sn_coleta",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "transp_espec",
+    "name": "transp_espec",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_descricao",
+    "name": "destino_descricao",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_latitude",
+    "name": "destino_latitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_longitude",
+    "name": "destino_longitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "dinamicaId",
+    "name": "dinamicaId",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "volta-nao-alterarColeta",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Não precisa retornar"
+  },
+  {
+    "id": "volta-sim-alterarColeta",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Precisa retornar"
+  },
+  {
+    "id": "destino_descricao_modal_alterar",
+    "name": "destino_descricao_modal_alterar",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_descricao_modal_alterar_autocomplete",
+    "name": "",
+    "type": "text",
+    "placeholder": "Rua BeeDelivery, 90, Bairro da Luz...",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "status",
+    "name": "status",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "cod_cancelamento",
+    "name": "cod_cancelamento",
+    "type": "text",
+    "placeholder": "Ex: 9999",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Código de cancelamento"
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "status",
+    "name": "status",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "select-motivo-cancelamento",
+    "name": "motivo_cancelamento",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Qual o motivo do cancelamento?"
+  },
+  {
+    "id": "entregador_id",
+    "name": "entregador_id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "status",
+    "name": "status",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_descricao",
+    "name": "destino_descricao",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "transp_espec",
+    "name": "transp_espec",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_latitude",
+    "name": "destino_latitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_longitude",
+    "name": "destino_longitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_latitude",
+    "name": "origem_latitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_longitude",
+    "name": "origem_longitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "sn_transporte_especifico",
+    "name": "sn_transporte_especifico",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "volta-nao-addEntrega",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Não precisa retornar"
+  },
+  {
+    "id": "volta-sim-addEntrega",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Precisa retornar"
+  },
+  {
+    "id": "sn_coleta",
+    "name": "sn_coleta",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_descricao_modal",
+    "name": "destino_descricao_modal",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_descricao_modal_autocomplete",
+    "name": "",
+    "type": "text",
+    "placeholder": "Rua BeeDelivery, 90, Bairro da Luz...",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "request_token",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "request_token",
+    "name": "request_token[]",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "status",
+    "name": "status",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "volta-nao-liberarEntrega",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Não precisa retornar"
+  },
+  {
+    "id": "volta-sim-liberarEntrega",
+    "name": "volta",
+    "type": "radio",
+    "placeholder": "",
+    "class": "d-none",
+    "visible": false,
+    "rect": null,
+    "label": "Precisa retornar"
+  },
+  {
+    "id": "nome",
+    "name": "nome",
+    "type": "text",
+    "placeholder": "Ex: João Ferreira",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Nome do cliente"
+  },
+  {
+    "id": "destino_telefones",
+    "name": "destino_telefones",
+    "type": "text",
+    "placeholder": "Ex: (99) 9 9999-9999",
+    "class": "form-control celular",
+    "visible": false,
+    "rect": null,
+    "label": "Telefone do Cliente"
+  },
+  {
+    "id": "obs",
+    "name": "obs",
+    "type": "textarea",
+    "placeholder": "Ex: Casa amarela próximo a farmácia",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Observações"
+  },
+  {
+    "id": "linkTrackerInput",
+    "name": "linkTrackerInput",
+    "type": "text",
+    "placeholder": "",
+    "class": "form-control flex-1 text-sm p-3",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "request_token",
+    "name": "",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "id",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "add_entregador_id",
+    "name": "add_entregador_id",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Selecione um entregador"
+  },
+  {
+    "id": "",
+    "name": "_method",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "celular2",
+    "type": "text",
+    "placeholder": "Ex: (99) 99999-9999",
+    "class": "form-control celular",
+    "visible": false,
+    "rect": null,
+    "label": "Número do celular"
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Senha atual"
+  },
+  {
+    "id": "currentPassword",
+    "name": "",
+    "type": "password",
+    "placeholder": "",
+    "class": "form-control input-password-current input-change-password pl-2",
+    "visible": false,
+    "rect": null,
+    "label": "Senha atual"
+  },
+  {
+    "id": "newPassword",
+    "name": "",
+    "type": "password",
+    "placeholder": "",
+    "class": "form-control input-password-current input-change-password pl-2",
+    "visible": false,
+    "rect": null,
+    "label": "Nova senha"
+  },
+  {
+    "id": "newPasswordConfirm",
+    "name": "",
+    "type": "password",
+    "placeholder": "",
+    "class": "form-control input-password-current input-change-password pl-2",
+    "visible": false,
+    "rect": null,
+    "label": "Confirme a nova senha"
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "colmeia_id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "sn_agendada",
+    "name": "sn_agendada",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Deseja agendar?"
+  },
+  {
+    "id": "",
+    "name": "dataAgendamento",
+    "type": "date",
+    "placeholder": "",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Data"
+  },
+  {
+    "id": "",
+    "name": "horaAgendamento",
+    "type": "time",
+    "placeholder": "",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Hora"
+  },
+  {
+    "id": "regiao_id",
+    "name": "regiao_id",
+    "type": "select-one",
+    "class": "form-control w-100 d-flex",
+    "visible": false,
+    "rect": null,
+    "label": "Destino"
+  },
+  {
+    "id": "sn_volta",
+    "name": "volta",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Entregador deve retornar?"
+  },
+  {
+    "id": "tipo_transporte_input",
+    "name": "tipo_transporte_input",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Veículo"
+  },
+  {
+    "id": "regiao-qualquer",
+    "name": "tipo_compartimento_input",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Qualquer"
+  },
+  {
+    "id": "regiao-bag",
+    "name": "tipo_compartimento_input",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Bag"
+  },
+  {
+    "id": "regiao-bau",
+    "name": "tipo_compartimento_input",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Baú"
+  },
+  {
+    "id": "nome",
+    "name": "nome",
+    "type": "text",
+    "placeholder": "Ex: João Ferreira",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Nome Cliente"
+  },
+  {
+    "id": "destino_telefones",
+    "name": "destino_telefones",
+    "type": "text",
+    "placeholder": "Ex: (99) 9 9999-9999",
+    "class": "form-control celular",
+    "visible": false,
+    "rect": null,
+    "label": "Celular do Cliente"
+  },
+  {
+    "id": "obs",
+    "name": "obs",
+    "type": "textarea",
+    "placeholder": "Insira instruções sobre o que o entregador fará no local, e informações do cliente (nome e telefone).",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Observações"
+  },
+  {
+    "id": "",
+    "name": "_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "colmeia_id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_latitude",
+    "name": "origem_latitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_longitude",
+    "name": "origem_longitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_latitude",
+    "name": "destino_latitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_longitude",
+    "name": "destino_longitude",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem",
+    "name": "origem",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino",
+    "name": "destino",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "distancia",
+    "name": "distancia",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "qtd_enderecos",
+    "name": "qtd_enderecos",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "sn_coleta",
+    "name": "sn_coleta",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "sn_agendada",
+    "name": "sn_agendada",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": "Deseja agendar?"
+  },
+  {
+    "id": "labelSim",
+    "name": "adicionarEntregador",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Sim"
+  },
+  {
+    "id": "labelNao",
+    "name": "adicionarEntregador",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Não"
+  },
+  {
+    "id": "origem_coleta",
+    "name": "",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": "Origem"
+  },
+  {
+    "id": "origem_descricao",
+    "name": "origem_descricao",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "origem_descricao_autocomplete",
+    "name": "",
+    "type": "text",
+    "placeholder": "Rua BeeDelivery, 90, Bairro da Luz...",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "numero_origem",
+    "name": "numero_origem",
+    "type": "text",
+    "placeholder": "",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Número da origem"
+  },
+  {
+    "id": "origem_complemento",
+    "name": "origem_complemento",
+    "type": "textarea",
+    "placeholder": "",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Complemento da origem"
+  },
+  {
+    "id": "destino_descricao",
+    "name": "destino_descricao",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "destino_descricao_autocomplete",
+    "name": "",
+    "type": "text",
+    "placeholder": "Rua BeeDelivery, 90, Bairro da Luz...",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": ""
+  },
+  {
+    "id": "destino_complemento",
+    "name": "destino_complemento",
+    "type": "textarea",
+    "placeholder": "",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": "Complemento do destino"
+  },
+  {
+    "id": "sn_volta",
+    "name": "volta",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": "Entregador deve retornar"
+  },
+  {
+    "id": "tipo_transporte_input",
+    "name": "tipo_transporte_input",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": "Veículo"
+  },
+  {
+    "id": "coleta-qualquer",
+    "name": "tipo_compartimento_input",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Qualquer"
+  },
+  {
+    "id": "coleta-bag",
+    "name": "tipo_compartimento_input",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Bag"
+  },
+  {
+    "id": "coleta-bau",
+    "name": "tipo_compartimento_input",
+    "type": "radio",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": "Baú"
+  },
+  {
+    "id": "nome",
+    "name": "nome",
+    "type": "text",
+    "placeholder": "Ex: João Ferreira",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Nome Cliente"
+  },
+  {
+    "id": "destino_telefones",
+    "name": "destino_telefones",
+    "type": "text",
+    "placeholder": "Ex: (99) 9 9999-9999",
+    "class": "form-control celular",
+    "visible": false,
+    "rect": null,
+    "label": "Celular do Cliente"
+  },
+  {
+    "id": "sn_entregador_finalizar_coleta",
+    "name": "sn_entregador_finalizar_coleta",
+    "type": "select-one",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Entregador poderá finalizar?"
+  },
+  {
+    "id": "obs",
+    "name": "obs",
+    "type": "textarea",
+    "placeholder": "Insira instruções sobre o que o entregador fará no local e informações do cliente (nome e telefone).",
+    "class": "form-control",
+    "visible": true,
+    "rect": {},
+    "label": "Observações"
+  },
+  {
+    "id": "entregaId",
+    "name": "entregaId",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "empresaId",
+    "name": "empresaId",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "comentarioAvaliacao",
+    "name": "comentarioAvaliacao",
+    "type": "textarea",
+    "placeholder": "Digite pelo menos 8 caracteres",
+    "class": "form-control",
+    "visible": false,
+    "rect": null,
+    "label": "Deixe um comentário:"
+  },
+  {
+    "id": "",
+    "name": "id",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  },
+  {
+    "id": "",
+    "name": "request_token",
+    "type": "hidden",
+    "placeholder": "",
+    "class": "",
+    "visible": false,
+    "rect": null,
+    "label": ""
+  }
+]

@@ -28,8 +28,9 @@ class MettriApp {
       try {
         const ping = await this.bridge.ping();
         console.log('[MettriApp] Bridge OK:', ping);
-        // Expor para debug no console (apenas referência; não é requisito para funcionamento)
+        // Expor para debug e para módulos como ModuleUpdater que precisam contornar CSP
         window.MettriBridge = this.bridge;
+        (window as any).__mettriBridgeClient = this.bridge;
       } catch (e) {
         console.warn('[MettriApp] ⚠️ Bridge indisponível (fallback limitado):', e);
       }

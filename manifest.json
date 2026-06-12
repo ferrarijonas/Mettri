@@ -14,14 +14,16 @@
     "https://*.workers.dev/*",
     "https://*.github.io/*",
     "https://api.openai.com/*",
-    "https://api.deepseek.com/*"
+    "https://api.deepseek.com/*",
+    "https://www.beedelivery.com.br/*",
+    "https://secservices.beedelivery.com.br/*"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev https://*.github.io https://api.openai.com https://api.deepseek.com"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev https://*.github.io https://api.openai.com https://api.deepseek.com https://www.beedelivery.com.br https://secservices.beedelivery.com.br"
   },
   "content_scripts": [
     {

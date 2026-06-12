@@ -1,0 +1,509 @@
+<div class="ios-prompt">
+    <span style="color: rgb(187, 187, 187); float: right; margin-top: -14px; margin-right: -11px;">×</span>
+    <img src="/images/icons/add2home.svg" style="float: left; height: 80px; width: auto; margin-top: -8px; margin-right: 1rem;">
+    <p style="margin-top: -3px; line-height: 1.3rem;">Para instalar esse aplicativo Web no seu IPhone/Ipad aperte <img src="/images/icons/share.svg" style="display: inline-block; margin-top: 4px; margin-bottom: -4px; height: 20px; width: auto;"> e
+        adicione na tela inicial.</p>
+</div>
+
+<script type="text/javascript">
+    // Initialize the service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/serviceworker.js', {
+            // scope: '.'
+        }).then(function (registration) {
+            // Registration was successful
+            console.log('Laravel PWA: ServiceWorker registration successful with scope: ', registration.scope);
+        }, function (err) {
+            // registration failed :(
+            console.log('Laravel PWA: ServiceWorker registration failed: ', err);
+        });
+
+        // Detecta se o dispositivo está no iOS
+        const isIos = () => {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            return /iphone|ipad|ipod/.test(userAgent);
+        }
+        // Detecta se o dispositivo está no modo autônomo
+        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+        // Verifica se deve exibir notificação popup de instalação:
+        if (isIos() && !isInStandaloneMode()) {
+            showIosInstall();
+        }
+    }
+
+    function showIosInstall() {
+        let iosPrompt = document.querySelector(".ios-prompt");
+        iosPrompt.style.display = "block";
+        iosPrompt.addEventListener("click", () => {
+            iosPrompt.style.display = "none";
+        });
+    }
+</script>
+    
+
+
+
+<!-- DEBUG: franquia_id=19 | api_key=vazio | route=central.entregas.index -->
+<!-- Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N4HSZMV"
+            height="0" width="0" style="display:none;visibility:hidden"></iframe>
+</noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="screen-no-print">
+    <link rel="stylesheet" href="https://www.beedelivery.com.br/css/novo-painel-button.css">
+
+<div id="navbarCentral"><nav class="navbar navbar-expand-lg navbar-light bg-light pb-0"><a href="#" class="navbar-brand d-block d-lg-none"><img src="https://www.beedelivery.com.br/bee-logo-black.png" style="max-height: 48px;"></a> <div class="navbar-buttons-group d-none d-md-flex"><div class="sparkles-navbar cursor-pointer"><a class="nav-link"><i class="fas fa-sparkles"></i> <span>Novo Painel</span></a></div> <div class="bg-white avisos rounded active dropdown"><a id="dropdownAvisos" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false" class="nav-link avisos text-dark"><i class="far fa-bell"><!----></i></a> <div aria-labelledby="dropdownAvisos" class="dropdown-menu p-4"><header> Informativos</header>  <div class="dropdown-divider"></div> <footer> Veja todos os seus informativos, <a href="https://www.beedelivery.com.br/central">clique aqui</a></footer></div></div> <div class="bg-white saldoEmpresa rounded active"><div><a class="nav-link text-dark cursor-pointer"><i class="far fa-money-bill-alt mr-2"></i> <span>**** </span> <i class="ml-2 fa fa-eye-slash"></i></a></div></div> <div class="bg-white guia-navbar rounded active cursor-pointer d-none d-lg-block"><a class="nav-link guia-navbar text-dark"><i class="far fa-question-circle"></i></a></div></div> <button type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler"><i class="fas fa-bars"></i></button> <div id="navbarSupportedContent" class="collapse navbar-collapse flex-grow-0"><ul class="navbar-nav ml-auto"><li class="nav-item d-lg-none sparkles-navbar-mobile-container"><div class="sparkles-navbar-mobile cursor-pointer"><i class="fas fa-sparkles"></i> <span>Novo Painel</span></div></li> <li class="nav-item dropdown"><a href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="nav-link dropdown d-flex align-items-center justify-content-between"><span><i class="fas fa-store mr-2"></i>PÃO DE VERDADE</span> <i class="fas fa-chevron-down ml-2"></i></a> <div aria-labelledby="navbarDropdown" class="dropdown-menu dropdown-menu-right"><a href="https://www.beedelivery.com.br/central/perfil" class="dropdown-item"><i class="fas fa-user-alt"></i> Perfil
+                            </a> <a href="https://www.beedelivery.com.br/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="dropdown-item"><i class="fad fa-sign-out-alt"></i> Sair
+                        </a> <form id="logout-form" action="https://www.beedelivery.com.br/logout" method="POST" style="display: none;"><input type="hidden" name="_token" value="t2MJ3nzzppieyHX7VNqz5TfELjjbNxCbOlSbpq74" autocomplete="off"></form></div></li></ul></div></nav></div>
+
+<div id="guia"><div id="myModal" role="dialog" class="modal fade"><div class="modal-dialog modal-dialog-centered modal-lg guia-lg"><div class="modal-content"><div data-dismiss="modal" class="mt-3 mr-4 text-align-end cursor-pointer"><i class="far fa-times icon-close-card"></i></div> <div class="guia-empresa guia-lg-card"><div class="guia-img"><img src="https://www.beedelivery.com.br/images/central/guia1.png"></div> <div><div class="guia-title">Tudo que sua empresa precisa saber para ter sucesso com as entregas!</div> <div class="guia-paragrafo">Veja como funcionam nossas principais funcionalidades, de forma prática e rápida</div> <!----></div></div> <div class="guia-buttons"><button disabled="disabled" class="prev-scroll-guia cursor-pointer fundo-icon-guia guia-disabled" value="48c99e31-57b5-4ebf-aa0c-1a7f24c3f25c" name="request_token"><i class="fas fa-arrow-left icon-guia"></i></button> <button class="next-scroll-guia cursor-pointer fundo-icon-guia" value="48c99e31-57b5-4ebf-aa0c-1a7f24c3f25c" name="request_token"><i class="fas fa-arrow-right icon-guia"></i></button></div> <!----> <div class="guia-empresa guia-lg-card m-3"><div class="card"><div class="card-body p-1"><div class="row p-1"><div class="col-md-1 col-sm-12 align-items-center justify-center pr-0 display-icon-guia"><i aria-hidden="true" class="fa fa-download"></i></div> <div class="col-md-9 col-sm-12 align-items-center justify-center text-justify guia-empresa-manual"><p class="m-0"><b>Novidade!</b> Saiba como utilizar todas as nossas funcionalidades
+                                        ao seu favor, clique no botão ao lado para baixar o nosso guia de ajuda</p></div> <div class="col-md-2 col-sm-12 align-items-center justify-center"><a href="https://bit.ly/manuemp" target="_blank" class="btn-sm btn-warning">Baixar
+                                        guia</a></div></div></div></div></div></div></div></div></div>
+
+
+<!-- Tela Fullscreen Novo Painel -->
+<div id="fullscreenNovoPainel" class="fullscreen-novo-painel" style="display: none;">
+    <div class="fullscreen-background">
+        <div class="fullscreen-container">
+            <!-- Logo -->
+            <div class="fullscreen-logo">
+                <img src="https://www.beedelivery.com.br/bee-logo-black.png" alt="Bee Delivery">
+            </div>
+
+            <!-- Card Principal -->
+            <div class="fullscreen-card">
+                <!-- Imagem Preview -->
+                <div class="preview-container">
+                    <img src="https://www.beedelivery.com.br/site-v3/img/imgherobeta.jpg" alt="Preview Novo Painel" class="preview-image">
+                </div>
+
+                <!-- Badge Novidade -->
+                <div class="badge-novidade">
+                    NOVIDADE
+                </div>
+
+                <!-- Título -->
+                <h1 class="fullscreen-title">
+                    Conheça o novo Gestor de entregas
+                </h1>
+
+                <!-- Descrição -->
+                <p class="fullscreen-description">
+                    Estamos lançando o novo gestor de entregas, mais moderno,<br>
+                    rápido e fácil de usar. Nele você poderá criar e acompanhar suas<br>
+                    entregas em tempo real.
+                </p>
+
+                <p class="fullscreen-subdescription">
+                    Você usará o mesmo login para acessar o novo Gestor.
+                </p>
+
+                <!-- Botão Conhecer -->
+                <button class="btn-conhecer" onclick="conhecerNovoPainel()" value="48c99e31-57b5-4ebf-aa0c-1a7f24c3f25c" name="request_token">
+                    Conhecer
+                </button>
+
+                <!-- Link Continuar -->
+                <a href="#" class="link-continuar" onclick="event.preventDefault(); hideFullscreenNovoPainel();">
+                    Continuar no atual
+                </a>
+            </div>
+
+            <!-- Footer -->
+            <div class="fullscreen-footer">
+                Bee Delivery 2025 - <a href="https://beedelivery.com.br/termos-empresa" target="_blank" class="link-termos">Termos de uso empresa</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <div>
+    <nav id="sidebarMenu" class="fixed-left col-sm-1 col-md-2 col-lg-2 col-xl-1 bg-light collapse bg-yellow d-none d-lg-block sidebar">
+        <a class="d-flex flex-column text-center logo-bee" href="https://www.beedelivery.com.br/central">
+            <img class="img-fluid" src="https://www.beedelivery.com.br/images/central/logo-bee.svg">
+        </a>
+
+        
+        <div class="sidebar-sticky">
+            <ul class="nav flex-column">
+                
+                                            <li class="nav-item d-flex justify-content-center">
+                            <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/entregas">
+                                <i class=" fas  fa-shopping-basket"></i>
+                                <span>Entregas</span>
+                            </a>
+                        </li>
+                    
+                                            <li class="nav-item d-flex justify-content-center">
+                            <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/colmeias/home">
+                                <i class=" far  fa-colmeia"></i>
+                                <span>Colmeias</span>
+                            </a>
+                        </li>
+                    
+                                            <li class="nav-item d-flex justify-content-center">
+                            <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central">
+                                <i class=" far  fa-bell ">
+                                <span>
+                                                                </span>
+                                </i>
+                                <span>Notificações</span>
+                            </a>
+                        </li>
+                    
+                    
+                                            <li class="nav-item d-flex justify-content-center">
+                            <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/roteirizacao">
+                                <i class=" far  fa-map-marked-alt"></i>
+                                <span>Roteirização</span>
+                            </a>
+                        </li>
+                                        
+                                            <li class="nav-item d-flex justify-content-center">
+                            <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/qrCode">
+                                <i class=" far  fa-qrcode"></i>
+                                <span>QrCode</span>
+                            </a>
+                        </li>
+                    
+                                                                        <li class="nav-item d-flex justify-content-center">
+                                <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/financeiro">
+                                    <i class=" far  fa-cash-register"></i>
+                                    <span>Financeiro</span>
+                                </a>
+                            </li>
+                                            
+                                            <li class="nav-item d-flex justify-content-center">
+                            <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/usuarios">
+                                <i class=" far  fa-user-friends"></i>
+                                <span>Usuários</span>
+                            </a>
+                        </li>
+                                    
+                                    <li class="nav-item d-flex justify-content-center">
+                        <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/relatorios">
+                            <i class=" far  far fa-file-alt"></i>
+                            <span>Relatórios</span>
+                        </a>
+                    </li>
+                
+            </ul>
+        </div>
+    </nav>
+</div>
+
+    <footer id="avisoUrgente" class="fixed-bottom w-100 d-flex align-items-end justify-content-center"><div class="mx-auto w-100 w-lg-75"><!----> <div class="aviso-footer w-100 d-flex align-items-center justify-content-start bg-white"><div class="p-2 rounded"><i class="far"></i></div> <div><p class="d-none d-lg-inline text-center"> AVISO: </p> <span class="text-bold text-center"></span></div> <i class="fas fa-times ml-auto"></i> <!----> <!----></div></div></footer>
+
+
+    <div>
+    <nav class="fixed-bottom d-lg-none bg-yellow text-reset bottom-menu">
+                            <li class="nav-item d-flex justify-content-center">
+                <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/entregas">
+                    <i class=" fas  fa-shopping-basket"></i>
+                    <span>Entregas</span>
+                </a>
+            </li>
+                            <li class="nav-item d-flex justify-content-center" id="tab-financeiro">
+                    <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central/roteirizacao">
+                        <i class=" far  fa-map-marked-alt"></i>
+                        <span>Roteirização</span>
+                    </a>
+                </li>
+                        <li class="nav-item d-flex justify-content-center">
+                <a class="nav-link d-flex flex-column text-center" href="https://www.beedelivery.com.br/central">
+                    <i class=" far  fa-bell ">
+                        <span>
+                                                    </span>
+                    </i>
+                    <span>Notificações</span>
+                </a>
+            </li>
+
+            <li class="nav-item d-flex justify-content-center dropdown" id="tab-options">
+                <a class="nav-link d-flex flex-column text-center btn dropdown" href="#" id="optionsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v"></i>
+                </a>
+
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="optionsDropdown">
+                                            <a class="dropdown-item" href="https://www.beedelivery.com.br/central/financeiro">
+                            <i class=" far  fa-cash-register"></i>
+                            <span>Financeiro</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+
+                    
+                                            <a class="dropdown-item d-flex align-items-center" href="https://www.beedelivery.com.br/central/colmeias/home">
+                            <i class=" far  fa-colmeia"></i>
+                            <span>Colmeias</span>
+                        </a>
+                    
+                    <div class="dropdown-divider"></div>
+
+                    <a class="dropdown-item" href="https://www.beedelivery.com.br/central/qrCode">
+                        <i class="fad fa-qrcode"></i>
+                        <span>QrCode</span>
+                    </a>
+
+                    <div class="dropdown-divider"></div>
+
+                    <a class="dropdown-item" href="https://www.beedelivery.com.br/central/relatorios">
+                        <i class="fad fa-chart-pie"></i>
+                        <span>Relatórios</span>
+                    </a>
+
+                    <div class="dropdown-divider"></div>
+
+                    <a class="dropdown-item" href="https://www.beedelivery.com.br/central/usuarios">
+                        <i class="fad fa-user-friends"></i>
+                        <span>Usuários</span>
+                    </a>
+
+                </div>
+            </li>
+            </nav>
+</div>
+</div>
+
+<main role="main">
+    <div class="screen-no-print">
+            </div>
+
+        <style>
+        a {
+            color: #FC0;
+        }
+
+        a:hover {
+            color: #FC0;
+        }
+
+        .bootstrap-select,
+        .dropdown-item {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dropdown-menu a {
+            font-size: 0.8rem;
+        }
+
+        .face {
+            margin: 0px 5px 0px 5px;
+            opacity: 0;
+            width: 35px;
+            height: 35px;
+            background: #FFDD00;
+            border-radius: 5px;
+            transition: 0.2s;
+            pointer-events: none;
+        }
+
+        .pac-container {
+            z-index: 1051 !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border: 1px solid var(--gray-four);
+        }
+
+        .select2-container--default .select2-selection--single {
+            display: block;
+            width: 100%;
+            height: calc(1.5em + .75rem + 2px);
+            padding: .375rem .75rem;
+            font-size: 1rem;
+            font-weight: 400;
+            text-align: left;
+            line-height: 1.5;
+            background-color: white;
+        }
+
+        .select2-container--default:focus {
+            color: #495057;
+            background-color: #fff;
+            outline: 0;
+            border-color: #ffdd00;
+            box-shadow: inset 2px 2px #ffdd00, inset -2px -2px #ffdd00;
+        }
+
+        .select2-selection--single:focus {
+            color: #495057;
+            background-color: #fff;
+            outline: 0;
+            border-color: #ffdd00;
+            box-shadow: inset 2px 2px #ffdd00, inset -2px -2px #ffdd00;
+        }
+
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            border: 0.5px solid #495057;
+        }
+
+        .card-colmeia-div {
+            background-color: #F9F9F9;
+            margin-inline: 1px;
+
+            font-family: 'Montserrat';
+            font-style: normal;
+            font-weight: 500;
+            font-size: 16px;
+            line-height: 20px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card-colmeia {
+            background-color: white;
+            border: 1px solid #DEDEDE;
+            margin-bottom: 16px;
+            padding-left: 16px;
+            padding-right: 16px;
+            border-radius: 4px;
+            width: 100%;
+
+            display: flex;
+            flex-direction: row;
+        }
+
+        .colmeia-title {
+            margin-left: 16px;
+        }
+
+        .div-gerenciar {
+            width: 15%;
+            align-items: flex-end;
+        }
+
+        @media (max-width: 500px) {
+            .div-gerenciar {
+                width: 90%;
+            }
+
+            .card-colmeia {
+                padding-left: 0px;
+                padding-right: 0px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .colmeia-title {
+                margin-top: 16px;
+                padding-left: 16px;
+            }
+
+            .btn-gerenciar {
+                width: 90%;
+            }
+
+        }
+
+        .radio-entregador {
+            display: none;
+        }
+
+        .label-container {
+            display: block;
+            height: 42px;
+            border: 1px solid #E4E4E4;
+            font-size: 12px;
+        }
+
+        .custom-radio-central {
+            display: block;
+            margin: 0;
+            height: 14px;
+            width: 14px;
+            border-radius: 20px;
+            border: 1px solid black;
+        }
+
+        .radio-entregador:checked + label {
+            background: #FFCC00;
+        }
+
+        .radio-entregador:checked + .label-container > .custom-radio-central {
+            background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 15' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.7812 7.75C13.7812 4.03125 10.7188 0.96875 7 0.96875C3.25391 0.96875 0.21875 4.03125 0.21875 7.75C0.21875 11.4961 3.25391 14.5312 7 14.5312C10.7188 14.5312 13.7812 11.4961 13.7812 7.75ZM6.20703 11.3594C6.04297 11.5234 5.74219 11.5234 5.57812 11.3594L2.73438 8.51562C2.57031 8.35156 2.57031 8.05078 2.73438 7.88672L3.36328 7.28516C3.52734 7.09375 3.80078 7.09375 3.96484 7.28516L5.90625 9.19922L10.0078 5.09766C10.1719 4.90625 10.4453 4.90625 10.6094 5.09766L11.2383 5.69922C11.4023 5.86328 11.4023 6.16406 11.2383 6.32812L6.20703 11.3594Z' fill='%23141414'/%3E%3C/svg%3E");
+            background-position: center;
+        }
+        
+        .attention-banner {
+            width: 1000px;
+            max-width: 100%;
+            margin: 0 auto;
+            margin-bottom: 1rem;
+        }
+        .attention-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .icone-camera-finalizacao-pendente {
+            color: #fff !important;
+            background-color: #6f42c1;
+            padding: 2px 3px;
+            border-radius: 2px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        
+        .visualizar-arquivo-finalizacao {
+            color: #059669 !important;
+            background-color: rgba(5, 150, 105, .1);
+            display: inline-block;
+            padding: 4px 8px;
+        }
+        
+        #modalArquivoFinalizacao img {
+            max-width: 550px;
+        }
+    </style>
+    
+    <!-- Banner de atenção -->
+    <div class="attention-banner">
+        <a href="https://merchants.beedelivery.com.br/login" target="_blank">
+            <img src="https://www.beedelivery.com.br/site-v3/img/Banner_migração_Bee2B.png" alt="Clique aqui e teste agora o novo painel!" id="banner-migration-img" style="width: 100%; height: auto; display: block; border-radius: 8px;">
+        </a>
+    </div>
+
+    <link rel="stylesheet" href="https://www.beedelivery.com.br/css/central/pedidosPendentesIfood.css">
+
+    <div class="tabbable">
+        
+        <ul class="nav nav-tabs nav-justified bee-tabs" id="entregas-tab" role="tablist" data-atualizar-saldo="false">
+            <li class="nav-item">
+                <a class="nav-link" id="app-tab" data-toggle="tab" href="#app" role="tab" aria-controls="app" aria-selected="false">Em andamento</a>
+            </li>
+
+                                        <li class="nav-item active">
+                    <a class="nav-link nova_entrega active" id="nova_coleta-tab" data-toggle="tab" href="#nova_coleta" role="tab" aria-controls="nova_coleta" aria-selected="true" onclick="setTimeout(() =&gt; { coleta.mapColeta ? coleta.mapColeta.invalidateSize() : null }, 400)" aria-expanded="true">Nova entrega</a>
+                </li>
+            
+            <li class="nav-item">
+                <a class="nav-link" id="historico-tab" data-toggle="tab" href="#historico" role="tab" onclick="historico.filtrar(7)" aria-controls="historico" aria-selected="true">Histórico</a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tab-content" id="myTabContent">
+
+        <div id="app" role="tabpanel" aria-labelledby="app-tab" class="tab-pane fade central-card"><div style="z-index: 999999;"><div class="d-flex mx-3 row align-items-center justify-content-start card-colmeia-div"></div> <div id="modalLiberarTodasEntregas" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Liberar entrega(s)</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <div class="modal-body p-4"><form method="POST" action="https://www.beedelivery.com.br/central/entregas/liberarTodas" accept-charset="UTF-8" id="form-saiu-entrega-todos"><input name="_token" type="hidden" value="t2MJ3nzzppieyHX7VNqz5TfELjjbNxCbOlSbpq74">  <hr> <button type="submit" value="48c99e31-57b5-4ebf-aa0c-1a7f24c3f25c" name="request_token" class="btn btn-warning font-weight-semi-bold py-2 m-0 w-100"><div class="my-1">Liberar todas</div></button></form></div></div></div></div> <div id="modalAlterarRegiao" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Alterar região</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalAlterarRegiao" action="https://www.beedelivery.com.br/central/entregas/atualizar" method="POST"><div class="modal-body p-4"><div><input type="hidden" id="id" name="id"> <input type="hidden" id="tipo_transporte_input" name="tipo_transporte_input"> <input type="hidden" id="dinamicaId" name="dinamicaId"> <input type="hidden" name="request_token" value="f4f3d3d8-2be2-4da5-8d2b-2f1f2b61640e"> <div class="form-group"><label for="volta" class="col-form-label pt-0">Entrega:</label> <div class="volta-control d-flex flex-column flex-md-row gap-3"><label for="volta-nao-alterarRegiao" class="btn p-3 text-xs bg-yellow"><input type="radio" id="volta-nao-alterarRegiao" name="volta" value="N" onchange="alterarRegiao()" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-redo mr-1"></i>Não precisa retornar</span> <i class="text-sm fas fa-check-circle"></i></div></label> <label for="volta-sim-alterarRegiao" class="btn p-3 text-xs border"><input type="radio" id="volta-sim-alterarRegiao" name="volta" value="S" onchange="alterarRegiao()" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-sync mr-1"></i>Precisa retornar</span> <i class="text-sm far fa-circle"></i></div></label></div></div> <div class="form-group"><label for="alterar_regiao_id">Região</label> <select id="alterar_regiao_id" required="required" onchange="alterarRegiao()" name="alterar_regiao_id" class="form-control" style="width: 100% !important;"><option selected="selected" value="">Selecione</option></select></div> <!----></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" disabled="disabled" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Alterar</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Cancelar</div></button></div></form></div></div></div> <div id="modalAlterarColeta" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Alterar coleta</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalAlterarColeta" action="https://www.beedelivery.com.br/central/entregas/atualizar" method="POST"><div class="modal-body p-4"><div><input type="hidden" id="id" name="id"> <input type="hidden" id="origem_latitude" name="origem_latitude"> <input type="hidden" id="origem_longitude" name="origem_longitude"> <input type="hidden" id="sn_coleta" name="sn_coleta"> <input type="hidden" id="transp_espec" name="transp_espec"> <input type="hidden" id="destino_descricao" name="destino_descricao"> <input type="hidden" id="destino_latitude" name="destino_latitude"> <input type="hidden" id="destino_longitude" name="destino_longitude"> <input type="hidden" id="dinamicaId" name="dinamicaId"> <input type="hidden" name="request_token" value="f4f3d3d8-2be2-4da5-8d2b-2f1f2b61640e"> <div><label for="volta" class="col-form-label pt-0">Entrega:</label> <div class="volta-control d-flex flex-column flex-md-row gap-3"><label for="volta-nao-alterarColeta" class="btn p-3 text-xs bg-yellow"><input type="radio" id="volta-nao-alterarColeta" name="volta" value="N" onchange="checkCalcAlterarColeta()" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-redo mr-1"></i>Não precisa retornar</span> <i class="text-sm fas fa-check-circle"></i></div></label> <label for="volta-sim-alterarColeta" class="btn p-3 text-xs border"><input type="radio" id="volta-sim-alterarColeta" name="volta" value="S" onchange="checkCalcAlterarColeta()" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-sync mr-1"></i>Precisa retornar</span> <i class="text-sm far fa-circle"></i></div></label></div> <label for="destino_descricao_modal_alterar" class="mt-3">Endereço de Destino:</label> <div class="form-group text-left text-sm-right mb-0"><input name="destino_descricao_modal_alterar" id="destino_descricao_modal_alterar" type="hidden"> <div class="inputcontainer"><input autocomplete="off" id="destino_descricao_modal_alterar_autocomplete" placeholder="Rua BeeDelivery, 90, Bairro da Luz..." class="form-control"> <div class="icon-container" style="display: none;"><i class="loader"></i></div> <div class="icon-container" style="display: none;"><i class="fal fa-exclamation-triangle withoutNumber"></i> <span class="withoutNumber--label"> Digite o número</span></div></div> <!----> <!----> <div class="list-group"><div class="address-search-step__results"><ul class="address-search-list"></ul></div></div></div> <!----></div> <!----></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" disabled="disabled" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Alterar</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Cancelar</div></button></div></form></div></div></div> <div id="modalSolicitarCancelamento" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Cancelar entrega</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalSolicitarCancelamento" action="https://www.beedelivery.com.br/central/entregas/solicitarCancelamento" method="POST"><div class="modal-body p-4"><div><input type="hidden" name="_token" value="t2MJ3nzzppieyHX7VNqz5TfELjjbNxCbOlSbpq74" autocomplete="off"> <input type="hidden" id="id" name="id"> <input type="hidden" id="status" name="status" value="60"> <input type="hidden" name="request_token" value="7ad1fedb-1623-4d23-93bb-580ab1c54202"> <header class="p-3 d-flex bg-gray-three"><img src="https://www.beedelivery.com.br/images/icons/unlock-code.svg" alt="Codigo para desbloquear" class="ml-lg-3 mr-3 mr-lg-4"> <p class="mr-lg-3 mb-0">
+                Solicite ao entregador <strong>o código de cancelamento</strong> para cancelar esta entrega.
+            </p></header> <hr> <div class="d-flex align-items-center w-100 mb-2"><div class="mr-3 d-flex align-items-center"><div class="p-2 bg-yellow rounded-lg text-white"><i class="far fa-info-circle m-1"></i></div> <div class="ml-3 font-weight-semi-bold"><p class="text-muted m-0"></p> <p class="m-0 d-flex flex-column flex-lg-row"><span></span> <span class="d-none d-lg-inline mx-1"> - </span> <span></span></p></div></div> <a target="_blank" href="https://www.beedelivery.com.br/central/chat/undefined/null" class="cursor-pointer text-muted rounded-lg border p-2 ml-auto"><i class="fas fa-comments-alt m-1"></i></a></div> <hr class="my-3"> <div class="form-group mt-2"><label for="cod_cancelamento">Código de cancelamento</label> <input type="text" id="cod_cancelamento" name="cod_cancelamento" placeholder="Ex: 9999" class="form-control"></div></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Cancelar entrega</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Voltar</div></button></div></form></div></div></div> <div id="modalCancelarEntrega" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Cancelar entrega</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalCancelarEntrega" action="https://www.beedelivery.com.br/central/entregas/cancelar" method="POST"><div class="modal-body p-4"><div><input type="hidden" name="_token" value="t2MJ3nzzppieyHX7VNqz5TfELjjbNxCbOlSbpq74" autocomplete="off"> <input type="hidden" id="id" name="id"> <input type="hidden" id="status" name="status" value="60"> <input type="hidden" name="request_token" value="38ca8045-61a0-4016-bc10-861461df33b0"> <!----> <div class="form-group mt-2"><label for="motivo_cancelamento">Qual o motivo do cancelamento?</label> <select name="motivo_cancelamento" id="select-motivo-cancelamento" required="required" onchange="motivoCancelamento()" class="form-control"><option value="">Selecione</option> <option value="Entrega duplicada">Entrega duplicada</option> <option value="Demora do entregador">Demora do entregador</option> <option value="Entregador distante">Entregador distante</option> <option value="Cliente cancelou">Cliente cancelou</option> <option value="Pedido enviado por outro entregador">Pedido enviado por outro entregador</option> <option value="Loja fechada">Loja fechada</option> <option value="Falta de produto em estoque">Falta de produto em estoque</option> <option value="Problema na emissão de NF loja">Problema na emissão de NF loja</option> <option value="Instabilidade no sistema da loja">Instabilidade no sistema da loja</option> <option value="Produto maior ou peso acima do recomendado">Produto maior ou peso acima do recomendado</option> <option value="Comportamento inadequado do entregador">Comportamento inadequado do entregador</option> <option value="Veículo e/ou compartimento inadequado">Veículo e/ou compartimento inadequado</option> <option value="Entregador diferente do sistema">Entregador diferente do sistema</option> <option value="Empresa não reconhece a corrida">Empresa não reconhece a corrida</option> <option value="Endereço errado">Endereço errado</option> <option value="Lançamento errado">Lançamento errado</option></select></div></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Cancelar entrega</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Voltar</div></button></div></form></div></div></div> <div id="modalAdicionarEntrega" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Adicionar entrega</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalAdicionarEntrega" action="https://www.beedelivery.com.br/central/entregas/adicionar" method="POST"><div class="modal-body p-4"><div><input type="hidden" id="entregador_id" name="entregador_id"> <input type="hidden" id="status" name="status"> <input type="hidden" id="destino_descricao" name="destino_descricao"> <input type="hidden" id="transp_espec" name="transp_espec"> <input type="hidden" id="destino_latitude" name="destino_latitude"> <input type="hidden" id="destino_longitude" name="destino_longitude"> <input type="hidden" id="origem_latitude" name="origem_latitude"> <input type="hidden" id="origem_longitude" name="origem_longitude"> <input type="hidden" id="sn_transporte_especifico" name="sn_transporte_especifico"> <input type="hidden" name="request_token" value="92ba6f5b-7204-472f-bc54-e9c9bc73eae5"> <div class="row"><div class="col-md-12"><div class="form-group"><label for="volta" class="col-form-label">Entrega:</label> <div class="volta-control d-flex flex-column flex-md-row gap-3"><label for="volta-nao-addEntrega" class="btn p-3 text-xs bg-yellow"><input type="radio" id="volta-nao-addEntrega" name="volta" value="N" onchange="" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-redo mr-1"></i>Não precisa retornar</span> <i class="text-sm fas fa-check-circle"></i></div></label> <label for="volta-sim-addEntrega" class="btn p-3 text-xs border"><input type="radio" id="volta-sim-addEntrega" name="volta" value="S" onchange="" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-sync mr-1"></i>Precisa retornar</span> <i class="text-sm far fa-circle"></i></div></label></div></div> <input type="hidden" id="sn_coleta" name="sn_coleta" value="N"> <div class="form-group"><label for="destino_descricao_modal" class="col-form-label">Endereço de destino:</label> <div class="form-group text-left text-sm-right"><input name="destino_descricao_modal" id="destino_descricao_modal" type="hidden"> <div class="inputcontainer"><input autocomplete="off" id="destino_descricao_modal_autocomplete" placeholder="Rua BeeDelivery, 90, Bairro da Luz..." class="form-control"> <div class="icon-container" style="display: none;"><i class="loader"></i></div> <div class="icon-container" style="display: none;"><i class="fal fa-exclamation-triangle withoutNumber"></i> <span class="withoutNumber--label"> Digite o número</span></div></div> <!----> <!----> <div class="list-group"><div class="address-search-step__results"><ul class="address-search-list"></ul></div></div></div></div></div></div> <!----> <!----></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" disabled="disabled" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Adicionar</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Cancelar</div></button></div></form></div></div></div> <div id="modalFinalizarEntrega" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Finalizar Entrega</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalFinalizarEntrega" action="#" method="POST"><div class="modal-body p-4"><input type="hidden" id="request_token" name="request_token" value="f4f3d3d8-2be2-4da5-8d2b-2f1f2b61640e"> <input type="hidden" id="id" name="id"> <div class="titulo-finalizar-entrega">
+        Você confirma que o cliente recebeu o pedido e deseja finalizar essa entrega?
+    </div> <hr> <div class="d-flex flex-row justify-content-center mt-4 bg-light p-3 align-items-center"><img src="https://www.beedelivery.com.br/images/central/finalizarentrega.png" alt="" class="mr-4 img-finalizar-entrega"> <div class="text-sm">Queremos saber como foi a experiência da sua entrega. <span class="font-weight-bold"> Deixe sua avaliação</span>
+            após finalizar a entrega no menu “Histórico”.
+        </div></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Finalizar</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Cancelar</div></button></div></form></div></div></div> <div id="modalFinalizarMultiplasEntregas" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Finalizar Entregas</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalFinalizarMultiplasEntregas" action="#" method="POST"><div class="modal-body p-4"><input type="hidden" id="request_token" name="request_token[]" value="f4f3d3d8-2be2-4da5-8d2b-2f1f2b61640e"> <input type="hidden" id="id" name="id"> <div class="titulo-finalizar-entrega">
+        Tem certeza que deseja finalizar todas as entregas?
+        Ao finalizar
+        Você confirma que os clientes receberam o(s) pedido(s).
+    </div> <hr> <div class="d-flex flex-row justify-content-center mt-4 bg-light p-3 align-items-center"><img src="https://www.beedelivery.com.br/images/central/finalizarentrega.png" alt="" class="mr-4 img-finalizar-entrega"> <div class="text-sm">Queremos saber como foi a experiência da sua entrega. <span class="font-weight-bold"> Deixe sua avaliação</span>
+            após finalizar a entrega no menu “Histórico”.
+        </div></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Sim, finalizar todas</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Cancelar</div></button></div></form></div></div></div> <div id="modalSaiuParaEntrega" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Liberar entrega</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <form id="form-modalSaiuParaEntrega" action="https://www.beedelivery.com.br/central/entregas/atualizar" method="POST"><div class="modal-body p-4"><div><div class="d-flex align-items-center w-100 mb-2"><div class="mr-3 d-flex align-items-center"><div class="p-2 bg-yellow rounded-lg text-white"><i class="far fa-flag m-1"></i></div> <div class="ml-3 font-weight-semi-bold"><p class="text-muted m-0">Destino:</p> <p class="m-0 d-flex flex-column flex-lg-row">
+                        
+                    </p></div></div></div> <hr> <input type="hidden" id="id" name="id"> <input type="hidden" id="status" name="status" value=""> <input type="hidden" name="request_token" value="f4f3d3d8-2be2-4da5-8d2b-2f1f2b61640e"> <div class="form-group"><label for="volta" class="col-form-label pt-0">Entregador:</label> <div class="volta-control d-flex flex-column flex-md-row gap-3"><label for="volta-nao-liberarEntrega" class="btn p-3 text-xs bg-yellow"><input type="radio" id="volta-nao-liberarEntrega" name="volta" value="N" onchange="" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-redo mr-1"></i>Não precisa retornar</span> <i class="text-sm fas fa-check-circle"></i></div></label> <label for="volta-sim-liberarEntrega" class="btn p-3 text-xs border"><input type="radio" id="volta-sim-liberarEntrega" name="volta" value="S" onchange="" class="d-none"> <div class="volta-option d-flex justify-content-between align-items-center"><span class="font-weight-semi-bold line-height-sm"><i class="fas fa-sync mr-1"></i>Precisa retornar</span> <i class="text-sm far fa-circle"></i></div></label></div></div> <div class="form-group"><label for="nome">Nome do cliente</label> <input type="text" id="nome" name="nome" placeholder="Ex: João Ferreira" class="form-control"></div> <div class="form-group"><label for="destino_telefones">Telefone do Cliente</label> <input type="text" id="destino_telefones" name="destino_telefones" placeholder="Ex: (99) 9 9999-9999" class="form-control celular" maxlength="15"></div> <div class="form-group"><label for="obs">Observações</label> <textarea id="obs" name="obs" placeholder="Ex: Casa amarela próximo a farmácia" rows="5" class="form-control"></textarea></div></div></div> <div class="modal-footer d-flex flex-column"><button type="submit" class="btn btn-warning font-weight-semi-bold py-2 m-0"><div class="my-1">Confirmar saída</div></button> <button type="button" data-dismiss="modal" class="btn py-2 m-0"><div class="my-1">Cancelar</div></button></div></form></div></div></div> <div id="tracking" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Rastreamento do entregador</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i class="fas fa-times-circle"></i></button></div> <div class="modal-body"><div id="mapTracking" class="col-md-12 leaflet-container leaflet-touch leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom" tabindex="0" style="height: 400px;"><div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(0px, 0px, 0px);"><div class="leaflet-pane leaflet-tile-pane"><div class="leaflet-layer " style="z-index: 1; opacity: 1;"><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 18; transform: translate3d(0px, 0px, 0px) scale(1);"><img alt="" role="presentation" src="https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/12/1498/2267.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-244px, -78px, 0px); opacity: 1;"></div></div></div><div class="leaflet-pane leaflet-shadow-pane"></div><div class="leaflet-pane leaflet-overlay-pane"></div><div class="leaflet-pane leaflet-marker-pane"></div><div class="leaflet-pane leaflet-tooltip-pane"></div><div class="leaflet-pane leaflet-popup-pane"></div><div class="leaflet-proxy leaflet-zoom-animated" style="transform: translate3d(383732px, 580430px, 0px) scale(2048);"></div></div><div class="leaflet-control-container"><div class="leaflet-top leaflet-left"><div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="#" title="Zoom in" role="button" aria-label="Zoom in">+</a><a class="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out">−</a></div><div class="leaflet-control-fullscreen leaflet-bar leaflet-control"><a class="leaflet-control-fullscreen-button leaflet-bar-part" href="#" title="View Fullscreen"></a></div></div><div class="leaflet-top leaflet-right"></div><div class="leaflet-bottom leaflet-left"></div><div class="leaflet-bottom leaflet-right"><div class="leaflet-control-attribution leaflet-control"><a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, © <a href="https://carto.com/attribution">CARTO</a></div></div></div></div></div> <div class="modal-footer p-4"><input readonly="readonly" id="linkTrackerInput" name="linkTrackerInput" type="text" value="" class="form-control flex-1 text-sm p-3"> <button value="48c99e31-57b5-4ebf-aa0c-1a7f24c3f25c" name="request_token" class="btn btn-warning flex-unset w-unset"><i class="far fa-copy mr-2"></i> Copiar
+                </button></div></div></div></div> <div id="modalDesignarEntregador" role="dialog" data-keyboard="false" data-backdrop="static" class="modal fade"><div role="document" class="modal-dialog modal-dialog-centered"><div class="modal-content modal-central"><!----> <div class="modal-header p-4"><h4 class="modal-title text-black text-lg">Designar Entregador</h4> <button type="button" data-dismiss="modal" aria-label="Close" class="close"><i clas
