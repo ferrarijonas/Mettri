@@ -683,9 +683,9 @@ export async function processarUltimaMensagem(
         contextoEnviadoCount: tamanhoReprocess,
       } satisfies OuvirProfileUpdatedEvent)
 
-      // Dispara Agent Loop se houver inten��o relevante
+      // Dispara Agent Loop se houver intenção detectada
       const intencao = e.intencao
-      if (intencao && intencao !== 'outro') {
+      if (intencao) {
         const memorias = await memoryStore.prepararContexto(chatId, text).catch(() => undefined)
         const harness = (window as unknown as Record<string, unknown>).__mettriHarness as
           | { loop: { processarMensagem: (chatId: string, msg: string, context?: Record<string, unknown>) => Promise<void> } }
