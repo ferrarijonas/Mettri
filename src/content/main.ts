@@ -61,8 +61,8 @@ class MettriApp {
 
       console.log('[MettriApp] ✅ WhatsAppInterceptors inicializado!');
       
-      // Verificar atualizações de módulos em background (não bloquear UI)
-      this.checkModuleUpdates();
+      // Verificar atualizações de módulos antes de iniciar UI
+      await this.checkModuleUpdates();
       
       // Iniciar UI após interceptors estarem prontos
       this.startUI();
