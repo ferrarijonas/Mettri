@@ -99,6 +99,7 @@ export class WhatsAppInterceptors {
   private N: any = null; // Objeto N (cópia de GroupMetadata.default) - padrão reverse.txt linha 309
   private warnedModules = new Set<string>(); // Rastrear módulos que já geraram avisos
   private suppressModuleWarnings = false; // Flag para suprimir avisos durante inicialização
+  private _skipWindowRequire = false; // WA Web v4+: window.require() causa VersionError no IndexedDB
 
   /**
    * Aguarda o WhatsApp Web ficar "pronto" (padrão WA-Sync: AppState).
@@ -131,8 +132,13 @@ export class WhatsAppInterceptors {
             if (typeof state === 'string' && acceptedStates.has(state)) {
               return;
             }
-          } catch {
-            // Ignorar: módulos podem não estar prontos ainda.
+          } catch (err: any) {
+            // Se for VersionError (WA Web v4+ mudou IndexedDB schema), 
+            // não adianta ficar tentando — WA Web já está pronto, só mudou a API
+            if (err?.name === 'VersionError' || err?.message?.includes('version')) {
+              return;
+            }
+            // Ignorar outros erros: módulos podem não estar prontos ainda.
           }
         } else {
           // Webpack chunk disponível (mesmo que vazio) + #app existe.
@@ -268,7 +274,9 @@ export class WhatsAppInterceptors {
         // Não falhar a inicialização inteira: o modo "WA-Sync" via require()
         // ainda pode expor módulos úteis (WAWebCollections etc.).
       }
-    } else if (window.webpackChunkwhatsapp_web_client) {
+    }
+    // Se Comet não retornou módulos (vazio ou VersionError), tentar Webpack como fallback
+    if (Object.keys(this.modules).length === 0 && window.webpackChunkwhatsapp_web_client) {
       // Sistema Webpack (padrão reverse.txt linhas 228-241)
       this.webpackChunk = window.webpackChunkwhatsapp_web_client;
 
@@ -418,15 +426,40 @@ export class WhatsAppInterceptors {
     try {
       console.log('[Mettri] Tentando detectar conta...');
       
-      // Carregar módulos críticos via window.require() (rápido)
-      const userPrefs = require('WAWebUserPrefsMeUser');
-      if (userPrefs) {
-        Mettri.User = userPrefs;
+      // Carregar módulos críticos via window.require() - PODE falhar no WA Web v4+
+      // (VersionError no IndexedDB: módulos antigos tentam schema v3, WA Web está em v4)
+      try {
+        const userPrefs = require('WAWebUserPrefsMeUser');
+        if (userPrefs) {
+          Mettri.User = userPrefs;
+        }
+      } catch (err: any) {
+        // VersionError = WA Web v4+ mudou IndexedDB. Não usar window.require() para módulos WAWeb*
+        if (err?.name === 'VersionError' || err?.message?.includes('version')) {
+          console.warn('[Mettri] WA Web v4+ detectado — pulando window.require(), usando fallback');
+          this._skipWindowRequire = true;
+        } else {
+          // Outro erro: logar e continuar com fallback
+          console.warn('[Mettri] Erro ao carregar UserPrefs:', err.message);
+        }
       }
 
-      const connModel = require('WAWebConnModel');
-      if (connModel?.Conn) {
-        Mettri.Conn = connModel.Conn;
+      try {
+        const connModel = require('WAWebConnModel');
+        if (connModel?.Conn) {
+          Mettri.Conn = connModel.Conn;
+        }
+      } catch (err: any) {
+        if (!this._skipWindowRequire) {
+          this._skipWindowRequire = err?.name === 'VersionError' || err?.message?.includes('version');
+        }
+        console.warn('[Mettri] Erro ao carregar ConnModel:', err.message);
+      }
+
+      // Se detectou VersionError, usar getters fallback imediatamente
+      if (this._skipWindowRequire) {
+        Mettri.User = this.User;
+        Mettri.Conn = this.Conn;
       }
 
       // Aguardar WID estar disponível (polling com timeout)
@@ -450,8 +483,8 @@ export class WhatsAppInterceptors {
     } catch (error: any) {
       console.error('[Mettri] Erro ao detectar conta:', error.message);
       // Fallback para getters
-      Mettri.User = this.User;
-      Mettri.Conn = this.Conn;
+      Mettri.User = this.User ?? Mettri.User;
+      Mettri.Conn = this.Conn ?? Mettri.Conn;
     }
   }
 
@@ -557,15 +590,19 @@ export class WhatsAppInterceptors {
   private exposeAllModules(Mettri: any): void {
     const require = (window as any).require;
     if (!require || typeof require !== 'function') {
-      // Log removido temporariamente - foco em detecção de conta
       this.exposeAllModulesFallback(Mettri);
       return;
     }
 
     try {
       // Base: WAWebCollections (como WA-Sync faz)
-      const waWebCollections = require('WAWebCollections');
-      Object.assign(Mettri, waWebCollections || {});
+      // Pode lançar VersionError no WA Web v4+ — capturar para não travar
+      try {
+        const waWebCollections = require('WAWebCollections');
+        Object.assign(Mettri, waWebCollections || {});
+      } catch {
+        // WAWebCollections pode falhar com VersionError no WA Web v4+, seguir com fallback
+      }
 
       // Módulos específicos (padrão WA-Sync - try/catch individual)
       try {

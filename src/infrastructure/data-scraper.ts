@@ -137,7 +137,7 @@ const MessageSchema = z.object({
     .passthrough()
     .optional(),
   quotedMsg: z.any().optional(),
-  quotedRemoteJid: z.string().optional(),
+  quotedRemoteJid: z.union([z.string(), z.object({}).passthrough()]).optional(),
   isQuotedMsgAvailable: z.boolean().optional(),
   // Backing fields __x_* (propriedades próprias no objeto WhatsApp, preservadas pelo Zod)
   __x_quotedStanzaID: z.string().optional(),

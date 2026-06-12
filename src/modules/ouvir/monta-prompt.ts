@@ -10,6 +10,9 @@ import confirmacaoCompra from './prompts/resposta-confirmacao.md'
 import contextoConversa from './prompts/contexto-conversa.md'
 import decisaoSistema from './prompts/decisao-sistema.md'
 
+import sistemaMd from './prompts/sistema.md'
+import modoAtendenteMd from './prompts/modo-atendente.md'
+
 import type { EstadoPercebido, MensagemHistorico } from './types'
 import type { ContextoMemorias } from '../harness/memory-store'
 import type { EnvInfo } from '../harness/env-config'
@@ -81,50 +84,67 @@ function gerarSecaoTools(tools: { nome: string; descricao: string; categoria: st
   ].join('\n')
 }
 
-// ── Seções registradas (estáticas, cacheáveis) ──
-
 interface Secao {
   id: string
   ativo: boolean
   conteudo: string
 }
 
+/** Monta o bloco <ambiente> a partir do envInfo */
+function gerarAmbiente(envInfo: EnvInfo, today?: string): string {
+  return [
+    '<ambiente>',
+    `Negócio: ${envInfo.businessName}`,
+    `Cidade: ${envInfo.city}`,
+    `Fuso: ${envInfo.timezone}`,
+    `Hoje: ${today ?? '(indisponível)'}`,
+    `Versão: ${envInfo.version}`,
+    `Modelo: ${envInfo.modelName}`,
+    '</ambiente>',
+  ].join('\n')
+}
+
 /**
  * Monta o prompt do sistema a partir das seções solicitadas.
  *
- * Separação cacheável vs dinâmico:
- * - System prompt = identidade + regras de extração + resposta (não muda entre msgs)
- * - User prompt = mensagem + catálogo + perfil_atual (muda a cada chamada)
+ * System prompt (cacheável):
+ *   1. "Você é a Mettri, atendente de IA para WhatsApp." (identidade do sistema)
+ *   2. # Sistema — regras gerais
+ *   3. # Modo Atendente — como pensar como atendente
+ *   4. <ambiente> — dados da sessão (negócio, cidade, data)
+ *   5. Persona + tom de voz
+ *   6. Extração + Decisão (ferramentas)
  *
- * Uso com DeepSeek:
- *   messages: [
- *     { role: "system", content: systemPrompt },
- *     { role: "user", content: userPrompt },
- *   ]
+ * User prompt (dinâmico):
+ *   DIRETRIZES DO NEGÓCIO + PREFERÊNCIAS DO CLIENTE + CONVERSA ATUAL
  */
 export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
-  // ── Camada 1: Identidade do sistema Mettri ──
-  const linhasIdentidade: string[] = [
-    'Você é a Mettri, atendente de IA para WhatsApp.',
-  ]
+  // ── Linha de abertura: identidade do sistema Mettri ──
+  const prefixoIdentidade = 'Você é a Mettri, atendente de IA para WhatsApp.'
 
-  // ── Camada 2: Bloco <ambiente> ──
-  if (input.envInfo) {
-    const e = input.envInfo
-    linhasIdentidade.push('', '<ambiente>')
-    linhasIdentidade.push(`Negócio: ${e.businessName}`)
-    linhasIdentidade.push(`Cidade: ${e.city}`)
-    linhasIdentidade.push(`Fuso: ${e.timezone}`)
-    linhasIdentidade.push(`Hoje: ${input.today ?? '(indisponível)'}`)
-    linhasIdentidade.push(`Versão: ${e.version}`)
-    linhasIdentidade.push(`Modelo: ${e.modelName}`)
-    linhasIdentidade.push('</ambiente>')
-  }
+  // ── Bloco <ambiente> (se fornecido) ──
+  const ambienteBlock = input.envInfo ? gerarAmbiente(input.envInfo, input.today) : null
 
-  const prefixoIdentidade = linhasIdentidade.join('\n')
-
-  // ── Seções existentes ──
+  // ── Seções registradas ──
   const secoes: Secao[] = [
+    // Seções obrigatórias do core Mettri (sempre presentes)
+    {
+      id: 'sistema',
+      ativo: true,
+      conteudo: sistemaMd,
+    },
+    {
+      id: 'modoAtendente',
+      ativo: true,
+      conteudo: modoAtendenteMd,
+    },
+    // Bloco <ambiente> (dinâmico)
+    {
+      id: 'ambiente',
+      ativo: ambienteBlock !== null,
+      conteudo: ambienteBlock ?? '',
+    },
+    // Seções modulares (controladas por flags)
     {
       id: 'identidade',
       ativo: input.identidade !== false,
@@ -152,7 +172,7 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
     },
   ]
 
-  // System prompt: prefixo + seções ativas
+  // System prompt: prefixo + seções ativas (ordenadas)
   const corpo = secoes
     .filter(s => s.ativo)
     .map(s => s.conteudo.trim())

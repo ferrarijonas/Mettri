@@ -19,7 +19,15 @@ export class DeliveryService {
   private adapters = new Map<string, DeliveryAdapter>();
 
   constructor() {
-    this.registrarAdapter(new BeeDeliveryAdapter());
+    const beeAdapter = new BeeDeliveryAdapter();
+    // Configuração padrão: endereço da Pão de Verdade em Uberlândia
+    beeAdapter.configurar({
+      originLatitude: '-18.92117849290788',
+      originLongitude: '-48.25612809276656',
+      empresaId: '168556',
+      franquiaId: '19',
+    });
+    this.registrarAdapter(beeAdapter);
   }
 
   /**
