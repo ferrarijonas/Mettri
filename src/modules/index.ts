@@ -17,7 +17,6 @@ import { registrarPedido } from './harness/tools/registrar-pedido';
 import { enviarMensagem } from './harness/tools/enviar-mensagem';
 import { cotarFrete } from './harness/tools/cotar-frete';
 import { solicitarEntregaBee } from './harness/tools/solicitar-entrega-bee';
-import { consultarSaldoBee } from './harness/tools/consultar-saldo-bee';
 import { AtendimentoModule } from './atendimento/atendimento-module';
 import { ClientesModule } from './clientes/clientes-module';
 import { InspectorPopup } from './harness/inspector-popup';
@@ -117,7 +116,6 @@ export const harnessModule: MettriModule = {
     registry.registrar(enviarMensagem);
     registry.registrar(cotarFrete);
     registry.registrar(solicitarEntregaBee);
-    registry.registrar(consultarSaldoBee);
 
     const loop = new AgentLoop(registry, eventBus);
 
