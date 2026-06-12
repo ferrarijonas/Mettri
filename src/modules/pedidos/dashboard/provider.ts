@@ -76,7 +76,7 @@ export async function getPedidosViewModel(params?: {
   filtroStatus?: FiltroStatus;
   busca?: string;
 }): Promise<PedidosViewModel> {
-  let pedidosBrutos: PedidoCardVm[] = [];
+  const pedidosBrutos: PedidoCardVm[] = [];
 
   try {
     await orderDB.ensureReady();

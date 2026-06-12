@@ -41,6 +41,8 @@ import { CampanhasModule } from './campanhas/campanhas-module';
 import { CampanhasDashboardModule } from './campanhas/dashboard/dashboard-module';
 import { PedidosModule } from './pedidos/pedidos-module';
 import { PedidosDashboardModule } from './pedidos/dashboard/dashboard-module';
+import { DeliveryModule } from './delivery/delivery-module';
+import { DeliveryDashboardModule } from './delivery/dashboard/dashboard-module';
 
 // Global augmentation para expor harness no console (sem as any)
 declare global {
@@ -68,6 +70,7 @@ export function registerAllModules(registry: ModuleRegistry): void {
   registry.register(VitrineModule);
   registry.register(CampanhasModule);
   registry.register(PedidosModule);
+  registry.register(DeliveryModule);
 
   // Depois registrar módulos filhos
   registry.register(AtendimentoDashboardModule);
@@ -85,6 +88,7 @@ export function registerAllModules(registry: ModuleRegistry): void {
   registry.register(EnviarResponderModule);
   registry.register(EnviarDivulgarModule);
   registry.register(PedidosDashboardModule);
+  registry.register(DeliveryDashboardModule);
 }
 
 /**

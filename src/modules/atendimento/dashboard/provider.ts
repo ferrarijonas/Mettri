@@ -745,7 +745,7 @@ function parseQuantidade(nome: string): { qty: number; nome: string } {
 /** Busca produto no catálogo com match fuzzy (exato → contém → parcial). */
 function buscarProdutoCatalogo(
   texto: string,
-  produtos: Array<{ productId: string; nome: string; precoCentavos: number }>
+  produtos: { productId: string; nome: string; precoCentavos: number }[]
 ): { productId: string; nome: string; precoCentavos: number } | null {
   const norm = normalizeText(texto)
   if (!norm || produtos.length === 0) return null
@@ -886,7 +886,7 @@ async function buildPedidoAuto(perfil: any): Promise<{
   const itens: PedidoItemAuto[] = []
 
   // Carregar catálogo
-  let produtosCatalogo: Array<{ productId: string; nome: string; precoCentavos: number }> = []
+  let produtosCatalogo: { productId: string; nome: string; precoCentavos: number }[] = []
   try {
     const accountId = catalogoDB.getCurrentUserWid() || 'default'
     const todos = await catalogoDB.listByAccount(accountId)
@@ -985,7 +985,7 @@ async function buildPedidoAuto(perfil: any): Promise<{
 /** Monta vitrine inline com produtos do catálogo não incluídos no pedido atual. */
 async function buildVitrineInline(perfil: any, itensPedido: PedidoItemAuto[]): Promise<VitrineItemUi[]> {
   const accountId = catalogoDB.getCurrentUserWid() || 'default'
-  let todos: Array<{ productId: string; nome: string; precoCentavos: number }> = []
+  let todos: { productId: string; nome: string; precoCentavos: number }[] = []
   try {
     const raw = await catalogoDB.listByAccount(accountId)
     todos = raw
