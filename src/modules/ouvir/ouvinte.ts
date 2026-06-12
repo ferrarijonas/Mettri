@@ -474,16 +474,39 @@ export function registerOuvinteListeners(
 
   eventBus.on('message:new', handler)
 
-  // Intercepta clique do usu�rio nos chats do WhatsApp (via DOM)
-  // ActiveChatService n�o emite evento quando clica no mesmo chat � esta � a garantia
+  // Intercepta clique do usuário nos chats do WhatsApp (via DOM)
+  // ActiveChatService não emite evento quando clica no mesmo chat — esta é a garantia
   // de que todo clique manual dispara processamento.
   function onChatListClick(e: MouseEvent): void {
-    // Tenta m�ltiplos seletores de chat row (WA Web muda com vers�es)
+    // Tenta múltiplos seletores de chat row (WA Web muda com versões)
     const chatRow = (e.target as HTMLElement)
       ?.closest('[role="row"], [role="option"], [data-testid*="cell-frame"]')
     if (!chatRow) return
 
-    // Extrai chatId do WhatsApp via Store
+    // Estratégia 1: Mettri interceptors (acesso direto aos módulos WA)
+    try {
+      const mettri = (window as unknown as Record<string, unknown>).Mettri as
+        | { Chat?: { getActive?: () => { id?: { _serialized?: string } | string } | null } }
+        | undefined
+      if (mettri?.Chat?.getActive) {
+        // Pequeno delay para o WhatsApp atualizar o estado interno após o clique
+        setTimeout(() => {
+          try {
+            const active = mettri.Chat!.getActive!()
+            const rawId = active?.id
+            const chatId = typeof rawId === 'string' ? rawId : rawId?._serialized
+            if (chatId && chatId !== activeChatId) {
+              activeChatId = chatId
+              console.log('[ouvinte] clique detectado (mettri):', chatId.substring(0, 25))
+              processarUltimaMensagem(chatId, eventBus).catch(() => {})
+            }
+          } catch { /* silencioso */ }
+        }, 150)
+        return
+      }
+    } catch { /* Mettri não disponível */ }
+
+    // Estratégia 2 (fallback): Store do WhatsApp (versões antigas)
     try {
       const titleEl = chatRow.querySelector('[title]')
       const title = titleEl?.getAttribute('title') || ''
@@ -507,7 +530,7 @@ export function registerOuvinteListeners(
           }
         }
       }
-    } catch { /* Store n�o dispon�vel */ }
+    } catch { /* Store não disponível */ }
   }
 
   // Usa event delegation no document para capturar cliques em chats
