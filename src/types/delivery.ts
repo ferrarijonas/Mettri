@@ -19,7 +19,7 @@ export type DeliveryStatus =
   | 'failed';
 
 // Transportadora/parceiro
-export type CarrierId = 'ifood' | 'bee-delivery';
+export type CarrierId = 'bee-delivery';
 
 // Endereço de entrega
 export interface EnderecoEntrega {

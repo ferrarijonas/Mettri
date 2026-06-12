@@ -60,8 +60,8 @@ export const DeliveryDashboardModule: ModuleDefinition = {
             <div style="border-top: 1px solid #eee; padding-top: 12px;">
               <h3 style="font-size: 13px; margin: 0 0 8px; color: #666;">Próximos passos</h3>
               <ul style="font-size: 12px; color: #666; margin: 0; padding-left: 16px;">
-                <li>Configurar credenciais iFood (Settings)</li>
                 <li>Solicitar API key da Bee Delivery</li>
+                <li>Configurar credenciais no Settings</li>
                 <li>Integrar com módulo Pedidos</li>
               </ul>
             </div>

@@ -13,7 +13,7 @@ import type {
 } from '../../types/delivery';
 
 export interface DeliveryAdapter {
-  /** ID único do carrier (ex: 'ifood', 'bee-delivery') */
+  /** ID único do carrier (ex: 'bee-delivery') */
   id: string;
 
   /** Nome exibível */

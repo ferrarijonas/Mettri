@@ -5,7 +5,6 @@ import { connectToChrome } from '../../tests/automation/cdp-browser';
 
 export type PlatformType = 
   | 'menudino' 
-  | 'ifood' 
   | 'ubereats' 
   | 'toast' 
   | 'square'
@@ -50,7 +49,6 @@ const DEFAULT_TTL_MINUTES = 15;
 
 const PLATFORM_PATTERNS: Record<PlatformType, RegExp[]> = {
   menudino: [/menudino\.com/i, /cardapio\.menu/i],
-  ifood: [/ifood\.com\.br/i, /ifood/i],
   ubereats: [/ubereats\.com/i, /ubereats/i],
   toast: [/toastpos\.com/i, /toast\.com/i],
   square: [/squareup\.com/i, /square\.com/i],
@@ -64,11 +62,6 @@ const PRODUCT_SELECTORS: Record<PlatformType, string[]> = {
     '.prato-item',
     '[data-product]',
     '.item-product',
-  ],
-  ifood: [
-    '.product-item',
-    '.item-card',
-    '[data-testid="product-item"]',
   ],
   ubereats: [
     '[data-testid="menu-item"]',
@@ -235,7 +228,6 @@ export class MenuScraper {
   ): Promise<{ products: ScrapedProduct[]; confidence: number }> {
     const apiEndpoints: Record<PlatformType, string | null> = {
       menudino: this.guessApiEndpoint(url, 'menudino'),
-      ifood: this.guessApiEndpoint(url, 'ifood'),
       ubereats: this.guessApiEndpoint(url, 'ubereats'),
       toast: this.guessApiEndpoint(url, 'toast'),
       square: this.guessApiEndpoint(url, 'square'),
