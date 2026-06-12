@@ -257,6 +257,50 @@ export class BeeDeliveryAdapter implements DeliveryAdapter {
     return Number(data.saldo || 0);
   }
 
+  // ─── Taxa Dinâmica ───
+
+  /**
+   * Consulta a taxa dinâmica atual da Bee Delivery.
+   *
+   * A taxa dinâmica é um adicional variável baseado na demanda de entregadores
+   * na região no momento (surge pricing).
+   *
+   * Endpoint: GET /central/entregas/dinamica/verificar
+   * Resposta: { vl_dinamica: string, vl_dinamica_empresa: string }
+   */
+  async consultarTaxaDinamica(): Promise<{
+    valorEmpresa: number;
+    valorMotoboy: number;
+    timestamp: string;
+  }> {
+    const token = await this.obterCsrfToken();
+    const url = `${BEE_BASE}/entregas/dinamica/verificar`;
+
+    const resp = await fetch(url, {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': token,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Bee Delivery: taxa dinâmica HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json() as {
+      vl_dinamica?: string;
+      vl_dinamica_empresa?: string;
+    };
+
+    return {
+      valorEmpresa: Number(data.vl_dinamica_empresa) || 0,
+      valorMotoboy: Number(data.vl_dinamica) || 0,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   // ─── Implementação DeliveryAdapter ───
 
   /**
