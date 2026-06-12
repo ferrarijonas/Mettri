@@ -495,7 +495,7 @@ export function registerOuvinteListeners(
             const active = mettri.Chat!.getActive!()
             const rawId = active?.id
             const chatId = typeof rawId === 'string' ? rawId : rawId?._serialized
-            if (chatId && chatId !== activeChatId) {
+            if (chatId) {
               activeChatId = chatId
               console.log('[ouvinte] clique detectado (mettri):', chatId.substring(0, 25))
               processarUltimaMensagem(chatId, eventBus).catch(() => {})
