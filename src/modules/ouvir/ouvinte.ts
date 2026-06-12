@@ -437,7 +437,7 @@ export function registerOuvinteListeners(
           const mettriHarness = (window as unknown as Record<string, unknown>).__mettriHarness as
             | { loop: { processarMensagem: (chatId: string, msg: string, context?: Record<string, unknown>) => Promise<void> } }
             | undefined
-          if (intencao && intencao !== 'outro' && mettriHarness?.loop) {
+          if (intencao && mettriHarness?.loop) {
             console.log('[ouvinte] disparando AgentLoop para:', chatId.substring(0, 20), text.substring(0, 40))
             mettriHarness.loop.processarMensagem(chatId, text, {
               profile,
