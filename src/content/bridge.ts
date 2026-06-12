@@ -30,34 +30,47 @@ function postResponse(response: BridgeResponse): void {
   window.postMessage(response, '*');
 }
 
+async function withRetry<T>(fn: () => Promise<T>, attempt = 1): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (attempt < 2 && (msg.includes('context invalidated') || msg.includes('Extension context'))) {
+      await new Promise(r => setTimeout(r, 500));
+      return withRetry(fn, 2);
+    }
+    throw err;
+  }
+}
+
 function getStorage(keys: string[]): Promise<Record<string, unknown>> {
-  return new Promise((resolve, reject) => {
+  return withRetry(() => new Promise<Record<string, unknown>>((resolve, reject) => {
     chrome.storage.local.get(keys, result => {
       const err = chrome.runtime.lastError;
       if (err) return reject(err);
       resolve(result as Record<string, unknown>);
     });
-  });
+  }));
 }
 
 function setStorage(items: Record<string, unknown>): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return withRetry(() => new Promise<void>((resolve, reject) => {
     chrome.storage.local.set(items, () => {
       const err = chrome.runtime.lastError;
       if (err) return reject(err);
       resolve();
     });
-  });
+  }));
 }
 
 function removeStorage(keys: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return withRetry(() => new Promise<void>((resolve, reject) => {
     chrome.storage.local.remove(keys, () => {
       const err = chrome.runtime.lastError;
       if (err) return reject(err);
       resolve();
     });
-  });
+  }));
 }
 
 /** No MV3, `chrome.downloads` não existe no content script; blob: só funciona no documento da aba. */
