@@ -296,7 +296,18 @@ describe('orquestrador_indexacao_rag (RAG)', () => {
 
     // Executa orquestrador com dependências reais (fonte via messageDB)
     const index = new FakeVectorIndex();
-    const bridge = { embed: async () => [0.1, 0.2, 0.3] } as unknown as MettriBridgeClient;
+    const mockEmbedding = Array.from({ length: 1536 }, (_, i) => (i + 1) / 1536);
+    const bridge = {
+      embed: async () => mockEmbedding,
+      storageGet: async () => ({ 'mettri:openai:apiKey': 'sk-fake-test-key' }),
+      netFetch: async () => ({
+        ok: true,
+        status: 200,
+        text: JSON.stringify({
+          data: [{ embedding: mockEmbedding, index: 0 }],
+        }),
+      }),
+    } as unknown as MettriBridgeClient;
 
     await orquestrador_indexacao_rag({
       chatId,

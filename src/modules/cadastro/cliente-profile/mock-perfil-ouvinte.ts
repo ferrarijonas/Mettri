@@ -1,5 +1,5 @@
 // Tipo local para o mock - não precisa de importação (definido em customer-profile-db.ts)
-type MockPerfil = {
+interface MockPerfil {
   chatId: string;
   segmentos: string[];
   confiancaPerfil: number;
@@ -47,7 +47,7 @@ type MockPerfil = {
   };
   updatedAtIso: string;
   modelVersion: string;
-};
+}
 
 /**
  * Mock data para testar a UI do perfil do cliente com os novos campos do Ouvinte.

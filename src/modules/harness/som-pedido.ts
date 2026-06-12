@@ -28,12 +28,25 @@
  */
 export async function tocarSomPedidoFechado(): Promise<void> {
   try {
-    const AudioCtx = window.AudioContext
-      || (window as unknown as Record<string, unknown>).webkitAudioContext;
+    console.log('[mettri] 🎵 Pedido fechado! Tocando som de caixa registradora');
 
-    if (!AudioCtx) return; // Sem suporte a Web Audio
+    // Só funciona em contexto de página (content script), não em service worker
+    if (typeof window === 'undefined' || !('AudioContext' in window) && !('webkitAudioContext' in window)) {
+      console.log('[mettri] Web Audio API não disponível (service worker?)');
+      return;
+    }
 
-    const ctx = new (AudioCtx as new () => AudioContext)();
+    const AudioCtx = (window as unknown as { AudioContext?: new () => AudioContext; webkitAudioContext?: new () => AudioContext }).AudioContext
+      || (window as unknown as { AudioContext?: new () => AudioContext; webkitAudioContext?: new () => AudioContext }).webkitAudioContext;
+
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+
+    // Se o contexto está suspenso (autoplay policy), tenta resume
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
 
     // "Ka" — sweep ascendente curto
     const osc1 = ctx.createOscillator();

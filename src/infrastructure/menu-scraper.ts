@@ -1,5 +1,7 @@
-import puppeteer, { Browser, Page } from 'puppeteer-core';
-import { connectToChrome, ConnectedBrowser } from '../../tests/automation/cdp-browser';
+import type { Page } from 'puppeteer-core';
+import puppeteer, { Browser } from 'puppeteer-core';
+import type { ConnectedBrowser } from '../../tests/automation/cdp-browser';
+import { connectToChrome } from '../../tests/automation/cdp-browser';
 
 export type PlatformType = 
   | 'menudino' 
@@ -93,7 +95,7 @@ const PRODUCT_SELECTORS: Record<PlatformType, string[]> = {
 };
 
 export class MenuScraper {
-  private cache: Map<string, CacheEntry> = new Map();
+  private cache = new Map<string, CacheEntry>();
 
   async scrape(input: MenuScraperInput): Promise<MenuScraperOutput> {
     const { url, options } = input;

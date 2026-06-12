@@ -488,7 +488,7 @@ export function registerOuvinteListeners(
       const titleEl = chatRow.querySelector('[title]')
       const title = titleEl?.getAttribute('title') || ''
       const store = (window as unknown as Record<string, unknown>).Store as
-        | { Chat?: { getModelsArray?: () => Array<Record<string, unknown>> } }
+        | { Chat?: { getModelsArray?: () => Record<string, unknown>[] } }
         | undefined
       if (store?.Chat && typeof store.Chat.getModelsArray === 'function') {
         const allChats = store.Chat.getModelsArray()

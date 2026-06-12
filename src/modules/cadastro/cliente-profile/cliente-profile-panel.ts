@@ -90,7 +90,7 @@ export class ClienteProfilePanel {
   private purchases: ManualPurchaseRecord[] = [];
   private error: string | null = null;
 
-  private editableFields: Map<string, EditableField> = new Map();
+  private editableFields = new Map<string, EditableField>();
   private showPurchaseForm = false;
   private purchaseFormData: PurchaseFormData = {
     purchaseDate: new Date().toISOString().split('T')[0],
@@ -101,7 +101,7 @@ export class ClienteProfilePanel {
   private savingPurchase = false;
 
   private previousFieldValues: Record<string, string> = {};
-  private updatedFields: Set<string> = new Set();
+  private updatedFields = new Set<string>();
   private ouvinteAtivo = false;
   private processandoOuvinte = false;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;

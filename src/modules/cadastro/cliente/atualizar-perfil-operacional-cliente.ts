@@ -85,10 +85,10 @@ function extrairQtd(rotulo: string): { nome: string; qtd: number | null } {
 function detectarConflitoProduto(
   novos: string[] | undefined,
   existentes: string[] | undefined,
-): Array<{ produto: string; atual: string; proposto: string; evidencia: string }> {
+): { produto: string; atual: string; proposto: string; evidencia: string }[] {
   if (!novos || novos.length === 0 || !existentes || existentes.length === 0) return []
 
-  const conflitos: Array<{ produto: string; atual: string; proposto: string; evidencia: string }> = []
+  const conflitos: { produto: string; atual: string; proposto: string; evidencia: string }[] = []
 
   // Indexa existentes por nome normalizado
   const indexExistentes = new Map<string, string>()

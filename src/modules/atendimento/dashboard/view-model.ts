@@ -124,7 +124,7 @@ export interface EstadoPercebidoVm {
 /** Debug info do Ouvinte (exibido na UI para verificação) */
 export interface OuvinteDebugVm {
   ultimaMensagemProcessada?: string;
-  camposExtraidos?: Array<{ campo: string; valor: string; confianca: string }>;
+  camposExtraidos?: { campo: string; valor: string; confianca: string }[];
   sugestaoPendente?: SugestaoAmbiguidadeVm;
   /** NOVO: Estado percebido do pedido */
   estadoPercebido?: EstadoPercebidoVm;
