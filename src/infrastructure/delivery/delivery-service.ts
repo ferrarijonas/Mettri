@@ -13,14 +13,12 @@ import type {
   StatusEntrega,
   CarrierId,
 } from '../../types/delivery';
-import { IfoodAdapter } from './ifood-adapter';
 import { BeeDeliveryAdapter } from './bee-delivery-adapter';
 
 export class DeliveryService {
   private adapters = new Map<string, DeliveryAdapter>();
 
   constructor() {
-    this.registrarAdapter(new IfoodAdapter());
     this.registrarAdapter(new BeeDeliveryAdapter());
   }
 
