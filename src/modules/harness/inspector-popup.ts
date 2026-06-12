@@ -26,8 +26,17 @@ export class InspectorPopup {
   private contentEl: HTMLDivElement | null = null;
   private eventBus: EventBus | null = null;
   private disposers: (() => void)[] = [];
-  private eventos: TimelineItem[] = [];
+  private eventosPorChat = new Map<string, TimelineItem[]>();
   private chatIdAtivo: string | null = null;
+  private get eventos(): TimelineItem[] {
+    if (!this.chatIdAtivo) return [];
+    let arr = this.eventosPorChat.get(this.chatIdAtivo);
+    if (!arr) {
+      arr = [];
+      this.eventosPorChat.set(this.chatIdAtivo, arr);
+    }
+    return arr;
+  }
   private resolverNome: ((chatId: string) => string) | null = null;
   private envHeaderInfo: { businessName: string; today: string } | null = null;
 
@@ -202,11 +211,9 @@ export class InspectorPopup {
     this.disposers.push(
       this.onDisposable<{ chatId: string | null }>('chat:active-changed', (data) => {
         const novoChatId = data.chatId;
-        // Ignora null — ActiveChatService emite null quando não detecta chat,
-        // mas não deve limpar eventos já acumulados
         if (!novoChatId || novoChatId === this.chatIdAtivo) return;
         this.chatIdAtivo = novoChatId;
-        this.eventos = [];
+        // Preserva eventos do chat anterior — renderiza os já acumulados para o novo chat
         this.atualizarInfo();
         this.renderizarTimeline();
       }),
@@ -218,7 +225,7 @@ export class InspectorPopup {
         // Sempre segue o chat que gerou o turno — sobrepõe chat:active-changed
         if (data.chatId !== this.chatIdAtivo) {
           this.chatIdAtivo = data.chatId;
-          this.eventos = [];
+          this.eventosPorChat.set(data.chatId, []); // zera só o chat novo
         }
         const detalhes: string[] = [];
         const nome = this.resolverNome ? this.resolverNome(data.chatId) : '';
