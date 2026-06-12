@@ -268,6 +268,8 @@ export class PedidosPanel {
 
     const canComplete = p.status === 'awaiting_payment';
     const canCancel = p.status === 'draft' || p.status === 'open';
+    const canDeliver = p.status === 'open' || p.status === 'awaiting_payment';
+    const hasAddress = p.funil.endereco.estado === 'ok' && !!p.funil.endereco.valor;
 
     const actions = [
       canComplete ? `<button class="pedidos-action-btn text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30" data-action="pedido:complete" data-order-id="${p.orderId}">Marcar como pago</button>` : '',
@@ -309,6 +311,26 @@ export class PedidosPanel {
         <div class="flex gap-1.5 mt-2 pt-2 border-t border-border/50">
           ${actions}
         </div>
+
+        ${canDeliver && hasAddress ? `
+        <div class="mt-2 pt-2 border-t border-border/50">
+          <div class="flex items-center gap-1 mb-1.5">
+            <span class="text-[10px] uppercase tracking-wider text-muted-foreground/40">🚚 Entrega</span>
+          </div>
+          <div class="text-[10px] text-muted-foreground/60 mb-1.5 truncate" title="${this.escapeHtml(p.funil.endereco.valor || '')}">
+            ${this.escapeHtml(p.funil.endereco.valor || '')}
+          </div>
+          <div class="flex gap-1.5">
+            <button class="pedidos-action-btn text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30" data-action="delivery:quote" data-order-id="${p.orderId}" data-endereco="${this.escapeHtml(p.funil.endereco.valor || '')}">
+              🐝 Cotar frete
+            </button>
+            <button class="pedidos-action-btn text-[10px] px-2 py-0.5 rounded-full bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30 hidden bee-order-btn" data-action="delivery:order" data-order-id="${p.orderId}">
+              🐝 Chamar motoboy
+            </button>
+          </div>
+          <div class="bee-delivery-info text-[10px] text-muted-foreground/40 mt-1"></div>
+        </div>
+        ` : ''}
       </div>
     `;
 
@@ -374,8 +396,10 @@ export class PedidosPanel {
         const action = el.dataset.action;
         const orderId = el.dataset.orderId;
         const chatId = el.dataset.chatId;
+        const endereco = el.dataset.endereco;
+        const frete = el.dataset.frete;
         if (action && orderId) {
-          this.onAction?.(action, { orderId, chatId });
+          this.onAction?.(action, { orderId, chatId, endereco, frete });
         }
       });
     });
