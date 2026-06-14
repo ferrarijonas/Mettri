@@ -589,10 +589,10 @@ export async function processarUltimaMensagem(
     // Busca profile
     const profile = await customerProfileDB.getByChatId(chatId)
 
-    // Se j� tem sugestoesPendentes, n�o precisa reprocessar
+    // Se j� tem sugestoesPendentes, loga mas continua processando
+    // (removido early return — cliques manuais precisam disparar AgentLoop mesmo com sugestoes existentes)
     if (profile?.sugestoesPendentes?.length) {
-      console.warn('[ouvinte:early-return] sugestoesPendentes existentes | chatId:', chatId.substring(0, 25), '| count:', profile.sugestoesPendentes.length)
-      return false
+      console.warn('[ouvinte:sugestoes-pendentes] reutilizando sugestoes existentes | chatId:', chatId.substring(0, 25), '| count:', profile.sugestoesPendentes.length)
     }
 
     // Busca candidatos do cat�logo (match com TODAS as mensagens do cliente, n�o s� a �ltima)
