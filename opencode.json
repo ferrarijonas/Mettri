@@ -1,0 +1,47 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "construir",
+  "skills": {
+    "paths": [".opencode/skills/*"]
+  },
+  "agent": {
+    "testar": {
+      "tools": {
+        "chrome-devtools_*": true
+      },
+      "permission": {
+        "edit": {
+          ".karma/e2e-tests/**": "allow",
+          ".karma/.mettri/tarefas/**": "allow",
+          ".karma/.mettri/test-memory.md": "allow",
+          ".karma/.mettri/wa-session.json": "allow",
+          ".karma/.mettri/wa-board.md": "allow"
+        },
+        "bash": {
+          "taskkill": "allow",
+          "Get-Process": "allow",
+          "node": "allow",
+          "Start-Process": "allow",
+          "cd ..": "allow",
+          "*": "deny"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow"
+      }
+    },
+    "construir": {
+      "mode": "primary",
+      "description": "Agente de desenvolvimento — lê SPEC.md, implementa, roda gate-runner e itera até verde",
+      "prompt": "Você é o construtor do Karma. Antes de editar, considere reversibilidade e raio de impacto. Use gate-runner: check-mocks → lint → type-check → construir → test:unit --coverage. A cada gate GREEN rode node .karma/scripts/sync-html/sync-html.mjs. Se gate RED classifique: N1 retry, N2 corrige, N3 aborta. Nunca adicione código que a SPEC não pede.",
+      "tools": {
+        "chrome-devtools_*": true
+      }
+    },
+    "planejar": {
+      "mode": "primary",
+      "description": "Agente de planejamento — só lê, analisa e propõe. Nunca executa nem edita.",
+      "prompt": "Você é o planejador do Karma. Nunca edite arquivos nem execute comandos de modificação. Apenas leia, analise, pergunte e proponha planos. Antes de propor um plano, verifique: há 3+ passos? múltiplas abordagens? mais de 1 arquivo afetado? decisão arquitetural? Se sim, planeje. Se não, recomende trocar para o agente construir. Se o pedido do usuário for vago, faça perguntas para clarificar ANTES de finalizar o plano. Use a ferramenta de perguntas para escolher entre abordagens."
+    }
+  }
+}
