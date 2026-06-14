@@ -275,30 +275,33 @@ export class WhatsAppInterceptors {
         // ainda pode expor módulos úteis (WAWebCollections etc.).
       }
     }
-    // Se Comet não retornou módulos (vazio ou VersionError), tentar Webpack como fallback
-    if (Object.keys(this.modules).length === 0 && window.webpackChunkwhatsapp_web_client) {
-      // Sistema Webpack (padrão reverse.txt linhas 228-241)
-      this.webpackChunk = window.webpackChunkwhatsapp_web_client;
+    // Se Comet retornou módulos, estamos prontos.
+    // Caso contrário, tentar Webpack como fallback.
+    if (Object.keys(this.modules).length === 0) {
+      if (window.webpackChunkwhatsapp_web_client) {
+        // Sistema Webpack (padrão reverse.txt linhas 228-241)
+        this.webpackChunk = window.webpackChunkwhatsapp_web_client;
 
-      const randomId = Math.random().toString(36).substring(7);
+        const randomId = Math.random().toString(36).substring(7);
 
-      this.modules = {};
-      this.webpackChunk.push([
-        [randomId],
-        {},
-        (moduleFactory: any) => {
-          // moduleFactory.m contém o mapa de módulos (padrão reverse.txt linha 235)
-          for (const id in moduleFactory.m) {
-            this.modules[id] = () => moduleFactory(id);
-          }
-        },
-      ]);
+        this.modules = {};
+        this.webpackChunk.push([
+          [randomId],
+          {},
+          (moduleFactory: any) => {
+            // moduleFactory.m contém o mapa de módulos (padrão reverse.txt linha 235)
+            for (const id in moduleFactory.m) {
+              this.modules[id] = () => moduleFactory(id);
+            }
+          },
+        ]);
 
-      // #region agent log
-      // Usando Webpack bundler
-      // #endregion
-    } else {
-      throw new Error('Cannot find bundler');
+        // #region agent log
+        // Usando Webpack bundler
+        // #endregion
+      } else {
+        throw new Error('Cannot find bundler');
+      }
     }
 
     // Padrão do reverse.txt (linhas 278-284): definir getters lazy
