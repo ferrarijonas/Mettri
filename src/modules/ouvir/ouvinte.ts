@@ -559,7 +559,10 @@ export async function processarUltimaMensagem(
   try {
     // Carrega �ltimas 30 mensagens pra popular o ring buffer e dar contexto ao LLM
     const ultimas = await messageDB.getMessages(chatId, 30)
-    if (ultimas.length === 0) return false
+    if (ultimas.length === 0) {
+      console.warn('[ouvinte:early-return] sem mensagens | chatId:', chatId.substring(0, 25))
+      return false
+    }
 
     // Popula ring buffer com todas as mensagens carregadas (ambas dire��es)
     // para que ouvinteLlm tenha hist�rico de conversa completo
@@ -578,13 +581,19 @@ export async function processarUltimaMensagem(
         break
       }
     }
-    if (!text) return false
+    if (!text) {
+      console.warn('[ouvinte:early-return] sem texto do cliente (>=10 chars) | chatId:', chatId.substring(0, 25))
+      return false
+    }
 
     // Busca profile
     const profile = await customerProfileDB.getByChatId(chatId)
 
     // Se j� tem sugestoesPendentes, n�o precisa reprocessar
-    if (profile?.sugestoesPendentes?.length) return false
+    if (profile?.sugestoesPendentes?.length) {
+      console.warn('[ouvinte:early-return] sugestoesPendentes existentes | chatId:', chatId.substring(0, 25), '| count:', profile.sugestoesPendentes.length)
+      return false
+    }
 
     // Busca candidatos do cat�logo (match com TODAS as mensagens do cliente, n�o s� a �ltima)
     const catalogoCandidatos: string[] = []
@@ -631,7 +640,10 @@ export async function processarUltimaMensagem(
       historicoContexto: historicoReprocess,
     })
 
-    if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) return false
+    if (!llmOutput.usouLlm || Object.keys(llmOutput.extras).length === 0) {
+      console.warn('[ouvinte:early-return] LLM falhou ou sem extras | chatId:', chatId.substring(0, 25), '| usouLlm:', llmOutput.usouLlm, '| extrasKeys:', Object.keys(llmOutput.extras).length)
+      return false
+    }
 
     const e = llmOutput.extras
 
@@ -701,8 +713,14 @@ export async function processarUltimaMensagem(
           }).catch((err: unknown) => {
             console.error('[ouvinte] AgentLoop error (reprocessamento):', err)
           })
+        } else {
+          console.warn('[ouvinte:gate] harness.loop ausente | chatId:', chatId.substring(0, 25))
         }
+      } else {
+        console.warn('[ouvinte:gate] sem intencao detectada | chatId:', chatId.substring(0, 25))
       }
+    } else {
+      console.warn('[ouvinte:gate] profile update falhou ou eventBus ausente | chatId:', chatId.substring(0, 25), '| result.ok:', result.ok, '| hasEventBus:', !!eventBus)
     }
 
     return result.ok
