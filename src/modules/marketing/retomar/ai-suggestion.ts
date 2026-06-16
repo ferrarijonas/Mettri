@@ -143,7 +143,7 @@ export async function suggestRedacaoRetomar(
     ],
     temperature: 1.1,
     top_p: 0.95,
-    max_tokens: 120,
+    max_tokens: 200,
   };
 
   const result = await bridge.netFetch({
