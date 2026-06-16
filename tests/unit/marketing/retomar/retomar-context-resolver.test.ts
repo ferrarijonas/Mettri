@@ -36,7 +36,7 @@ describe('retomarContextResolver', () => {
 
   it('exclui chat sem mensagem recebida legível', async () => {
     const db = {
-      getMessages: async (_chatId: string): Promise<CapturedMessage[]> => [
+      getMessages: async (): Promise<CapturedMessage[]> => [
         msg({
           id: '1',
           chatId: '5511@c.us',
@@ -75,7 +75,7 @@ describe('retomarContextResolver', () => {
     expect(out[0].contextText).toBe('Cliente: Oi, tudo bem?');
     expect(out[0].clientText).toBe('Oi, tudo bem?');
     expect(out[0].attendantText).toBeUndefined();
-    expect(out[0].conversationThread).toBe('[cliente] Oi, tudo bem?');
+    expect(out[0].conversationThread).toBe('[cliente | ~0d atrás | 3 palavras] Oi, tudo bem?');
   });
 
   it('acrescenta Atendente: com última retomar da mesma conta', async () => {
@@ -109,7 +109,7 @@ describe('retomarContextResolver', () => {
     expect(out[0].contextText).toContain('Atendente: Última retomar');
     expect(out[0].attendantText).toBe('Última retomar');
     expect(out[0].conversationThread).toBe(
-      '[padaria] Última retomar\n[cliente] Novo',
+      '[padaria | ~1d atrás | 2 palavras] Última retomar\n[cliente | ~0d atrás | 1 palavras] Novo',
     );
   });
 
@@ -141,7 +141,7 @@ describe('retomarContextResolver', () => {
     expect(out[0].contextText).toBe('Cliente: Cliente fala');
     expect(out[0].attendantText).toBeUndefined();
     expect(out[0].conversationThread).toBe(
-      '[padaria] Outra conta\n[cliente] Cliente fala',
+      '[padaria | ~0d atrás | 2 palavras] Outra conta\n[cliente | ~0d atrás | 2 palavras] Cliente fala',
     );
   });
 
@@ -180,7 +180,7 @@ describe('retomarContextResolver', () => {
       messageDB: db,
     });
     expect(out[0].conversationThread).toBe(
-      '[cliente] Primeiro do cliente\n[padaria] Meio da padaria\n[cliente] Terceiro',
+      '[cliente | ~2d atrás | 3 palavras] Primeiro do cliente\n[padaria | ~1d atrás | 3 palavras] Meio da padaria\n[cliente | ~0d atrás | 1 palavras] Terceiro',
     );
   });
 });

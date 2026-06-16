@@ -8,7 +8,7 @@ import type { MessageDB } from '../../../storage/message-db';
 
 const BASE64ISH = /[A-Za-z0-9+/=]{40,}/;
 
-const CONVERSATION_THREAD_MAX = 20;
+const CONVERSATION_THREAD_MAX = 40;
 
 export interface RetomarResolvedContext {
   chatId: string;
@@ -16,7 +16,7 @@ export interface RetomarResolvedContext {
   contextText: string;
   clientText: string;
   attendantText?: string;
-  /** Até 20 mensagens de texto legíveis, mais recentes primeiro no DB; aqui em ordem cronológica. */
+  /** Até 40 mensagens de texto legíveis, mais recentes primeiro no DB; aqui em ordem cronológica. */
   conversationThread: string;
 }
 
@@ -32,17 +32,28 @@ function getRetomarMeta(msg: CapturedMessage): RetomarMeta | undefined {
 }
 
 /**
- * Últimas mensagens de texto legíveis (no máx. 20), do mais recente ao mais antigo no array de entrada,
- * formatadas em ordem cronológica: `[cliente]` / `[padaria]`.
+ * Últimas mensagens de texto legíveis (no máx. 40), do mais recente ao mais antigo no array de entrada,
+ * formatadas em ordem cronológica com metadados: `[role | ~Nd atrás | N palavras] texto`.
  */
 export function buildConversationThread(messages: CapturedMessage[]): string {
   const legible = messages.filter(m => m.type === 'text' && isLegibleText(m.text));
   const recent = legible.slice(0, CONVERSATION_THREAD_MAX);
+  if (recent.length === 0) return '';
+
+  const mostRecent = recent.reduce(
+    (max, m) => (m.timestamp > max ? m.timestamp : max),
+    recent[0].timestamp,
+  );
+
   const chronological = [...recent].reverse();
   return chronological
     .map(m => {
       const role = m.isOutgoing ? 'padaria' : 'cliente';
-      return `[${role}] ${m.text.trim()}`;
+      const daysAgo = Math.round(
+        (mostRecent.getTime() - m.timestamp.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const wordCount = m.text.trim().split(/\s+/).length;
+      return `[${role} | ~${daysAgo}d atrás | ${wordCount} palavras] ${m.text.trim()}`;
     })
     .join('\n');
 }
