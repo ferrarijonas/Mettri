@@ -6,13 +6,21 @@
  *
  * Usa o MettriBridgeClient (storageGet + netFetch) para contornar o CSP
  * do WhatsApp Web e acessar chrome.storage.local do service worker.
+ *
+ * A função `suggestRedacaoRetomar` carrega `skills/retomar/SKILL.md`
+ * e injeta o procedimento de retomada no system prompt, substituindo
+ * a seção SYSTEM do `agente_retomar.md` (mantido como fallback).
  */
 
 import type { MettriBridgeClient } from '../../../content/bridge-client';
 import {
   buildAgenteRetomarMessages,
+  parseSkillMarkdown,
   type AgenteRetomarPromptFill,
 } from './agente-retomar-prompt';
+
+// Skill de retomada — importada como texto pelo bundler (loader .md → text)
+import skillRetomarRaw from '../../../../skills/retomar/SKILL.md';
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 const MODEL = 'deepseek-chat';
@@ -118,8 +126,30 @@ export async function suggestText(
 /** Parâmetros do prompt em `prompts/agente_retomar.md`. */
 export type { AgenteRetomarPromptFill };
 
+// ---------------------------------------------------------------------------
+// Skill loading
+// ---------------------------------------------------------------------------
+
+let cachedSkillBody: string | null = null;
+
+/** Corpo da skill (sem frontmatter), cached em memória. */
+function getSkillBody(): string {
+  if (cachedSkillBody === null) {
+    const parsed = parseSkillMarkdown(skillRetomarRaw);
+    cachedSkillBody = parsed.body;
+  }
+  return cachedSkillBody;
+}
+
+/** Para testes: limpa cache da skill. */
+export function resetSkillBodyCache(): void {
+  cachedSkillBody = null;
+}
+
 /**
  * Gera texto de retomada com o prompt baseline (`prompts/agente_retomar.md`).
+ * Se `skills/retomar/SKILL.md` estiver disponível, seu corpo substitui a
+ * seção SYSTEM do prompt baseline.
  */
 export async function suggestRedacaoRetomar(
   bridge: MettriBridgeClient,
@@ -133,7 +163,10 @@ export async function suggestRedacaoRetomar(
     throw new Error('Chave API OpenAI não configurada. Acesse Cadastro > Mapear compras para salvar sua chave.');
   }
 
-  const { system, user } = buildAgenteRetomarMessages(params);
+  const { system, user } = buildAgenteRetomarMessages({
+    ...params,
+    skillContent: getSkillBody(),
+  });
 
   const body = {
     model: MODEL,
