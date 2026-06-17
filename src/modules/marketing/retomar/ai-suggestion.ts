@@ -133,7 +133,8 @@ export type { AgenteRetomarPromptFill };
 let cachedSkillBody: string | null = null;
 
 /** Corpo da skill (sem frontmatter), cached em memória. */
-function getSkillBody(): string {
+/* test-visible */
+export function getSkillBody(): string {
   if (cachedSkillBody === null) {
     const parsed = parseSkillMarkdown(skillRetomarRaw);
     cachedSkillBody = parsed.body;
