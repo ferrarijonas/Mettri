@@ -1,5 +1,9 @@
 /**
  * Carrega e preenche o prompt baseline do agente Retomar (`prompts/agente_retomar.md`).
+ *
+ * Se `skillContent` for fornecido em `AgenteRetomarPromptFill`, a seção SYSTEM
+ * do `agente_retomar.md` é substituída pelo conteúdo da skill (`skills/retomar/SKILL.md`).
+ * O template USER (placeholders) sempre vem do `agente_retomar.md`.
  */
 
 import agenteRetomarRaw, {
@@ -7,6 +11,49 @@ import agenteRetomarRaw, {
 } from '../../../../prompts/agente_retomar.md';
 
 export { AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO };
+
+// ---------------------------------------------------------------------------
+// Skill parsing (formato Claude Code: YAML frontmatter entre --- + corpo markdown)
+// ---------------------------------------------------------------------------
+
+const SKILL_FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n/;
+
+export interface SkillMetadata {
+  name: string;
+  description: string;
+  whenToUse: string;
+}
+
+/**
+ * Extrai YAML frontmatter e corpo de um arquivo SKILL.md no formato Claude Code.
+ * Frontmatter esperado: name, description, whenToUse (todos strings simples).
+ */
+export function parseSkillMarkdown(md: string): { meta: SkillMetadata; body: string } {
+  const m = SKILL_FRONTMATTER_RE.exec(md);
+  if (!m) {
+    throw new Error('SKILL.md: frontmatter YAML entre --- não encontrado');
+  }
+
+  const yamlBlock = m[1];
+  const body = md.slice(m[0].length).trim();
+
+  const meta: SkillMetadata = { name: '', description: '', whenToUse: '' };
+  for (const line of yamlBlock.split('\n')) {
+    const colon = line.indexOf(':');
+    if (colon === -1) continue;
+    const key = line.slice(0, colon).trim();
+    const value = line.slice(colon + 1).trim();
+    if (key === 'name') meta.name = value;
+    else if (key === 'description') meta.description = value;
+    else if (key === 'whenToUse') meta.whenToUse = value;
+  }
+
+  if (!meta.name) {
+    throw new Error('SKILL.md: campo "name" obrigatório no frontmatter');
+  }
+
+  return { meta, body };
+}
 
 /** Rótulo curto para o cabeçalho Respostas Agênticas (data do ficheiro no build). */
 export function formatAgenteRetomarPromptUpdatedLabel(): string {
@@ -33,6 +80,14 @@ export interface AgenteRetomarPromptFill {
   lastRetomarSentText: string;
   /** Histórico recente intercalado para o modelo calibrar tom. */
   conversationThread: string;
+  /** Catálogo de produtos ativos formatado para o prompt (ex: "Pão Francês, Bolo de Chocolate"). */
+  catalogo?: string;
+  /**
+   * Corpo da skill de retomada (`skills/retomar/SKILL.md`).
+   * Se fornecido, substitui a seção SYSTEM do `agente_retomar.md`.
+   * O template USER (placeholders) sempre vem do `agente_retomar.md`.
+   */
+  skillContent?: string;
 }
 
 /**
@@ -89,12 +144,20 @@ function getParsed(): { system: string; userTemplate: string } {
 
 /**
  * System + user já preenchidos para a API chat/completions.
+ *
+ * Se `fill.skillContent` for fornecido, ele é usado como system prompt
+ * (substitui a seção SYSTEM do `agente_retomar.md`).
+ * O template USER sempre vem do `agente_retomar.md`.
  */
 export function buildAgenteRetomarMessages(fill: AgenteRetomarPromptFill): {
   system: string;
   user: string;
 } {
-  const { system, userTemplate } = getParsed();
+  const { userTemplate } = getParsed();
+
+  const system = fill.skillContent?.trim()
+    ? fill.skillContent.trim()
+    : getParsed().system;
 
   const relationLabel: Record<string, string> = {
     frequente: 'Frequente (quinzenal ou mensal)',
@@ -110,6 +173,7 @@ export function buildAgenteRetomarMessages(fill: AgenteRetomarPromptFill): {
     daysInactive: fill.daysInactive != null ? String(fill.daysInactive) : '(não informado)',
     lastRetomarSentText: fill.lastRetomarSentText.trim() || '(nenhuma ainda)',
     conversationThread: fill.conversationThread.trim() || '(sem histórico)',
+    catalogo: fill.catalogo?.trim() || '(catálogo não disponível)',
   });
   return { system, user };
 }
