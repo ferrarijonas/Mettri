@@ -1,52 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAgenteRetomarMessages,
-  parseAgenteRetomarMarkdown,
   parseSkillMarkdown,
-  resetAgenteRetomarPromptCache,
 } from '../../../../src/modules/marketing/retomar/agente-retomar-prompt';
-
-describe('parseAgenteRetomarMarkdown', () => {
-  it('extrai SYSTEM e USER até o próximo ##', () => {
-    const md = `
-## SYSTEM
-Alpha line one.
-
-## USER
-Beta {firstName} tail.
-
-## OUTPUT
-ignored
-`;
-    const { system, userTemplate } = parseAgenteRetomarMarkdown(md);
-    expect(system).toContain('Alpha line one');
-    expect(system).not.toContain('Beta');
-    expect(userTemplate).toContain('Beta {firstName} tail');
-    expect(userTemplate).not.toContain('ignored');
-  });
-
-  it('falha sem secções', () => {
-    expect(() => parseAgenteRetomarMarkdown('no headers')).toThrow('SYSTEM');
-  });
-
-  it('não confunde ## USER dentro de texto com o cabeçalho real', () => {
-    const md = `Nota: veja **## USER** no guia.
-
-## SYSTEM
-Alpha.
-
-## USER
-Oi {firstName}
-
-## OUTPUT
-ignorado
-`;
-    const { system, userTemplate } = parseAgenteRetomarMarkdown(md);
-    expect(system.trim()).toBe('Alpha.');
-    expect(userTemplate).toBe('Oi {firstName}');
-    expect(userTemplate).not.toContain('**');
-  });
-});
 
 describe('parseSkillMarkdown', () => {
   it('extrai YAML frontmatter e corpo de SKILL.md válido', () => {
@@ -92,45 +48,86 @@ body only`;
   });
 });
 
-describe('buildAgenteRetomarMessages com skillContent', () => {
-  it('usa skillContent como system quando fornecido', () => {
-    resetAgenteRetomarPromptCache();
-    const skillBody = '# Skill de Retomada\n\nRegras de ciclo.';
-    const { system, user } = buildAgenteRetomarMessages({
+describe('buildAgenteRetomarMessages', () => {
+  const skillBody = `# Retomar Clientes
+
+## Regras por Ciclo
+- cycleIndex=1: só presença
+- cycleIndex=2: pode perguntar leve
+
+## Dados do Contato
+firstName: {firstName}
+cycleIndex: {cycleIndex}
+relationType: {relationType}
+daysInactive: {daysInactive}
+lastRetomarSentText: {lastRetomarSentText}
+
+Catálogo:
+{catalogo}
+
+Histórico:
+{conversationThread}
+
+Gere agora a mensagem final.`;
+
+  it('substitui placeholders no corpo da skill', () => {
+    const { system, user } = buildAgenteRetomarMessages(skillBody, {
       firstName: 'Ana',
-      cycleIndex: 1,
+      cycleIndex: 2,
       lastIncomingFromClient: 'Oi',
-      lastRetomarSentText: '',
+      lastRetomarSentText: 'Tudo bem?',
       conversationThread: '[cliente] Oi',
-      skillContent: skillBody,
+      catalogo: 'Pão, Bolo',
     });
-    expect(system).toBe(skillBody);
-    expect(system).toContain('Skill de Retomada');
+
+    expect(system).toContain('Ana');
+    expect(system).toContain('2');
+    expect(system).not.toContain('{firstName}');
+    expect(system).not.toContain('{cycleIndex}');
+    expect(system).toContain('Tudo bem?');
+    expect(system).toContain('[cliente] Oi');
+    expect(system).toContain('Pão, Bolo');
+    expect(user).toBe('Gere a mensagem.');
   });
 
-  it('fallback para system do agente_retomar.md sem skillContent', () => {
-    resetAgenteRetomarPromptCache();
-    const { system } = buildAgenteRetomarMessages({
+  it('limita cycleIndex entre 1 e 4', () => {
+    const { system } = buildAgenteRetomarMessages(skillBody, {
       firstName: 'Ana',
-      cycleIndex: 1,
+      cycleIndex: 99,
       lastIncomingFromClient: 'Oi',
       lastRetomarSentText: '',
-      conversationThread: '[cliente] Oi',
+      conversationThread: '',
     });
-    // Deve conter conteúdo do agente_retomar.md original
-    expect(system).toContain('Jonas');
+
+    expect(system).toContain('4');
+    expect(system).not.toContain('99');
   });
 
-  it('fallback para system do agente_retomar.md com skillContent vazio', () => {
-    resetAgenteRetomarPromptCache();
-    const { system } = buildAgenteRetomarMessages({
+  it('usa sentinelas para campos vazios', () => {
+    const { system } = buildAgenteRetomarMessages(skillBody, {
+      firstName: '',
+      cycleIndex: 1,
+      lastIncomingFromClient: 'Oi',
+      lastRetomarSentText: '',
+      conversationThread: '',
+    });
+
+    expect(system).toContain('(não informado)');
+    expect(system).toContain('(nenhuma ainda)');
+    expect(system).toContain('(sem histórico)');
+    expect(system).toContain('(catálogo não disponível)');
+  });
+
+  it('preenche relationType com label descritivo', () => {
+    const { system } = buildAgenteRetomarMessages(skillBody, {
       firstName: 'Ana',
       cycleIndex: 1,
       lastIncomingFromClient: 'Oi',
       lastRetomarSentText: '',
-      conversationThread: '[cliente] Oi',
-      skillContent: '',
+      conversationThread: '',
+      relationType: 'frequente',
     });
-    expect(system).toContain('Jonas');
+
+    expect(system).toContain('Frequente (quinzenal ou mensal)');
   });
 });

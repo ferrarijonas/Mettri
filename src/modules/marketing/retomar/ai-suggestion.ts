@@ -7,9 +7,8 @@
  * Usa o MettriBridgeClient (storageGet + netFetch) para contornar o CSP
  * do WhatsApp Web e acessar chrome.storage.local do service worker.
  *
- * A função `suggestRedacaoRetomar` carrega `skills/retomar/SKILL.md`
- * e injeta o procedimento de retomada no system prompt, substituindo
- * a seção SYSTEM do `agente_retomar.md` (mantido como fallback).
+ * `suggestRedacaoRetomar` carrega a skill canônica `skills/retomar/SKILL.md`
+ * como fonte única do procedimento de retomada (sem fallback).
  */
 
 import type { MettriBridgeClient } from '../../../content/bridge-client';
@@ -17,6 +16,7 @@ import {
   buildAgenteRetomarMessages,
   parseSkillMarkdown,
   type AgenteRetomarPromptFill,
+  type SkillMetadata,
 } from './agente-retomar-prompt';
 
 // Skill de retomada — importada como texto pelo bundler (loader .md → text)
@@ -123,7 +123,7 @@ export async function suggestText(
   return extractVisibleRetomarMessage(content);
 }
 
-/** Parâmetros do prompt em `prompts/agente_retomar.md`. */
+/** Parâmetros de entrada para o prompt de retomada. */
 export type { AgenteRetomarPromptFill };
 
 // ---------------------------------------------------------------------------
@@ -142,15 +142,26 @@ export function getSkillBody(): string {
   return cachedSkillBody;
 }
 
+let cachedSkillMeta: SkillMetadata | null = null;
+
+/** Metadados da skill (name, description, whenToUse), cached em memória. */
+/* test-visible */
+export function getSkillMeta(): SkillMetadata {
+  if (cachedSkillMeta === null) {
+    cachedSkillMeta = parseSkillMarkdown(skillRetomarRaw).meta;
+  }
+  return cachedSkillMeta;
+}
+
 /** Para testes: limpa cache da skill. */
 export function resetSkillBodyCache(): void {
   cachedSkillBody = null;
+  cachedSkillMeta = null;
 }
 
 /**
- * Gera texto de retomada com o prompt baseline (`prompts/agente_retomar.md`).
- * Se `skills/retomar/SKILL.md` estiver disponível, seu corpo substitui a
- * seção SYSTEM do prompt baseline.
+ * Gera texto de retomada usando a skill canônica `skills/retomar/SKILL.md`
+ * como fonte única do procedimento.
  */
 export async function suggestRedacaoRetomar(
   bridge: MettriBridgeClient,
@@ -164,10 +175,7 @@ export async function suggestRedacaoRetomar(
     throw new Error('Chave API OpenAI não configurada. Acesse Cadastro > Mapear compras para salvar sua chave.');
   }
 
-  const { system, user } = buildAgenteRetomarMessages({
-    ...params,
-    skillContent: getSkillBody(),
-  });
+  const { system, user } = buildAgenteRetomarMessages(getSkillBody(), params);
 
   const body = {
     model: MODEL,
