@@ -17,11 +17,6 @@ import { registrarPedido } from './harness/tools/registrar-pedido';
 import { enviarMensagem } from './harness/tools/enviar-mensagem';
 import { cotarFrete } from './harness/tools/cotar-frete';
 import { solicitarEntregaBee } from './harness/tools/solicitar-entrega-bee';
-import { carregarSkillTool } from './harness/tools/carregar-skill';
-import { registrarSkill } from './harness/skills/skill-registry';
-
-// Skills — importadas como texto pelo bundler (loader .md → text)
-import skillRetomarRaw from '../../skills/retomar/SKILL.md';
 import { AtendimentoModule } from './atendimento/atendimento-module';
 import { ClientesModule } from './clientes/clientes-module';
 import { InspectorPopup } from './harness/inspector-popup';
@@ -113,10 +108,7 @@ export const harnessModule: MettriModule = {
   init: async (eventBus: EventBus) => {
     const registry = new ToolRegistry(eventBus);
 
-    // Registra skills (conhecimento procedural — carregadas antes das tools)
-    registrarSkill(skillRetomarRaw);
-
-    // Registra as ferramentas de negócio
+    // Registra as 5 ferramentas de negócio iniciais
     registry.registrar(consultarCatalogo);
     registry.registrar(consultarPerfil);
     registry.registrar(consultarHistorico);
@@ -124,9 +116,6 @@ export const harnessModule: MettriModule = {
     registry.registrar(enviarMensagem);
     registry.registrar(cotarFrete);
     registry.registrar(solicitarEntregaBee);
-
-    // SkillTool — carrega skills sob demanda (deve vir depois das skills registradas)
-    registry.registrar(carregarSkillTool);
 
     const loop = new AgentLoop(registry, eventBus);
 

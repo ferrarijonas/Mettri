@@ -38,7 +38,7 @@ import {
 } from './eligible-contacts-engine';
 import { splitAB } from './ab-split';
 import { suggestRedacaoRetomar, suggestText } from './ai-suggestion';
-import { formatRetomarSkillLabelStatic } from './agente-retomar-prompt';
+import { formatAgenteRetomarPromptUpdatedLabel, AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO } from './agente-retomar-prompt';
 import { retomarContextResolver } from './retomar-context-resolver';
 import {
   retomarMetricsResolver,
@@ -1647,8 +1647,8 @@ export class RetomarPanel {
    * Bloco colapsável Respostas Agênticas (abaixo de Ciclos de contato; acordeão independente).
    */
   private renderAgenticSection(): string {
-    const agenticPromptHint = formatRetomarSkillLabelStatic();
-    const agenticPromptTitle = 'skill: retomar-clientes';
+    const agenticPromptHint = formatAgenteRetomarPromptUpdatedLabel();
+    const agenticPromptTitle = this.escapeHtml(AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO);
     const agenticPromptLine = this.escapeHtml(agenticPromptHint);
     return `
       <div class="mettri-agentic-section-wrap space-y-1 mb-0 mt-1">
