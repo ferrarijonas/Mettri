@@ -1,23 +1,58 @@
 /**
- * Carrega e preenche o prompt baseline do agente Retomar (`prompts/agente_retomar.md`).
+ * Monta o prompt de retomada a partir da skill canônica (`skills/retomar/SKILL.md`).
+ *
+ * A skill contém o procedimento de retomada (estilo Claude Code) e a seção
+ * "Dados do Contato" com placeholders `{firstName}`, `{cycleIndex}`, etc.
+ * `buildAgenteRetomarMessages()` substitui os placeholders e retorna
+ * o prompt completo como system message.
  */
 
-import agenteRetomarRaw, {
-  AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO,
-} from '../../../../prompts/agente_retomar.md';
+// ---------------------------------------------------------------------------
+// Skill parsing (formato Claude Code: YAML frontmatter entre --- + corpo markdown)
+// ---------------------------------------------------------------------------
 
-export { AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO };
+const SKILL_FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n/;
 
-/** Rótulo curto para o cabeçalho Respostas Agênticas (data do ficheiro no build). */
-export function formatAgenteRetomarPromptUpdatedLabel(): string {
-  const d = new Date(AGENTE_RETOMAR_PROMPT_LAST_MODIFIED_ISO);
-  if (Number.isNaN(d.getTime())) return '';
-  const when = d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-  return `agente_retomar.md · atualizado ${when}`;
+export interface SkillMetadata {
+  name: string;
+  description: string;
+  whenToUse: string;
 }
 
-/** Só cabeçalhos markdown em linha própria (evita confundir com `**## USER**` no texto introdutório). */
-const SECTION_HEADERS = /^## (SYSTEM|USER|OUTPUT)\s*$/gm;
+/**
+ * Extrai YAML frontmatter e corpo de um arquivo SKILL.md no formato Claude Code.
+ * Frontmatter esperado: name, description, whenToUse (todos strings simples).
+ */
+export function parseSkillMarkdown(md: string): { meta: SkillMetadata; body: string } {
+  const m = SKILL_FRONTMATTER_RE.exec(md);
+  if (!m) {
+    throw new Error('SKILL.md: frontmatter YAML entre --- não encontrado');
+  }
+
+  const yamlBlock = m[1];
+  const body = md.slice(m[0].length).trim();
+
+  const meta: SkillMetadata = { name: '', description: '', whenToUse: '' };
+  for (const line of yamlBlock.split('\n')) {
+    const colon = line.indexOf(':');
+    if (colon === -1) continue;
+    const key = line.slice(0, colon).trim();
+    const value = line.slice(colon + 1).trim();
+    if (key === 'name') meta.name = value;
+    else if (key === 'description') meta.description = value;
+    else if (key === 'whenToUse') meta.whenToUse = value;
+  }
+
+  if (!meta.name) {
+    throw new Error('SKILL.md: campo "name" obrigatório no frontmatter');
+  }
+
+  return { meta, body };
+}
+
+// ---------------------------------------------------------------------------
+// Prompt fill
+// ---------------------------------------------------------------------------
 
 export interface AgenteRetomarPromptFill {
   firstName: string;
@@ -33,41 +68,8 @@ export interface AgenteRetomarPromptFill {
   lastRetomarSentText: string;
   /** Histórico recente intercalado para o modelo calibrar tom. */
   conversationThread: string;
-}
-
-/**
- * Extrai corpo das secções SYSTEM e USER (cabeçalho = linha exatamente `## NOME`).
- */
-export function parseAgenteRetomarMarkdown(md: string): { system: string; userTemplate: string } {
-  const headers: { name: string; headerStart: number; bodyStart: number }[] = [];
-  SECTION_HEADERS.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = SECTION_HEADERS.exec(md)) !== null) {
-    const name = m[1];
-    let bodyStart = m.index + m[0].length;
-    while (bodyStart < md.length && (md[bodyStart] === '\r' || md[bodyStart] === '\n')) {
-      bodyStart++;
-    }
-    headers.push({ name, headerStart: m.index, bodyStart });
-  }
-
-  let system = '';
-  let userTemplate = '';
-  for (let i = 0; i < headers.length; i++) {
-    const bodyStart = headers[i].bodyStart;
-    const bodyEnd = i + 1 < headers.length ? headers[i + 1].headerStart : md.length;
-    const body = md.slice(bodyStart, bodyEnd).trim();
-    if (headers[i].name === 'SYSTEM') system = body;
-    if (headers[i].name === 'USER') userTemplate = body;
-  }
-
-  if (!system || !userTemplate) {
-    throw new Error(
-      'agente_retomar.md: faltam secções ## SYSTEM ou ## USER em linha própria (ver topo do ficheiro)',
-    );
-  }
-
-  return { system, userTemplate };
+  /** Catálogo de produtos ativos formatado para o prompt (ex: "Pão Francês, Bolo de Chocolate"). */
+  catalogo?: string;
 }
 
 function substitute(template: string, vars: Record<string, string>): string {
@@ -78,24 +80,19 @@ function substitute(template: string, vars: Record<string, string>): string {
   return out;
 }
 
-let cachedParsed: { system: string; userTemplate: string } | null = null;
-
-function getParsed(): { system: string; userTemplate: string } {
-  if (!cachedParsed) {
-    cachedParsed = parseAgenteRetomarMarkdown(agenteRetomarRaw);
-  }
-  return cachedParsed;
-}
-
 /**
- * System + user já preenchidos para a API chat/completions.
+ * Monta o prompt final para a API chat/completions.
+ *
+ * O system é o corpo da skill com os placeholders de dados substituídos.
+ * O user é uma instrução mínima de ativação.
  */
-export function buildAgenteRetomarMessages(fill: AgenteRetomarPromptFill): {
+export function buildAgenteRetomarMessages(
+  skillBody: string,
+  fill: AgenteRetomarPromptFill,
+): {
   system: string;
   user: string;
 } {
-  const { system, userTemplate } = getParsed();
-
   const relationLabel: Record<string, string> = {
     frequente: 'Frequente (quinzenal ou mensal)',
     pontual: 'Pontual (mensal ou bimestral)',
@@ -103,18 +100,27 @@ export function buildAgenteRetomarMessages(fill: AgenteRetomarPromptFill): {
     personalizado: 'Personalizado',
   };
 
-  const user = substitute(userTemplate, {
+  const system = substitute(skillBody, {
     firstName: fill.firstName.trim() || '(não informado)',
     cycleIndex: String(Math.min(4, Math.max(1, Math.floor(fill.cycleIndex)))),
-    relationType: fill.relationType ? (relationLabel[fill.relationType] ?? fill.relationType) : '(não informado)',
+    relationType: fill.relationType
+      ? (relationLabel[fill.relationType] ?? fill.relationType)
+      : '(não informado)',
     daysInactive: fill.daysInactive != null ? String(fill.daysInactive) : '(não informado)',
     lastRetomarSentText: fill.lastRetomarSentText.trim() || '(nenhuma ainda)',
     conversationThread: fill.conversationThread.trim() || '(sem histórico)',
+    catalogo: fill.catalogo?.trim() || '(catálogo não disponível)',
   });
-  return { system, user };
+
+  return { system, user: 'Gere a mensagem.' };
 }
 
-/** Para testes: repor cache após alterar fixture. */
-export function resetAgenteRetomarPromptCache(): void {
-  cachedParsed = null;
+/** Rótulo para o cabeçalho Respostas Agênticas (usa o campo `name` do frontmatter da skill). */
+export function formatSkillLabel(skillMeta: SkillMetadata): string {
+  return `skill: ${skillMeta.name} · ${skillMeta.description.slice(0, 60)}`;
+}
+
+/** Rótulo estático para uso onde a skill ainda não foi carregada. */
+export function formatRetomarSkillLabelStatic(): string {
+  return 'skill: retomar-clientes';
 }
