@@ -1,28 +1,46 @@
 import { describe, expect, it } from 'vitest';
-import { extractVisibleRetomarMessage } from '../../../../src/modules/marketing/retomar/ai-suggestion';
+import {
+  getSkillBody,
+  getSkillMeta,
+  resetSkillBodyCache,
+} from '../../../../src/modules/marketing/retomar/ai-suggestion';
 
-describe('extractVisibleRetomarMessage', () => {
-  it('remove bloco <raciocínio> e mantém só a mensagem final', () => {
-    const input = `<raciocínio>[texto interno]</raciocínio>
+describe('getSkillMeta', () => {
+  it('retorna metadados da skill (name, description, whenToUse)', () => {
+    resetSkillBodyCache();
+    const meta = getSkillMeta();
+    expect(meta.name).toBe('retomar-clientes');
+    expect(meta.description).toContain('reativação');
+    expect(meta.whenToUse).toContain('Gerar msgs por IA');
+  });
+});
 
-O aroma do pão saindo do forno está delicioso hoje, Mónica. A fornada já está quase pronta!`;
-
-    expect(extractVisibleRetomarMessage(input)).toBe(
-      'O aroma do pão saindo do forno está delicioso hoje, Mónica. A fornada já está quase pronta!',
-    );
+describe('getSkillBody', () => {
+  it('retorna corpo da skill sem frontmatter YAML', () => {
+    resetSkillBodyCache();
+    const body = getSkillBody();
+    expect(body).toContain('# Retomar Clientes Inativos');
+    expect(body).toContain('## Regras por Ciclo');
+    expect(body).toContain('## Dados do Contato');
+    expect(body).not.toContain('---');
+    expect(body).not.toContain('name:');
   });
 
-  it('aceita tag sem acento (<raciocinio>)', () => {
-    const input =
-      '<raciocinio>[interno]</raciocinio>\nA massa mãe descansou no ponto certo, Mónica. O pão já está ganhando cor.';
-
-    expect(extractVisibleRetomarMessage(input)).toBe(
-      'A massa mãe descansou no ponto certo, Mónica. O pão já está ganhando cor.',
-    );
+  it('retorna cache na segunda chamada (sem re-parse)', () => {
+    resetSkillBodyCache();
+    const first = getSkillBody();
+    const second = getSkillBody();
+    expect(second).toBe(first);
   });
 
-  it('mantém texto já limpo', () => {
-    const input = 'A casa está com cheiro de pão quente agora, Mónica.';
-    expect(extractVisibleRetomarMessage(input)).toBe(input);
+  it('resetSkillBodyCache limpa ambos os caches (body e meta)', () => {
+    resetSkillBodyCache();
+    const body1 = getSkillBody();
+    const meta1 = getSkillMeta();
+    resetSkillBodyCache();
+    const body2 = getSkillBody();
+    const meta2 = getSkillMeta();
+    expect(body2).toBe(body1);
+    expect(meta2.name).toBe(meta1.name);
   });
 });
