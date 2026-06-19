@@ -1,0 +1,78 @@
+{
+  "version": "2.0.1",
+  "updatedAt": "2026-06-19T02:48:31.001Z",
+  "modules": [
+    {
+      "id": "atendimento.dashboard",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/atendimento.dashboard.js",
+      "hash": "1f39fb2280a322961db159ea9d00475650cdbc3f8df51156155b61a5a61159d0"
+    },
+    {
+      "id": "clientes.directory",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/clientes.directory.js",
+      "hash": "8b1ec94959ba2c3be6cb2e96fd1d71c0ad1e89d2e2ef3a6f722c1ec483f4ef32"
+    },
+    {
+      "id": "clientes.history",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/clientes.history.js",
+      "hash": "3d85d3d03100a8c2ab01b2b990bbb72fa987e187d52e2c2f661f11cd37c504e5"
+    },
+    {
+      "id": "infrastructure.tests",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/infrastructure.tests.js",
+      "hash": "1b189889f08c0c77da136870b0263975baebb65c70d2bcc0d1278755aa8c9bf1"
+    },
+    {
+      "id": "marketing.enviar.divulgar",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/marketing.enviar.divulgar.js",
+      "hash": "bd17322c9beb5f03f274ad081ac287c9dc66b487a508686659970c9a8ee37e97"
+    },
+    {
+      "id": "marketing.enviar",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/marketing.enviar.js",
+      "hash": "fcdd0a3cb3afcc94648fd6f68efc42766ff704d368c59547900469d777a48bf5"
+    },
+    {
+      "id": "marketing.enviar.responder",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/marketing.enviar.responder.js",
+      "hash": "9dd9c02422c58c334a53ac6284199908422ff0b308e8f6a2e61dee79ab2e1950"
+    },
+    {
+      "id": "marketing.enviar.retomar",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/marketing.enviar.retomar.js",
+      "hash": "19a48a268625cf5337ba26f76cbb54b049d023ead92447d518710d09f11ee0af"
+    },
+    {
+      "id": "marketing.reactivation",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/marketing.reactivation.js",
+      "hash": "395472b5541d8f98840bb0840e2f57e739821356abbd65aa68b9a7d196d9cc87"
+    },
+    {
+      "id": "marketing.retomar",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/marketing.retomar.js",
+      "hash": "33aa82fd0b3d053f5e301b375a02f8ff3985da7f172d02348281545aba51f968"
+    },
+    {
+      "id": "pedidos.dashboard",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/pedidos.dashboard.js",
+      "hash": "7580308aa57b4ff3b01966e682bc5e41a1e95363befa561cb80efd3b1e50970d"
+    },
+    {
+      "id": "pedidos",
+      "version": "2.0.1",
+      "url": "https://ferrarijonas.github.io/Mettri/v2.0.1/pedidos.js",
+      "hash": "614865d017eea556e15f20ed10e4d9aebaf6f15b6f2bd0133dd6168f7d86188b"
+    }
+  ]
+}
