@@ -57,7 +57,7 @@ export const solicitarEntregaBee: Tool = {
       const resultado = await deliveryService.solicitarEntrega('bee-delivery', {
         origem: {
           cep: '',
-          logradouro: 'Rua Mário Pinto Sobrinho',
+          logradouro: 'Rua Exemplo',
           numero: '156',
           bairro: 'Santa Mônica',
           cidade: 'Uberlândia',

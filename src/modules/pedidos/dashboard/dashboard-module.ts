@@ -107,7 +107,7 @@ const createPedidosDashboardPanel: PanelFactory = async (
             }
 
             const cotacao = await deliveryService.cotarFrete('bee-delivery', {
-              origem: { cep: '', logradouro: 'Rua Mário Pinto Sobrinho', numero: '156', bairro: 'Santa Mônica', cidade: 'Uberlândia', estado: 'MG' },
+              origem: { cep: '', logradouro: 'Rua Exemplo', numero: '123', bairro: 'Santa Mônica', cidade: 'Uberlândia', estado: 'MG' },
               destino: { cep: '', logradouro, numero, bairro, cidade, estado },
               items: [],
             });
@@ -150,7 +150,7 @@ const createPedidosDashboardPanel: PanelFactory = async (
             const order = await orderDB.getByOrderId(orderId);
 
             const resultado = await deliveryService.solicitarEntrega('bee-delivery', {
-              origem: { cep: '', logradouro: 'Rua Mário Pinto Sobrinho', numero: '156', bairro: 'Santa Mônica', cidade: 'Uberlândia', estado: 'MG' },
+              origem: { cep: '', logradouro: 'Rua Exemplo', numero: '123', bairro: 'Santa Mônica', cidade: 'Uberlândia', estado: 'MG' },
               destino: { cep: '', logradouro, numero, bairro: '', cidade: 'Uberlândia', estado: 'MG' },
               items: (order?.itens || []).map((i: any) => ({ nome: i.nome || '', quantidade: i.quantidade || 1 })),
               valorTotal: order?.totalCents || 0,

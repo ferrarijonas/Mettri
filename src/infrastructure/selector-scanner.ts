@@ -2015,7 +2015,7 @@ export class SelectorScanner {
   /**
    * Testa funcionalidade completa com um número de telefone específico.
    * 
-   * @param phoneNumber Número de telefone para testar (ex: "7591" ou "34999277591")
+   * @param phoneNumber Número de telefone para testar (ex: "XXXX" ou "XXXXXXXXXXX")
    * @returns Resultado do teste
    */
   async testWithPhoneNumber(phoneNumber: string): Promise<import('../types/selector-scanner').PhoneNumberTestResult> {

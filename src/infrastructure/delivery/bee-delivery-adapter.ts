@@ -79,7 +79,7 @@ export class BeeDeliveryAdapter implements DeliveryAdapter {
   }): void {
     this.originLatitude = config.originLatitude;
     this.originLongitude = config.originLongitude;
-    this.empresaId = config.empresaId || '168556';
+    this.empresaId = config.empresaId || 'XXXXXX';
     this.franquiaId = config.franquiaId || '19';
     this.habilitado = true;
   }

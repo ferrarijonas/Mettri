@@ -388,7 +388,7 @@ await N.Chat.find(N.WidFactory.createWid(e))
 - `to`: Para quem (WID do destinatário)
 - `id`: ID único da mensagem
 - `participant`: Participante (para grupos)
-- `_serialized`: String serializada (ex: `"true_553499277591@c.us_3EB0119957755460C4211A"`)
+- `_serialized`: String serializada (ex: `"true_XXXXXXXX@c.us_XXXXXXXXXXXXXXXXXXXX"`)
 
 **Por que precisa ser classe?**
 - Objetos simples não têm `_serialized` (propriedade calculada)

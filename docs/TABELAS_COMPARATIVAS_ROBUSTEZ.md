@@ -89,8 +89,8 @@
 |-------------|-----------|-------------|-----------------|
 | **Múltiplos Formatos** | ✅ Sim (3 formatos) | ❌ Não | ❌ Não |
 | **Código do País** | ✅ Detecta automaticamente | ❌ Não | ❌ Não |
-| **Formato 1** | `3499277591@c.us` | - | - |
-| **Formato 2** | `553499277591@c.us` | - | - |
+| **Formato 1** | `XXXXXX@c.us` | - | - |
+| **Formato 2** | `XXXXXXXX@c.us` | - | - |
 | **Formato 3** | Código do usuário atual | - | - |
 
 ### 3.4 Robustez Busca de Chats
@@ -120,7 +120,7 @@
   to: WID,          // Para quem
   id: string,       // ID único
   participant?: WID,// Participante (grupos)
-  _serialized: string // "true_553499277591@c.us_3EB0119957755460C4211A"
+  _serialized: string // "true_XXXXXXXX@c.us_XXXXXXXXXXXXXXXXXXXX"
 }
 ```
 

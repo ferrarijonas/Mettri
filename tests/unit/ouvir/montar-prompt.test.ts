@@ -11,7 +11,7 @@ describe('montarPrompt', () => {
       catalogoCandidatos: ['Pao Frances'],
     });
 
-    expect(result.systemPrompt).toContain('Pão de Verdade');
+    expect(result.systemPrompt).toContain('Empresa Exemplo');
     expect(result.systemPrompt).toContain('extraia APENAS');
     expect(result.userPrompt).toContain('quero 2 paes');
     expect(result.userPrompt).toContain('Pao Frances');

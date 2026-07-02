@@ -31,9 +31,9 @@ Quando o contato tem **display name cadastrado no WhatsApp** (ex.: ~Nome, nome n
 
 ---
 
-## Bug 1: Aparece "Pão de Verdade" para quem não tem ✅ Resolvido
+## Bug 1: Aparece "Empresa Exemplo" para quem não tem ✅ Resolvido
 
-**Print:** Chat com Jonas (+55 34 9197-7818), mas o painel mostra "Pão Verdade" em vez de "Jonas".
+**Print:** Chat com Jonas (+55 XX XXXXX-XXXX), mas o painel mostra "Empresa Exemplo" em vez de "Jonas".
 
 **Causa confirmada:** Record incorreto no ClientDB (nome do negócio no lugar do cliente).
 

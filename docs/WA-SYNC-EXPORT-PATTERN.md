@@ -290,11 +290,11 @@ const isGroup = "g.us" === chat.id?.server || chat.isGroup || false;
         subject: "Nome do Grupo",
         desc: "Descrição do grupo",
         participants: [
-            { id: "553194799111@c.us", isAdmin: false },
-            { id: "5534936186847@c.us", isAdmin: true },
+            { id: "XXXXXXXX@c.us", isAdmin: false },
+            { id: "XXXXXXXX@c.us", isAdmin: true },
             // ...
         ],
-        owner: "5534936186847@c.us",
+        owner: "XXXXXXXX@c.us",
         creation: 1640000000,
         size: 5
     }
@@ -329,7 +329,7 @@ Baseado no código, o padrão seria:
 | timestamp | chatId | chatName | isGroup | author | authorName | fromMe | body | type | mediaUrl |
 |-----------|--------|----------|---------|--------|------------|--------|------|------|----------|
 | 1640000000 | 553194799111@c.us | João Silva | false | 553194799111@c.us | João Silva | false | Oi! | chat | |
-| 1640000001 | 553194799111@c.us | João Silva | false | 5534936186847@c.us | Você | true | Tudo bem? | chat | |
+| 1640000001 | 553194799111@c.us | João Silva | false | XXXXXXXXXXXX@c.us | Você | true | Tudo bem? | chat | |
 | 1640000002 | 120363123456789012@g.us | Grupo Família | true | 553194799111@c.us | João Silva | false | Feliz Natal! | chat | |
 
 **Colunas principais:**

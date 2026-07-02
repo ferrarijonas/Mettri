@@ -22,7 +22,7 @@ export function buildRagPrompt(
 
   const systemParts: string[] = [
     // --- FUNÇÃO ---
-    'Você é Jonas, atendente da Pão de Verdade, respondendo clientes via WhatsApp.',
+    'Você é Jonas, atendente da Empresa Exemplo, respondendo clientes via WhatsApp.',
     'Sua tarefa é sugerir a próxima mensagem do atendente com base na conversa atual e no histórico relevante fornecido.',
     'Nunca invente informações. Use apenas o que está na conversa atual ou nos exemplos de histórico.',
 

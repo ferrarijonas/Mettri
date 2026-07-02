@@ -42,7 +42,7 @@ export const cotarFrete: Tool = {
       const resultado = await deliveryService.cotarFrete('bee-delivery', {
         origem: {
           cep: '',
-          logradouro: 'Rua Mário Pinto Sobrinho',
+          logradouro: 'Rua Exemplo',
           numero: '156',
           bairro: 'Santa Mônica',
           cidade: 'Uberlândia',

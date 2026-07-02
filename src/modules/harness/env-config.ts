@@ -5,7 +5,7 @@
  * @TODO: injetar via esbuild define (process.env.METTRI_*) quando houver build config.
  */
 export interface EnvInfo {
-  /** Nome do negócio (ex: "Pão de Verdade") */
+  /** Nome do negócio (ex: "Empresa Exemplo") */
   businessName: string
   /** Cidade do negócio (ex: "São Paulo") */
   city: string
@@ -20,7 +20,7 @@ export interface EnvInfo {
 }
 
 const DEFAULTS: EnvInfo = {
-  businessName: 'Pão de Verdade',
+  businessName: 'Empresa Exemplo',
   city: 'Uberlândia',
   timezone: 'America/Sao_Paulo',
   version: '2.0.1',

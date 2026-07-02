@@ -144,21 +144,21 @@ runTest('1. Standard – decisao:true, identidade:true, envInfo provided', () =>
 
   if (assert(orderCorrect, `Order: identity(${idxIdentityPrefix}) > #Sistema(${idxSistema}) > #ModoAtendente(${idxModoAtendente}) > <ambiente>(${idxAmbiente}) > persona(${idxJonas})`)) { totalPass++ } else { totalFail++ }
 
-  // Assertion 6: sistema section does NOT contain 'Jonas', 'padaria', 'Pão de Verdade'
+  // Assertion 6: sistema section does NOT contain 'Jonas', 'padaria', 'Empresa Exemplo'
   const sistemaSection = getSectionBetween(sp, '# Sistema', '# Modo Atendente')
   const sistemaClean =
     !sistemaSection.toLowerCase().includes('jonas') &&
     !sistemaSection.toLowerCase().includes('padaria') &&
     !sistemaSection.toLowerCase().includes('pão de verdade')
-  if (assert(sistemaClean, 'Sistema section does NOT contain Jonas/padaria/Pão de Verdade')) { totalPass++ } else { totalFail++ }
+  if (assert(sistemaClean, 'Sistema section does NOT contain Jonas/padaria/Empresa Exemplo')) { totalPass++ } else { totalFail++ }
 
-  // Assertion 7: modoAtendente section does NOT contain 'Jonas', 'padaria', 'Pão de Verdade'
+  // Assertion 7: modoAtendente section does NOT contain 'Jonas', 'padaria', 'Empresa Exemplo'
   const modoSection = getSectionBetween(sp, '# Modo Atendente', '<ambiente>')
   const modoClean =
     !modoSection.toLowerCase().includes('jonas') &&
     !modoSection.toLowerCase().includes('padaria') &&
     !modoSection.toLowerCase().includes('pão de verdade')
-  if (assert(modoClean, 'Modo Atendente section does NOT contain Jonas/padaria/Pão de Verdade')) { totalPass++ } else { totalFail++ }
+  if (assert(modoClean, 'Modo Atendente section does NOT contain Jonas/padaria/Empresa Exemplo')) { totalPass++ } else { totalFail++ }
 
   // Assertion 8: userPrompt contains expected data
   const userOk =

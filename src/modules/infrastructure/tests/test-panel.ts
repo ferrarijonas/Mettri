@@ -2673,7 +2673,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
               
               // Se ainda não encontrou, lançar erro explicativo
               if (!chat) {
-                const errorMsg = `Chat não encontrado para ${this.testNumber}. O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: 3499277591 sem espaços ou caracteres especiais)`;
+                const errorMsg = `Chat não encontrado para ${this.testNumber}. O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: XXXXXX sem espaços ou caracteres especiais)`;
                 console.error('[TEST] [OBTER CHAT] ❌', errorMsg);
                 throw new Error(errorMsg);
               }
@@ -3073,9 +3073,9 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
           }
           
           // Preparar múltiplos formatos do número de teste
-          // Formato 1: Como digitado (3499277591@c.us)
+          // Formato 1: Como digitado (XXXXXX@c.us)
           const testWid1 = `${this.testNumber}@c.us`;
-          // Formato 2: Com código do país 55 (553499277591@c.us) - Brasil
+          // Formato 2: Com código do país 55 (XXXXXXXX@c.us) - Brasil
           const testWid2 = `55${this.testNumber}@c.us`;
           // Formato 3: Se número do usuário tem código do país, extrair e usar
           let testWid3: string | null = null;
@@ -3400,7 +3400,7 @@ ${result.error ? `Erro: ${result.error}\n` : ''}`;
               
               // Se ainda não encontrou, lançar erro explicativo
               if (!chat) {
-                const errorMsg = `Chat não encontrado para ${this.testNumber}. O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: 3499277591 sem espaços ou caracteres especiais)`;
+                const errorMsg = `Chat não encontrado para ${this.testNumber}. O chat precisa existir no WhatsApp (ter pelo menos uma mensagem trocada) ou estar na lista de conversas. Tente:\n1. Abrir a conversa manualmente no WhatsApp primeiro\n2. Enviar uma mensagem manualmente para criar o chat\n3. Verificar se o número está correto (formato: XXXXXX sem espaços ou caracteres especiais)`;
                 console.error('[TEST] [OBTER CHAT] ❌', errorMsg);
                 throw new Error(errorMsg);
               }
