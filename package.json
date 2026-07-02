@@ -21,10 +21,10 @@
     "test:e2e:headed": "playwright test --headed",
     "test:rag:browser": "node esbuild.config.js && playwright test tests/e2e/rag-fonte-real-db.spec.ts",
     "test:cdp": "tsx tests/automation/index.ts",
-    "chrome:debug": "powershell -ExecutionPolicy Bypass -File scripts/start-chrome-debug.ps1",
-    "package": "powershell -ExecutionPolicy Bypass -File scripts/package-extension.ps1",
+    "chrome:debug": "powershell -ExecutionPolicy Bypass -File scripts/build/start-chrome-debug.ps1",
+    "package": "powershell -ExecutionPolicy Bypass -File scripts/build/package-extension.ps1",
     "build:modules": "node esbuild.config.js --modules-only",
-    "publish-modules": "powershell -ExecutionPolicy Bypass -File scripts/publish-modules.ps1",
+    "publish-modules": "powershell -ExecutionPolicy Bypass -File scripts/build/publish-modules.ps1",
     "clean": "rm -rf dist"
   },
   "keywords": [
