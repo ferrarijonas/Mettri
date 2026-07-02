@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Retomar — orquestração de envio em massa (motor natural)
 
 Contrato do **pipeline de envio** do painel Retomar: fila, ritmo conservador (não agressivo), e **poka-yoke** contra loop antes de cada disparo.

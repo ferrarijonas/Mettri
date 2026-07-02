@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # SinaisRelease — Sinais de Liberação
 
 >Programa que detecta expressões do cliente que indicam mudança de ideia, invalidando campos anteriores.

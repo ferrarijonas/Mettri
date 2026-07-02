@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Orquestrar pipeline comercial WhatsApp (`comercialPipelineOrchestrator`)
 
 Esta feature existe para que exista **uma única sequência** que lê o **MessageDB**, corre os programas na ordem declarada abaixo, agrega o **pacote** e devolve **estado + rascunho** à UI — com **abort explícito** se qualquer etapa falhar.

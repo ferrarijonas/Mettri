@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Atendimento unificado (nova UI)
 
 >Spec de interface que unifica Ouvinte + Funil + Pedido + Vitrine + Sugestão num painel de atendimento sem toggles desnecessários.

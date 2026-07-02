@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Promoções do período (`Promo`) — subcomponente interno da `Vitrine`
 
 Esta feature é um **subcomponente interno** da `Vitrine`. Produz `PromoSaida` para **entrada da vitrine** (`promocoesAtivas` em `VitrineEntrada`). **Não** é contrato público do pipeline comercial e **não** existe campo `promo` no `EnriquecimentoComercial` — o LLM e `Venda` consomem sinal promocional via **`VitrineSaida`** e `cliente`.

@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Fornecer vitrine para pipeline comercial (`fornecerVitrineParaPipelineComercial`)
 
 Esta ZenSpec define a costura do módulo `vitrine` com o pipeline comercial de atendimento.

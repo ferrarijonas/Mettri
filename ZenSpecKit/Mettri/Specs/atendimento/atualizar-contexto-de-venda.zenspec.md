@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Atualizar contexto de venda (`Venda`)
 
 Esta feature existe para que `ContextoResposta` e o resto do pipeline comercial recebam um **`estadoVenda`** determinístico (funil + slots + faltantes + fecho) sem reinterpretar o histórico fora deste programa.

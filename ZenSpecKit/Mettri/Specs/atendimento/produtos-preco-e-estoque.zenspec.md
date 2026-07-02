@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Produtos, preço e estoque (`Produtos`)
 
 Esta feature existe para que a vitrine, `ContextoResposta` e `Venda` recebam **match de produto**, **preço de referência** e **confiança** a partir do texto do turno e do catálogo, sem o LLM inventar preço como fato.

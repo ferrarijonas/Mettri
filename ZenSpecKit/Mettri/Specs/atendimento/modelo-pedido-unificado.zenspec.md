@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Modelo de pedido unificado (`OrderRecordV2`)
 
 Esta feature existe para que **todos** os programas do domínio de atendimento — `ClassificarIntencao`, `Venda`, `Produtos`, `RegistrarPedido`, `Pagamentos`, o módulo `pedidos` e o painel de atendimento — partilhem **um único contrato de pedido** com ciclo de vida completo (`lead` → `draft` → `open` → `completed`), substituindo a fragmentação atual (`OrderDB` atual + `PurchaseDB` separado).

@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Bloco de pedidos no painel de atendimento
 
 Esta feature existe para que, **dentro do painel de atendimento** (chat ativo), o atendente veja o pedido atual do cliente em destaque, com controles inline para editar itens (só em `draft`), confirmar ou cancelar, além de um resumo do histórico de pedidos daquele cliente e métricas como ticket médio e frequência.

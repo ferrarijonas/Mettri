@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Classificar intenção da conversa (`ClassificarIntencao`)
 
 Esta feature existe para que, **ao abrir uma conversa** (e reavaliado a cada novo turno de mensagem), o sistema determine o **tipo de intenção** do cliente — `compra_nova`, `suporte_pos_venda`, `orcamento`, `duvida`, `outro` — para que o pipeline comercial saiba se deve criar um pedido (`lead`), carregar um pedido existente, sugerir preço ou responder com FAQ. Sem esta classificação, toda conversa nova é tratada como genérica e o atendente perde contexto.

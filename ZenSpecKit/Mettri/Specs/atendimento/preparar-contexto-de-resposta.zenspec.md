@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Preparar contexto de resposta (`ContextoResposta`)
 
 Esta feature existe para que `SugestaoWhatsApp` receba um **`LlmTurnPackage`** determinístico (blocos system/user + metadados) derivado só de `estadoVenda`, turno e enriquecimento, sem chamar modelo.

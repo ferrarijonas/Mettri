@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Registrar pedido obrigatório (`RegistrarPedido`)
 
 Esta feature existe para que um **pedido confirmado** vire **registo persistente** com dados mínimos auditáveis, sem depender só do texto do WhatsApp ou do **Registro manual de compra** (secção em [spec.md](spec.md)).

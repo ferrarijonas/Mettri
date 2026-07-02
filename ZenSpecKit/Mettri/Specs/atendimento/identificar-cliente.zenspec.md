@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Identificar cliente (`IdentificarCliente`)
 
 Esta feature existe para que `Produtos`, a vitrine (via `cliente` + `VitrineEntrada.clienteContexto`) e `Venda` recebam **resolução de cliente enriquecida por `chatId`** — identidade operacional **e**, quando disponível, **sinais factuais** (perfil) — sem duplicar leituras.

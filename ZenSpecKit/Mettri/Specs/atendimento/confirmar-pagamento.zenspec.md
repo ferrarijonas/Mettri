@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Confirmar pagamento (`Pagamentos`)
 
 Esta feature existe para que o estado **pendente / pago / recusado** de um pedido seja atualizado **em paralelo** ao fluxo de rascunho de mensagem, sem bloquear `SugestaoWhatsApp`.

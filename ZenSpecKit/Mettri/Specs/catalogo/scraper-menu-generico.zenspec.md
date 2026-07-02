@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Scraper de Menu Genérico (`menuScraper`)
 
 Esta feature existe para que o sistema consiga extrair produtos de cardápios online de forma genérica, detectando automaticamente a plataforma e usando a estratégia de extração mais adequada.

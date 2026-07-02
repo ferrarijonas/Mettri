@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Orquestrar sugestão WhatsApp (`SugestaoWhatsApp` + `PortaoEnvio`)
 
 Esta feature existe para que o painel receba um **rascunho de texto** para a próxima mensagem e, só quando permitido, **dispare envio automático** — com **portão** explícito e sem sucesso parcial silencioso.

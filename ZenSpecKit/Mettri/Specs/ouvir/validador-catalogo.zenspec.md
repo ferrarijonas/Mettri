@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # ValidadorCatalogo — Validação Contra Catálogo
 
 >Programa que valida valores extraídos contra o catálogo de produtos e formas de pagamento.

@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Aplicar guardrails da vitrine (`aplicarGuardrailsVitrine`)
 
 Esta ZenSpec define os filtros obrigatórios para impedir recomendações inválidas ou perigosas.

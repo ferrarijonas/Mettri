@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Mostrar enriquecimento ao vivo no painel de atendimento
 
 >Programa que reage ao evento `ouvir:profile-updated` e atualiza a UI do painel de atendimento em tempo real.

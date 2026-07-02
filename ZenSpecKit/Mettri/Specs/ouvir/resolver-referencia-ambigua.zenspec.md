@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Resolver referência ambígua (`ResolverReferenciaAmbígua`)
 
 >Programa que resolve referências ambíguas a produtos em mensagens do cliente.

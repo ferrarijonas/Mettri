@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Pontuar candidato da vitrine (`pontuarCandidatoVitrine`)
 
 Esta ZenSpec define como calcular o score de um candidato da vitrine de forma simples, explicável e determinística.

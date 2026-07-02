@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Sincronizar catálogo com site (`sincronizarCatalogoComSite`)
 
 Esta feature existe para que o catálogo Mettri reflita automaticamente a disponibilidade e preços do cardápio online do negócio, mantendo-os sincronizados sem trabalho manual.

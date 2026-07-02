@@ -1,3 +1,7 @@
+---
+status: obsoleto
+---
+
 # Gerar recomendações da vitrine (`gerarRecomendacoesVitrine`)
 
 Esta ZenSpec define o programa principal do módulo `vitrine`: montar candidatos, pontuar, aplicar guardrails e devolver ranking final.
