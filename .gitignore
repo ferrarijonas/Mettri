@@ -151,3 +151,12 @@ _temp-*
 logo.pdf
 logo.png
 bee-output.txt
+
+# Scripts de inspeção WhatsApp
+wa-inspect.*
+
+# Archive de experimentos
+archive/
+
+# ZenSpec com dados reais
+ZenSpecKit/contexto-negocio/
