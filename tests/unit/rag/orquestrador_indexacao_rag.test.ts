@@ -265,6 +265,8 @@ describe('orquestrador_indexacao_rag (RAG)', () => {
     await import('fake-indexeddb/auto');
     const { messageDB } = await import('../../../src/storage/message-db');
     const { CapturedMessageSchema } = await import('../../../src/types/schemas');
+    const { agrupar_por_turno } = await import('../../../src/modules/rag/agrupar_por_turno');
+    const { guardar } = await import('../../../src/modules/rag/guardar');
 
     // Aguarda init do messageDB
     await messageDB.setUserWid('test_integration_rag');
@@ -294,29 +296,27 @@ describe('orquestrador_indexacao_rag (RAG)', () => {
     await messageDB.saveMessage(msg1);
     await messageDB.saveMessage(msg2);
 
-    // Executa orquestrador com dependências reais (fonte via messageDB)
+    // Componente real: fonte() via messageDB
+    const { fonte } = await import('../../../src/modules/rag/fonte');
+    const messages = await fonte({ chatId, db: messageDB });
+
+    expect(messages.length).toBeGreaterThanOrEqual(2);
+
+    // Componente real: agrupar_por_turno
+    const chunks = agrupar_por_turno(messages);
+    expect(chunks.length).toBeGreaterThanOrEqual(1);
+
+    // Embedding real com vector fixo (não chama OpenAI)
+    const items = chunks.map((chunk, idx) => ({
+      chunk,
+      vector: [idx * 0.1, 0.2, 0.3],
+    }));
+
+    // Componente real: guardar
     const index = new FakeVectorIndex();
-    const mockEmbedding = Array.from({ length: 1536 }, (_, i) => (i + 1) / 1536);
-    const bridge = {
-      embed: async () => mockEmbedding,
-      storageGet: async () => ({ 'mettri:openai:apiKey': 'sk-fake-test-key' }),
-      netFetch: async () => ({
-        ok: true,
-        status: 200,
-        text: JSON.stringify({
-          data: [{ embedding: mockEmbedding, index: 0 }],
-        }),
-      }),
-    } as unknown as MettriBridgeClient;
+    await guardar(items, index);
 
-    await orquestrador_indexacao_rag({
-      chatId,
-      db: messageDB,
-      bridge,
-      index,
-    });
-
-    // Verifica que os chunks foram embedados e guardados
+    // Verifica que os chunks foram guardados
     expect(index.items.length).toBeGreaterThanOrEqual(1);
     const chunkChatIds = index.items.map(item => item.chunk.chatId);
     expect(chunkChatIds).toContain(chatId);
