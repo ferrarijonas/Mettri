@@ -160,3 +160,6 @@ archive/
 
 # ZenSpec com dados reais
 ZenSpecKit/contexto-negocio/
+
+# Karma trails (podem conter dados de debug)
+.karma/.mettri/trail/
