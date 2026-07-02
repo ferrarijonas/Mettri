@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+*.js.map
 
 # Environment
 .env
@@ -95,6 +96,10 @@ chrome-extensions.yml
 
 # Test automation scripts (dev-only)
 scripts/*.mjs
+scripts/*.cjs
+scripts/*.ts
+tests/automation/*.mjs
+tests/automation/*.ts
 tests/automation/*.mjs
 tests/automation/*.ts
 
@@ -121,7 +126,7 @@ modules-updates/
 whatsapp-copilot-crm/
 
 # Utilitários manuais (não no build)
-activar-pages-e-deploy.html
+ativar-pages-e-deploy.html
 generate-icons.html
 create-icons.js
 create_icons.py
