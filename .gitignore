@@ -131,3 +131,23 @@ create_icons.py
 
 # Docs históricos não mais mantidos
 docs/archive/HISTORICO_SIMPLES.md
+
+# Dados pessoais e sensíveis
+Curriculo_*
+leia.txt
+whatsapp-snapshot*
+whatsapp-initial*
+page-state.md
+session-ses_*
+wa-recheck*
+wa-initial*
+wa-after*
+tmp/
+*.heapsnapshot
+_diagnose*
+_temp-*
+
+# Logos e assets não essenciais
+logo.pdf
+logo.png
+bee-output.txt
