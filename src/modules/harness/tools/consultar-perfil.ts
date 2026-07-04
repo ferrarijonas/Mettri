@@ -19,6 +19,7 @@ export const consultarPerfil: Tool = {
     '  - consultar_perfil_cliente({chatId: "5511999999999@c.us"}) → {nome: "Maria", endereco: "Rua X, 123", formaPagamento: ["pix"]}\n' +
     '  - consultar_perfil_cliente({chatId: "chat_novo@c.us"}) → erro: perfil não encontrado',
   categoria: 'leitura',
+  tipo: 'leitura',
   inputSchema: z.object({
     chatId: z.string().describe('ID do chat do cliente (ex: 5511999999999@c.us) — obtido automaticamente do contexto'),
   }),

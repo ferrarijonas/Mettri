@@ -144,3 +144,19 @@ export class ToolRegistry {
     return this.tools.get(nome);
   }
 }
+
+/**
+ * Verifica quais tipos de ferramenta NÃO estão cobertos pelo propósito atual.
+ * Não quebra runtime — só retorna avisos.
+ */
+export function validarTiposCobertos(tools: Tool[], categoriasAtivas: string[]): string[] {
+  const ativos = new Set(categoriasAtivas);
+  const tiposEncontrados = new Set(tools.map(t => t.tipo));
+  const naoCobertos: string[] = [];
+  for (const tipo of tiposEncontrados) {
+    if (!ativos.has(tipo)) {
+      naoCobertos.push(tipo);
+    }
+  }
+  return naoCobertos;
+}

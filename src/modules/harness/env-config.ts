@@ -4,28 +4,50 @@
  * @TODO: ler de chrome.storage.local (settings UI) quando existir.
  * @TODO: injetar via esbuild define (process.env.METTRI_*) quando houver build config.
  */
-export interface EnvInfo {
+
+export interface AmbienteNegocio {
   /** Nome do negócio (ex: "Empresa Exemplo") */
   businessName: string
   /** Cidade do negócio (ex: "São Paulo") */
   city: string
   /** Fuso horário (ex: "America/Sao_Paulo") */
   timezone: string
-  /** Versão do Mettri */
-  version: string
+  /** Data formatada no fuso do negócio */
+  today: string
+  /** Horário de funcionamento (ex: "Seg-Sex 7h-19h, Sáb 7h-13h") */
+  horarioFuncionamento: string
+}
+
+export interface AmbienteRuntime {
+  /** Diretório de trabalho */
+  directory: string
   /** Nome do modelo (ex: "DeepSeek Chat") */
   modelName: string
-  /** Ambiente: produção ou desenvolvimento */
-  environment: 'production' | 'development'
+  /** Versão do Mettri */
+  version: string
+  /** Plataforma: win32, darwin, linux */
+  platform: string
+}
+
+export type EnvInfo = {
+  negocio: AmbienteNegocio
+  runtime: AmbienteRuntime
 }
 
 const DEFAULTS: EnvInfo = {
-  businessName: 'Empresa Exemplo',
-  city: 'Uberlândia',
-  timezone: 'America/Sao_Paulo',
-  version: '2.0.1',
-  modelName: 'DeepSeek Chat',
-  environment: 'development',
+  negocio: {
+    businessName: 'Empresa Exemplo',
+    city: 'Uberlândia',
+    timezone: 'America/Sao_Paulo',
+    today: '',
+    horarioFuncionamento: 'Seg-Sex 7h-19h, Sáb 7h-13h',
+  },
+  runtime: {
+    directory: '',
+    modelName: 'DeepSeek Chat',
+    version: '2.0.1',
+    platform: '',
+  },
 }
 
 /** Retorna data/hora formatada no fuso do negócio */
@@ -41,6 +63,16 @@ export function getToday(timezone: string): string {
 }
 
 export async function getEnvInfo(): Promise<EnvInfo> {
-  const env = process.env.NODE_ENV === 'production' ? 'production' : 'development'
-  return { ...DEFAULTS, environment: env }
+  const today = getToday(DEFAULTS.negocio.timezone)
+  return {
+    negocio: {
+      ...DEFAULTS.negocio,
+      today,
+    },
+    runtime: {
+      ...DEFAULTS.runtime,
+      directory: process.cwd(),
+      platform: process.platform,
+    },
+  }
 }

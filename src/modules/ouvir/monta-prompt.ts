@@ -90,17 +90,26 @@ interface Secao {
   conteudo: string
 }
 
-/** Monta o bloco <ambiente> a partir do envInfo */
-function gerarAmbiente(envInfo: EnvInfo, today?: string): string {
+/** Monta os blocos <ambiente_negocio> e <ambiente_runtime> a partir do envInfo */
+function gerarAmbiente(envInfo: EnvInfo, todayOverride?: string): string {
+  const n = envInfo.negocio
+  const r = envInfo.runtime
+  const hoje = todayOverride ?? n.today ?? '(indisponível)'
   return [
-    '<ambiente>',
-    `Negócio: ${envInfo.businessName}`,
-    `Cidade: ${envInfo.city}`,
-    `Fuso: ${envInfo.timezone}`,
-    `Hoje: ${today ?? '(indisponível)'}`,
-    `Versão: ${envInfo.version}`,
-    `Modelo: ${envInfo.modelName}`,
-    '</ambiente>',
+    '<ambiente_negocio>',
+    `businessName: ${n.businessName}`,
+    `city: ${n.city}`,
+    `timezone: ${n.timezone}`,
+    `today: ${hoje}`,
+    `horarioFuncionamento: ${n.horarioFuncionamento}`,
+    '</ambiente_negocio>',
+    '',
+    '<ambiente_runtime>',
+    `directory: ${r.directory}`,
+    `modelName: ${r.modelName}`,
+    `version: ${r.version}`,
+    `platform: ${r.platform}`,
+    '</ambiente_runtime>',
   ].join('\n')
 }
 

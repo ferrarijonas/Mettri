@@ -18,6 +18,7 @@ export const consultarHistorico: Tool = {
     '  - consultar_historico({chatId: "55119@c.us", limite: 5}) → [{texto: "quero 2 pães", data: "2026-06-11", isOutgoing: false}]\n' +
     '  - consultar_historico({chatId: "55119@c.us"}) → últimas 10 mensagens',
   categoria: 'leitura',
+  tipo: 'leitura',
   inputSchema: z.object({
     chatId: z.string().describe('ID do chat do cliente (ex: 5511999999999@c.us)'),
     limite: z

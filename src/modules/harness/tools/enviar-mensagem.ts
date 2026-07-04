@@ -21,6 +21,7 @@ export const enviarMensagem: Tool = {
     '  - enviar_mensagem({chatId: "55119@c.us", texto: "Qual seu endereço para entrega?"}) → {enviado: true}\n' +
     '  - enviar_mensagem com texto vazio → erro',
   categoria: 'comunicacao',
+  tipo: 'escrita',
   inputSchema: z.object({
     chatId: z.string().describe('ID do chat do cliente (ex: 5511999999999@c.us)'),
     texto: z.string().min(1).describe('Texto da mensagem a ser enviada'),

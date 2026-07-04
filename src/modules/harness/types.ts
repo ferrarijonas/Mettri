@@ -17,6 +17,7 @@ export interface Tool {
   /** Descrição principal: quando usar + quando NÃO + exemplos */
   descricao: string;
   categoria: 'leitura' | 'escrita' | 'comunicacao' | 'acao';
+  tipo: 'leitura' | 'escrita' | 'execucao' | 'pesquisa' | 'delegacao';
   inputSchema: ZodType<unknown>;
   executar(input: unknown): Promise<ToolResultado>;
   soLeitura: boolean;

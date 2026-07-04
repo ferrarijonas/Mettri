@@ -30,6 +30,7 @@ QUANDO NÃO USAR:
 
 IMPORTANTE: Após carregar a skill, continue o loop normalmente. A skill contém instruções sobre COMO agir — use suas ferramentas (consultar_catalogo, enviar_mensagem, etc.) para executar as ações.`,
   categoria: 'leitura',
+  tipo: 'delegacao',
   inputSchema: z.object({
     nome: z.string().describe('Nome da skill a carregar (ex: "retomar-clientes")'),
   }),

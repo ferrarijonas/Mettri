@@ -20,6 +20,7 @@ export const cotarFrete: Tool = {
     '  - cotar_frete({logradouro: "Av. João Naves", numero: "2000", bairro: "Santa Mônica"}) → {valorFrete: 12.30, prazoMin: 20, prazoMax: 50}\n' +
     '  - cotar_frete({...}) com endereço fora de Uberlândia → erro: endereço não disponível',
   categoria: 'leitura',
+  tipo: 'pesquisa',
   inputSchema: z.object({
     logradouro: z.string().min(1).describe('Rua, avenida ou logradouro do destino'),
     numero: z.string().min(1).describe('Número do endereço'),

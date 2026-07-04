@@ -26,6 +26,7 @@ export const registrarPedido: Tool = {
     '  - registrar_pedido({chatId: "55119@c.us", itens: [{nome: "Pão Integral", quantidade: 2, preco: 8.50}]}) → {orderId: "ORD-123"}\n' +
     '  - registrar_pedido com itens vazios → erro: mínimo 1 item',
   categoria: 'escrita',
+  tipo: 'escrita',
   inputSchema: z.object({
     chatId: z.string().describe('ID do chat do cliente'),
     itens: z

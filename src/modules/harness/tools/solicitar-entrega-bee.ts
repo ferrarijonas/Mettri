@@ -19,6 +19,7 @@ export const solicitarEntregaBee: Tool = {
     'EXEMPLOS:\n' +
     '  - solicitar_entrega_bee({logradouro: "Rua Oscar Alves", numero: "100", bairro: "Santa Mônica", clienteNome: "Maria", clienteTelefone: "34999999999"}) → {entregaId: "uuid", status: "confirmed", valorFrete: 14.59}',
   categoria: 'acao',
+  tipo: 'execucao',
   inputSchema: z.object({
     logradouro: z.string().min(1).describe('Rua, avenida ou logradouro do destino'),
     numero: z.string().min(1).describe('Número do endereço'),

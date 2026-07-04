@@ -71,13 +71,13 @@ export class AgentLoop {
 
     // Carrega informações de ambiente
     const envInfo = await getEnvInfo();
-    const today = getToday(envInfo.timezone);
+    const today = getToday(envInfo.negocio.timezone);
 
     // Contexto extra para extração de memórias (passado ao salvarEAprender)
     const memoriaExtraContext = {
       profile: context?.profile,
       historicoContexto: context?.historicoContexto,
-      envInfo: { businessName: envInfo.businessName },
+      envInfo: { businessName: envInfo.negocio.businessName },
       today,
     };
 
@@ -95,7 +95,7 @@ export class AgentLoop {
       mensagem,
       ferramentasDisponiveis,
       totalMemoriasCarregadas: totalMemorias,
-      envInfo: { businessName: envInfo.businessName, today },
+      envInfo: { businessName: envInfo.negocio.businessName, today },
     });
 
     this.turno = {

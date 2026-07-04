@@ -17,6 +17,7 @@ export const consultarSaldoBee: Tool = {
     '  - consultar_saldo_bee() → {saldo: 5.05}\n' +
     '  - consultar_saldo_bee() com sessão expirada → erro: precisa logar na Bee Delivery',
   categoria: 'leitura',
+  tipo: 'leitura',
   inputSchema: z.object({}).describe('Nenhum parâmetro necessário'),
   executar: async () => {
     try {

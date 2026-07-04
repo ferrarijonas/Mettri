@@ -20,6 +20,7 @@ export const consultarCatalogo: Tool = {
     '  - consultar_catalogo({busca: ""}) → erro: termo de busca vazio\n' +
     '  - consultar_catalogo({busca: "produto inexistente"}) → {produtos: []}',
   categoria: 'leitura',
+  tipo: 'leitura',
   inputSchema: z.object({
     busca: z.string().describe('Nome ou palavra-chave do produto/serviço (mín. 2 caracteres)'),
   }),
