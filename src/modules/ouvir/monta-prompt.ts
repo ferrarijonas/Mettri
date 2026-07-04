@@ -10,7 +10,7 @@ import contextoConversa from './prompts/contexto-conversa.md'
 import decisaoSistema from './prompts/decisao-sistema.md'
 
 import sistemaMd from './prompts/sistema.md'
-import modoAtendenteMd from './prompts/modo-atendente.md'
+import metodoMd from './prompts/metodo.md'
 
 import type { EstadoPercebido, MensagemHistorico } from './types'
 import type { ContextoMemorias } from '../harness/memory-store'
@@ -203,8 +203,8 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
     { id: 'sistema', ativo: true, conteudo: sistemaMd },
     // 4. AMBIENTE (ambiente_negocio + ambiente_runtime)
     { id: 'ambiente', ativo: ambienteBlock !== null, conteudo: ambienteBlock ?? '' },
-    // 5. MÉTODO (modo-atendente.md até checkpoint 3 criar metodo.md)
-    { id: 'metodo', ativo: true, conteudo: modoAtendenteMd },
+    // 5. MÉTODO (metodo.md — funil 7 etapas universal)
+    { id: 'metodo', ativo: true, conteudo: metodoMd },
     // 6. TOM (tom de voz)
     { id: 'tom', ativo: input.identidade !== false, conteudo: tomDeVoz },
     // 7. Contexto de conversa
