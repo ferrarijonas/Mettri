@@ -32,6 +32,7 @@ export class AgentLoop {
   private eventBus: EventBus;
   private turno: AgentTurno | null = null;
   private options: Required<AgentLoopOptions>;
+  private mensagensProcessadas: Set<string> = new Set();
 
   constructor(
     registry: ToolRegistry,
@@ -41,7 +42,7 @@ export class AgentLoop {
     this.registry = registry;
     this.eventBus = eventBus;
     this.options = {
-      maxTools: options?.maxTools ?? 15,
+      maxTools: options?.maxTools ?? 5,
       maxDuracaoMs: options?.maxDuracaoMs ?? 90_000,
       maxRepeticoes: options?.maxRepeticoes ?? 5,
     };
@@ -64,6 +65,24 @@ export class AgentLoop {
       memorias?: ContextoMemorias;
     },
   ): Promise<void> {
+    // ⚠️ Dedup: se esta mensagem já foi processada, ignorar
+    const mensagemHash = `${chatId}:${mensagem.slice(0, 64)}`;
+    if (this.mensagensProcessadas.has(mensagemHash)) {
+      console.log(`[agent-loop] ⏭️ Mensagem duplicada ignorada: ${mensagemHash}`);
+      return;
+    }
+    this.mensagensProcessadas.add(mensagemHash);
+
+    // Limpeza do cache a cada 100 mensagens para evitar vazamento
+    if (this.mensagensProcessadas.size > 100) {
+      const iter = this.mensagensProcessadas.values();
+      for (let i = 0; i < 50; i++) {
+        const val = iter.next();
+        if (val.done) break;
+        this.mensagensProcessadas.delete(val.value);
+      }
+    }
+
     const ferramentasChamadas: ToolCall[] = [];
     const ferramentasDisponiveis = this.registry
       .listarDisponiveis()
@@ -108,10 +127,6 @@ export class AgentLoop {
 
     const inicio = Date.now();
     let ferramentasUsadas = 0;
-    const ultimaToolRepeticao: { nome: string; count: number } = {
-      nome: '',
-      count: 0,
-    };
     let errosConsecutivos = 0;
 
     while (ferramentasUsadas < this.options.maxTools) {
@@ -182,24 +197,6 @@ export class AgentLoop {
       }
 
       if (decisao.tipo === 'tool_use' && decisao.nome) {
-        // Detecta repetição excessiva
-        if (ultimaToolRepeticao.nome === decisao.nome) {
-          ultimaToolRepeticao.count++;
-          if (ultimaToolRepeticao.count >= this.options.maxRepeticoes) {
-            this.turno.status = 'erro';
-            await this.salvarEAprender(this.turno, memoriaExtraContext);
-            this.eventBus.emit(AGENT_EVENTS.ERRO, {
-              chatId,
-              erro: `Agente repetiu a ferramenta "${decisao.nome}" ${this.options.maxRepeticoes} vezes consecutivas`,
-              gravidade: 'N2',
-            });
-            return;
-          }
-        } else {
-          ultimaToolRepeticao.nome = decisao.nome;
-          ultimaToolRepeticao.count = 1;
-        }
-
         const inicioTool = Date.now();
         this.eventBus.emit(AGENT_EVENTS.TOOL_CALL, {
           chatId,
@@ -248,6 +245,27 @@ export class AgentLoop {
           errosConsecutivos = 0;
         }
 
+        // Stuck detector: 3x mesma tool consecutiva
+        const ultimasToolCalls = ferramentasChamadas.slice(-3);
+        const mesmoNome = ultimasToolCalls.length === 3 && 
+          ultimasToolCalls.every(t => t.nome === ultimasToolCalls[0].nome);
+        
+        if (mesmoNome) {
+          console.log(`[agent-loop] 🛑 Loop detectado: ${ultimasToolCalls[0].nome} chamada 3x consecutivas`);
+          this.eventBus.emit(AGENT_EVENTS.STUCK, {
+            chatId,
+            motivo: `Tool "${ultimasToolCalls[0].nome}" repetida 3x consecutivas`,
+            ferramentasUsadas: ferramentasChamadas.length,
+          });
+          break;
+        }
+        
+        // Se passou de maxTools, gera resposta parcial
+        if (ferramentasChamadas.length >= this.options.maxTools) {
+          console.log(`[agent-loop] 🛑 Limite de ${this.options.maxTools} tools atingido, gerando resposta parcial`);
+          break;
+        }
+
         continue;
       }
 
@@ -265,13 +283,13 @@ export class AgentLoop {
       }
     }
 
-    // Estourou limite de ferramentas
-    this.turno.status = 'erro';
+    // Estourou limite de ferramentas ou loop detectado — gera resposta parcial
+    this.turno.status = 'dormindo';
     await this.salvarEAprender(this.turno, memoriaExtraContext);
-    this.eventBus.emit(AGENT_EVENTS.ERRO, {
+    this.eventBus.emit(AGENT_EVENTS.RESPOSTA_PRONTA, {
       chatId,
-      erro: `Agente excedeu limite de ${this.options.maxTools} ferramentas por turno`,
-      gravidade: 'N2',
+      texto: `Puxa, estou tendo dificuldade para processar isso agora. Vou passar para um atendente humano que pode ajudar melhor.`,
+      ferramentasChamadas: [...ferramentasChamadas],
     });
   }
 

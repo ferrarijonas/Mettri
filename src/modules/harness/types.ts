@@ -139,6 +139,12 @@ export interface AgentMemoriaSalvaEvent {
   duracaoMs: number;
 }
 
+export interface AgentStuckEvent {
+  chatId: string;
+  motivo: string;
+  ferramentasUsadas: number;
+}
+
 // ── ToolDescription (formato da API DeepSeek para function calling) ──
 
 /**
@@ -181,6 +187,8 @@ export const AGENT_EVENTS = {
   MEMORIA_SALVA: 'agent:memoria-salva',
   /** Reservado para T-045 (compactação de contexto) */
   COMPACTING: 'agent:compacting',
+  /** Agente detectou stuck (loop de ferramentas) */
+  STUCK: 'agent:stuck',
 } as const;
 
 // ── MettriModule (para módulos sem UI, apenas init) ──
