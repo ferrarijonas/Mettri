@@ -29,7 +29,7 @@ export interface AmbienteRuntime {
   platform: string
 }
 
-export type EnvInfo = {
+export interface EnvInfo {
   negocio: AmbienteNegocio
   runtime: AmbienteRuntime
 }

@@ -32,7 +32,7 @@ export class AgentLoop {
   private eventBus: EventBus;
   private turno: AgentTurno | null = null;
   private options: Required<AgentLoopOptions>;
-  private mensagensProcessadas: Set<string> = new Set();
+  private mensagensProcessadas = new Set<string>();
 
   constructor(
     registry: ToolRegistry,

@@ -102,7 +102,7 @@ export class ToolRegistry {
 
       // 🎵 Som de comemoração quando um pedido é fechado
       if (nome === 'registrar_pedido' && resultado.sucesso) {
-        tocarSomPedidoFechado().catch(() => {});
+        tocarSomPedidoFechado().catch(() => { /* silêncio intencional — som não crítico */ });
       }
 
       return resultado;

@@ -9,6 +9,10 @@ describe('montarPrompt', () => {
       resposta: false,
       mensagem: 'quero 2 paes',
       catalogoCandidatos: ['Pao Frances'],
+      envInfo: {
+        negocio: { businessName: 'Empresa Exemplo', city: 'São Paulo', timezone: 'America/Sao_Paulo', horarioFuncionamento: '08:00-18:00' },
+        runtime: { directory: '/test', modelName: 'test', version: '1.0', platform: 'test' },
+      },
     });
 
     expect(result.systemPrompt).toContain('Empresa Exemplo');
