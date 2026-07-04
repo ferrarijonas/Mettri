@@ -3,7 +3,6 @@ import type { CustomerOperationalProfile } from '../../storage/customer-profile-
 // ── Seções de prompt (arquivos .md locais no módulo) ──
 // O esbuild resolve imports de .md como strings
 
-import identidadePadaria from './prompts/identidade-padaria.md'
 import tomDeVoz from './prompts/tom-de-voz.md'
 import extracaoSistema from './prompts/extracao-sistema.md'
 import confirmacaoCompra from './prompts/resposta-confirmacao.md'
@@ -15,10 +14,13 @@ import modoAtendenteMd from './prompts/modo-atendente.md'
 
 import type { EstadoPercebido, MensagemHistorico } from './types'
 import type { ContextoMemorias } from '../harness/memory-store'
-import type { EnvInfo } from '../harness/env-config'
+import type { EnvInfo, AmbienteNegocio, AmbienteRuntime } from '../harness/env-config'
+
+// ── SOUL — identidade fixa do sistema (sempre ativa) ──
+const SECAO_SOUL = 'Você é a Mettri, plataforma de vendas e gestão para pequenos negócios.'
 
 export interface MontarPromptInput {
-  /** Incluir seção de identidade (padaria + tom de voz) */
+  /** Incluir seção de tom de voz (antiga identidade) */
   identidade?: boolean
   /** Incluir seção de extração de perfil */
   extracao?: boolean
@@ -30,6 +32,10 @@ export interface MontarPromptInput {
   contextoConversa?: boolean
   /** Perfil do cliente para montar o user prompt (delta) */
   profile?: CustomerOperationalProfile | null
+  /** Causa do despertar (para bloco <despertar> no user prompt) */
+  causa?: 'mensagem_recebida' | 'reativacao' | 'continuar_turno'
+  /** Skill ativa no momento */
+  skillAtiva?: string
   /** Mensagem atual do cliente */
   mensagem: string
   /** Candidatos do catálogo (top 5) */
@@ -57,6 +63,48 @@ export interface MontarPromptOutput {
   systemPrompt: string
   /** User prompt: dados dinâmicos (mensagem + catálogo + perfil) */
   userPrompt: string
+}
+
+// ── PROPÓSITO — derivado das categorias das tools disponíveis ──
+function construirProposito(tiposDisponiveis: string[]): string {
+  const mapa: Record<string, string> = {
+    leitura: 'vendas',
+    escrita: 'vendas',
+    pesquisa: 'vendas',
+    execucao: 'entrega',
+    delegacao: 'gestão',
+  }
+  const areas = [...new Set(tiposDisponiveis.map(t => mapa[t] || 'vendas').filter(Boolean))]
+  return `Você é um atendente que ajuda com ${areas.join(' e ')} do negócio.`
+}
+
+// ── DESPERTAR — bloco contextual no user prompt ──
+type CustomerProfileWithMeta = CustomerOperationalProfile & {
+  ultimaMensagem?: string
+  totalPedidos?: number
+}
+
+function gerarDespertar(params: {
+  causa: string
+  profile?: CustomerOperationalProfile | null
+  memorias?: ContextoMemorias
+  skillAtiva?: string
+  today?: string
+}): string {
+  const profile = params.profile as CustomerProfileWithMeta | null | undefined
+  const diasInativo = profile?.ultimaMensagem
+    ? Math.floor((Date.now() - new Date(profile.ultimaMensagem).getTime()) / 86400000)
+    : 0
+  return [
+    '<despertar>',
+    `causa: ${params.causa}`,
+    `nome: ${profile?.nomeConfiavel ?? 'desconhecido'}`,
+    `dias_inativo: ${diasInativo}`,
+    `total_pedidos: ${profile?.totalPedidos ?? 0}`,
+    params.skillAtiva ? `skill_ativa: ${params.skillAtiva}` : null,
+    params.memorias ? `memorias_carregadas: ${Object.values(params.memorias).flat().length}` : null,
+    '</despertar>',
+  ].filter(Boolean).join('\n')
 }
 
 function gerarSecaoTools(tools: { nome: string; descricao: string; categoria: string }[]): string {
@@ -90,25 +138,28 @@ interface Secao {
   conteudo: string
 }
 
-/** Monta os blocos <ambiente_negocio> e <ambiente_runtime> a partir do envInfo */
-function gerarAmbiente(envInfo: EnvInfo, todayOverride?: string): string {
-  const n = envInfo.negocio
-  const r = envInfo.runtime
-  const hoje = todayOverride ?? n.today ?? '(indisponível)'
+/** Bloco <ambiente_negocio> com dados do negócio */
+function gerarAmbienteNegocio(negocio: AmbienteNegocio, today?: string): string {
+  const hoje = today ?? '(indisponível)'
   return [
     '<ambiente_negocio>',
-    `businessName: ${n.businessName}`,
-    `city: ${n.city}`,
-    `timezone: ${n.timezone}`,
-    `today: ${hoje}`,
-    `horarioFuncionamento: ${n.horarioFuncionamento}`,
+    `Negócio: ${negocio.businessName}`,
+    `Cidade: ${negocio.city}`,
+    `Fuso: ${negocio.timezone}`,
+    `Hoje: ${hoje}`,
+    `Horário: ${negocio.horarioFuncionamento}`,
     '</ambiente_negocio>',
-    '',
+  ].join('\n')
+}
+
+/** Bloco <ambiente_runtime> com dados de runtime */
+function gerarAmbienteRuntime(runtime: AmbienteRuntime): string {
+  return [
     '<ambiente_runtime>',
-    `directory: ${r.directory}`,
-    `modelName: ${r.modelName}`,
-    `version: ${r.version}`,
-    `platform: ${r.platform}`,
+    `Diretório: ${runtime.directory}`,
+    `Modelo: ${runtime.modelName}`,
+    `Versão: ${runtime.version}`,
+    `Plataforma: ${runtime.platform}`,
     '</ambiente_runtime>',
   ].join('\n')
 }
@@ -117,76 +168,69 @@ function gerarAmbiente(envInfo: EnvInfo, todayOverride?: string): string {
  * Monta o prompt do sistema a partir das seções solicitadas.
  *
  * System prompt (cacheável):
- *   1. "Você é a Mettri, atendente de IA para WhatsApp." (identidade do sistema)
- *   2. # Sistema — regras gerais
- *   3. # Modo Atendente — como pensar como atendente
- *   4. <ambiente> — dados da sessão (negócio, cidade, data)
- *   5. Persona + tom de voz
- *   6. Extração + Decisão (ferramentas)
+ *   1. SOUL — identidade fixa do sistema
+ *   2. PROPÓSITO — derivado das tools disponíveis
+ *   3. # Sistema — regras gerais
+ *   4. <ambiente_negocio> + <ambiente_runtime> — dados da sessão
+ *   5. # Método — modo atendente
+ *   6. Tom de voz
+ *   7. Contexto de conversa (se ativo)
+ *   8. Extração (se ativo)
+ *   9. Resposta (se ativo)
+ *   10. DECISÃO (ferramentas)
  *
  * User prompt (dinâmico):
- *   DIRETRIZES DO NEGÓCIO + PREFERÊNCIAS DO CLIENTE + CONVERSA ATUAL
+ *   <despertar> + DIRETRIZES DO NEGÓCIO + PREFERÊNCIAS DO CLIENTE + CONVERSA ATUAL
  */
 export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
-  // ── Linha de abertura: identidade do sistema Mettri ──
-  const prefixoIdentidade = 'Você é a Mettri, atendente de IA para WhatsApp.'
+  // ── SOUL + PROPÓSITO ──
+  const soul = SECAO_SOUL
+  const tipos = input.tools?.map(t => t.categoria) ?? []
+  const proposito = construirProposito(tipos)
 
   // ── Bloco <ambiente> (se fornecido) ──
-  const ambienteBlock = input.envInfo ? gerarAmbiente(input.envInfo, input.today) : null
+  const ambienteBlock = input.envInfo
+    ? `${gerarAmbienteNegocio(input.envInfo.negocio, input.today)}\n\n${gerarAmbienteRuntime(input.envInfo.runtime)}`
+    : null
 
-  // ── Seções registradas ──
+  // ── Seções registradas (ordem: SOUL → PROPÓSITO → SISTEMA → AMBIENTE → MÉTODO → TOM → contextoConversa → extracao → resposta → DECISÃO) ──
   const secoes: Secao[] = [
-    // Seções obrigatórias do core Mettri (sempre presentes)
-    {
-      id: 'sistema',
-      ativo: true,
-      conteudo: sistemaMd,
-    },
-    {
-      id: 'modoAtendente',
-      ativo: true,
-      conteudo: modoAtendenteMd,
-    },
-    // Bloco <ambiente> (dinâmico)
-    {
-      id: 'ambiente',
-      ativo: ambienteBlock !== null,
-      conteudo: ambienteBlock ?? '',
-    },
-    // Seções modulares (controladas por flags)
-    {
-      id: 'identidade',
-      ativo: input.identidade !== false,
-      conteudo: `${identidadePadaria}\n${tomDeVoz}`,
-    },
-    {
-      id: 'contextoConversa',
-      ativo: input.contextoConversa === true,
-      conteudo: contextoConversa,
-    },
-    {
-      id: 'extracao',
-      ativo: input.extracao !== false,
-      conteudo: extracaoSistema,
-    },
-    {
-      id: 'resposta',
-      ativo: input.resposta === true,
-      conteudo: confirmacaoCompra,
-    },
-    {
-      id: 'decisao',
-      ativo: input.decisao === true,
-      conteudo: (input.tools?.length ? gerarSecaoTools(input.tools) : decisaoSistema),
-    },
+    // 1. SOUL
+    { id: 'soul', ativo: true, conteudo: soul },
+    // 2. PROPÓSITO
+    { id: 'proposito', ativo: true, conteudo: proposito },
+    // 3. SISTEMA
+    { id: 'sistema', ativo: true, conteudo: sistemaMd },
+    // 4. AMBIENTE (ambiente_negocio + ambiente_runtime)
+    { id: 'ambiente', ativo: ambienteBlock !== null, conteudo: ambienteBlock ?? '' },
+    // 5. MÉTODO (modo-atendente.md até checkpoint 3 criar metodo.md)
+    { id: 'metodo', ativo: true, conteudo: modoAtendenteMd },
+    // 6. TOM (tom de voz)
+    { id: 'tom', ativo: input.identidade !== false, conteudo: tomDeVoz },
+    // 7. Contexto de conversa
+    { id: 'contextoConversa', ativo: input.contextoConversa === true, conteudo: contextoConversa },
+    // 8. Extração
+    { id: 'extracao', ativo: input.extracao !== false, conteudo: extracaoSistema },
+    // 9. Resposta
+    { id: 'resposta', ativo: input.resposta === true, conteudo: confirmacaoCompra },
+    // 10. DECISÃO
+    { id: 'decisao', ativo: input.decisao === true, conteudo: (input.tools?.length ? gerarSecaoTools(input.tools) : decisaoSistema) },
   ]
 
-  // System prompt: prefixo + seções ativas (ordenadas)
-  const corpo = secoes
+  // System prompt: seções ativas (ordenadas)
+  const systemPrompt = secoes
     .filter(s => s.ativo)
     .map(s => s.conteudo.trim())
     .join('\n\n---\n\n')
-  const systemPrompt = `${prefixoIdentidade}\n\n---\n\n${corpo}`
+
+  // ── DESPERTAR (bloco contextual no user prompt) ──
+  const despertarBlock = input.causa ? gerarDespertar({
+    causa: input.causa,
+    profile: input.profile,
+    memorias: input.memorias,
+    skillAtiva: input.skillAtiva,
+    today: input.today,
+  }) : null
 
   // User prompt: monta o JSON com dados dinâmicos
   const perfilVazio: Record<string, null> = {}
@@ -233,15 +277,16 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
     userData.chat_id = input.chatId
   }
 
-  // ── User Prompt: 3 seções com boundary explícito ──
-
-  // Seção 1: DIRETRIZES DO NEGÓCIO
+  // ── User Prompt ──
   const secoesUser: string[] = []
+
+  // Bloco DESPERTAR (se causa fornecida)
+  if (despertarBlock) secoesUser.push(despertarBlock)
 
   if (input.memorias) {
     const m = input.memorias
 
-    // Seção 1: Diretrizes do negócio (têm precedência)
+    // Diretrizes do negócio (têm precedência)
     if (m.negocio.length > 0 || m.referencias.length > 0) {
       secoesUser.push(
         'DIRETRIZES DO NEGÓCIO (siga estritamente — têm precedência)',
@@ -250,7 +295,7 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
       for (const item of m.referencias) secoesUser.push(`• ${item}`)
     }
 
-    // Seção 2: Preferências do cliente
+    // Preferências do cliente
     if (m.cliente.length > 0 || m.licoes.length > 0) {
       secoesUser.push('', 'PREFERÊNCIAS DO CLIENTE')
       for (const item of m.cliente) secoesUser.push(`• ${item}`)
@@ -263,7 +308,7 @@ export function montarPrompt(input: MontarPromptInput): MontarPromptOutput {
     }
   }
 
-  // Seção final: CONVERSA ATUAL
+  // CONVERSA ATUAL
   secoesUser.push('', 'CONVERSA ATUAL')
 
   const catalogoStatus = input.catalogoCandidatos.length > 0
