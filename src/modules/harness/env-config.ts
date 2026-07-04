@@ -71,8 +71,8 @@ export async function getEnvInfo(): Promise<EnvInfo> {
     },
     runtime: {
       ...DEFAULTS.runtime,
-      directory: process.cwd(),
-      platform: process.platform,
+      directory: typeof process !== 'undefined' ? process.cwd() : '(browser)',
+      platform: typeof process !== 'undefined' ? process.platform : navigator.platform,
     },
   }
 }

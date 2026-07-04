@@ -158,6 +158,14 @@ export class AgentLoop {
         categoria: t.categoria,
       }));
 
+      // Determinar causa do despertar
+      const perfil = context?.profile as { ultimaMensagem?: string } | undefined;
+      const diasInativo = perfil?.ultimaMensagem
+        ? Math.floor((Date.now() - new Date(perfil.ultimaMensagem as string).getTime()) / 86400000)
+        : 0;
+      const causa: 'mensagem_recebida' | 'reativacao' =
+        diasInativo > 60 ? 'reativacao' : 'mensagem_recebida';
+
       const decisao = await agenteDecidir({
         mensagem,
         chatId,
@@ -171,6 +179,7 @@ export class AgentLoop {
         memorias: context?.memorias,
         envInfo,
         today,
+        causa,
       });
 
       // ── Processar decisão ──

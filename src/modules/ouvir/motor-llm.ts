@@ -296,6 +296,8 @@ export interface AgenteDecidirInput {
   today?: string;
   /** Informações das ferramentas para gerar seção dinâmica no prompt */
   toolInfos?: { nome: string; descricao: string; categoria: string }[];
+  /** Causa do despertar do agente */
+  causa?: 'mensagem_recebida' | 'reativacao' | 'continuar_turno';
 }
 
 /**
@@ -439,6 +441,7 @@ export async function agenteDecidir(
     envInfo: input.envInfo,
     today: input.today,
     tools: input.toolInfos,
+    causa: input.causa,
   });
 
   // Monta mensagens com tool results no histórico
