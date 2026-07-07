@@ -166,6 +166,7 @@ export function resetSkillBodyCache(): void {
 export async function suggestRedacaoRetomar(
   bridge: MettriBridgeClient,
   params: AgenteRetomarPromptFill,
+  fraseBase?: string,
 ): Promise<string> {
   const incoming = (params.lastIncomingFromClient || '').trim();
   if (!incoming) return '';
@@ -175,7 +176,7 @@ export async function suggestRedacaoRetomar(
     throw new Error('Chave API OpenAI não configurada. Acesse Cadastro > Mapear compras para salvar sua chave.');
   }
 
-  const { system, user } = buildAgenteRetomarMessages(getSkillBody(), params);
+  const { system, user } = buildAgenteRetomarMessages(getSkillBody(), params, fraseBase);
 
   const body = {
     model: MODEL,

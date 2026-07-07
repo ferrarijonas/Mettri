@@ -89,6 +89,7 @@ function substitute(template: string, vars: Record<string, string>): string {
 export function buildAgenteRetomarMessages(
   skillBody: string,
   fill: AgenteRetomarPromptFill,
+  fraseBase?: string,
 ): {
   system: string;
   user: string;
@@ -100,7 +101,7 @@ export function buildAgenteRetomarMessages(
     personalizado: 'Personalizado',
   };
 
-  const system = substitute(skillBody, {
+  let system = substitute(skillBody, {
     firstName: fill.firstName.trim() || '(não informado)',
     cycleIndex: String(Math.min(4, Math.max(1, Math.floor(fill.cycleIndex)))),
     relationType: fill.relationType
@@ -111,6 +112,10 @@ export function buildAgenteRetomarMessages(
     conversationThread: fill.conversationThread.trim() || '(sem histórico)',
     catalogo: fill.catalogo?.trim() || '(catálogo não disponível)',
   });
+
+  if (fraseBase?.trim()) {
+    system += `\n\nO usuário sugeriu este tom/base: ${fraseBase.trim()}. Use-a como inspiração, mas personalize com os dados do contato.`;
+  }
 
   return { system, user: 'Gere a mensagem.' };
 }

@@ -236,6 +236,7 @@ export class RetomarPanel {
   /** Evita cliques duplicados enquanto a UI é re-renderizada durante geração em lote. */
   private agenticBulkGenerating = false;
   private agenticRegeneratingId: string | null = null;
+  private agenticFraseBase = '';
 
   // Sistema de listas
   private listsManager: RetomarListsManager | null = null;
@@ -774,7 +775,7 @@ export class RetomarPanel {
   }
 
   /**
-   * Converte telefone para chatId (formato WhatsApp: 5511999999999@c.us).
+   * Converte telefone para chatId no formato WhatsApp (número com DDI+DDD+9 dígitos, sufixo @c.us).
    */
   private phoneToChatId(phone: string): string {
     const d = digitsOnly(phone);
@@ -1861,6 +1862,7 @@ export class RetomarPanel {
           IA usa o histórico (última mensagem do cliente e sua última retomar, se houver). Revise o texto antes de enviar.
         </p>
         ${rowsHtml}
+        <textarea rows="2" class="mettri-agentic-frasebase-textarea w-full rounded-md border text-xs px-2 py-1.5 outline-none resize-none text-neutral-900 bg-white placeholder:text-neutral-600" data-agentic-frasebase placeholder="Frase base (opcional) — ex: Oi %NOME%, joia? Precisando de Pão?">${this.escapeHtml(this.agenticFraseBase)}</textarea>
         <div class="flex flex-wrap gap-2 pt-1">
           <button type="button" id="retomar-agentic-generate" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/50 text-primary text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${genDisabled ? 'disabled' : ''}>
             Gerar textos para selecionados
@@ -1930,7 +1932,7 @@ export class RetomarPanel {
           lastIncomingFromClient: ctx.clientText,
           lastRetomarSentText: ctx.attendantText ?? '',
           conversationThread: ctx.conversationThread,
-        });
+        }, this.agenticFraseBase || undefined);
         this.agenticDraftByChatId.set(chatId, text);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -2095,6 +2097,11 @@ export class RetomarPanel {
         if (id) this.agenticDraftByChatId.set(id, (e.target as HTMLTextAreaElement).value);
         this.updateUnifiedFlow();
       });
+    });
+
+    const fraseBaseTA = agenticDetail?.querySelector<HTMLTextAreaElement>('textarea[data-agentic-frasebase]');
+    fraseBaseTA?.addEventListener('input', () => {
+      this.agenticFraseBase = fraseBaseTA.value;
     });
 
     agenticDetail?.querySelectorAll('[data-agentic-contact-row]').forEach(row => {
@@ -2920,7 +2927,7 @@ export class RetomarPanel {
                 type="text"
                 class="w-full px-2 pr-7 py-1.5 rounded-lg border border-border bg-background text-sm outline-none"
                 id="retomar-test-phone" 
-                placeholder="Número (ex: 5511999999999)" 
+                placeholder="Número (ex: 55XXXXXXXXXXX)" 
                 value="${this.testContact ? this.escapeHtml(this.testContact.phone) : ''}"
               />
               ${this.testContact?.phone ? `
