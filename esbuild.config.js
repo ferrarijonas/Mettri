@@ -154,7 +154,6 @@ async function buildModules() {
 
   // Lista de módulos para compilar (apenas os que podem ser atualizados remotamente)
   const modulesToBuild = [
-    { id: 'marketing.reactivation', entry: 'src/modules/marketing/reactivation/reactivation-module.ts' },
     { id: 'marketing.retomar', entry: 'src/modules/marketing/retomar/retomar-module.ts' },
     { id: 'marketing.enviar', entry: 'src/modules/marketing/enviar/enviar-module.ts' },
     { id: 'marketing.enviar.retomar', entry: 'src/modules/marketing/enviar/retomar/retomar-module.ts' },

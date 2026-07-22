@@ -2967,7 +2967,7 @@ export class RetomarPanel {
           <span class="text-lg mt-0.5 shrink-0">💪</span>
           <textarea 
             rows="3"
-            class="flex-1 min-w-0 bg-transparent text-sm placeholder:text-muted-foreground outline-none resize-none"
+            class="flex-1 min-w-0 bg-white text-neutral-900 text-sm placeholder:text-neutral-600 outline-none resize-none"
             placeholder="Mensagem com placeholder — ex: Oi %nome%, joia? Precisando de Pão?"
             id="retomar-force-msg-input"
           >${this.escapeHtml(this.forceMsgText)}</textarea>
@@ -2977,9 +2977,9 @@ export class RetomarPanel {
             class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             id="retomar-force-msg-send"
             type="button"
-            ${this.selectedClients.size === 0 && !this.testModeEnabled ? 'disabled' : ''}
+            ${(this.selectedClients.size === 0 || !this.forceMsgText.trim()) && !this.testModeEnabled ? 'disabled' : ''}
           >
-            Enviar forçado${this.selectedClients.size > 0 ? ` (${this.selectedClients.size})` : ''}
+            Enviar forçado${!this.forceMsgText.trim() ? '' : this.selectedClients.size > 0 ? ` (${this.selectedClients.size})` : ''}
           </button>
         </div>
       </div>
