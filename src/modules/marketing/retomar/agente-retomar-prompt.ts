@@ -114,7 +114,7 @@ export function buildAgenteRetomarMessages(
   });
 
   if (fraseBase?.trim()) {
-    system += `\n\nO usuário sugeriu este tom/base: ${fraseBase.trim()}. Use-a como inspiração, mas personalize com os dados do contato.`;
+    system = `FRASE MODELO: "${fraseBase.trim()}"\n\nSiga este modelo. Troque só o nome. Não invente nada.\n\n---\n\n${system}`;
   }
 
   return { system, user: 'Gere a mensagem.' };

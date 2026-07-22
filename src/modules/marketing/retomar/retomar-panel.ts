@@ -166,6 +166,8 @@ export class RetomarPanel {
 
   private testContact: { phone: string; name: string } | null = null;
   private testModeEnabled = false;
+  private forceMsgOpen = false;
+  private forceMsgText = '';
   private bridge = new MettriBridgeClient(30_000);
   private sendButtonClickHandler: ((e: MouseEvent) => void) | null = null;
 
@@ -905,6 +907,7 @@ export class RetomarPanel {
     this.setupHeaderActionsListeners();
     this.setupTestSectionListeners();
     this.setupSendButtonListener();
+    this.setupForceMessageListeners();
     this.setupListsListeners();
     this.setupRetomarSummaryMetricsListener();
     this.setupRetomarOutcomeExportListener();
@@ -1180,6 +1183,37 @@ export class RetomarPanel {
         this.resumeSending();
       } else {
         this.pauseSending();
+      }
+    });
+  }
+
+  /**
+   * Configura listeners do botão e textarea de "Forçar msg".
+   */
+  private setupForceMessageListeners(): void {
+    const toggleBtn = this.container?.querySelector('#retomar-force-msg-toggle');
+    toggleBtn?.addEventListener('click', () => {
+      this.forceMsgOpen = !this.forceMsgOpen;
+      this.updateUnifiedFlow();
+    });
+
+    const input = this.container?.querySelector('#retomar-force-msg-input') as HTMLTextAreaElement | null;
+    input?.addEventListener('input', () => {
+      this.forceMsgText = input.value;
+    });
+
+    const sendBtn = this.container?.querySelector('#retomar-force-msg-send');
+    sendBtn?.addEventListener('click', async () => {
+      if (sendBtn.hasAttribute('disabled')) return;
+
+      const btn = sendBtn as HTMLButtonElement;
+      btn.disabled = true;
+      try {
+        await this.sendForcedMessage();
+      } catch (error) {
+        this.addLog('error', `Erro ao forçar envio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      } finally {
+        btn.disabled = false;
       }
     });
   }
@@ -2918,6 +2952,38 @@ export class RetomarPanel {
         `}
       </div>
 
+      <!-- FORÇAR MSG -->
+      <div class="mt-3">
+        <button 
+          id="retomar-force-msg-toggle"
+          type="button"
+          class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+        >
+          ${this.forceMsgOpen ? 'Fechar' : 'Forçar msg'}
+        </button>
+      </div>
+      <div id="retomar-force-msg-section" class="mt-2" style="${this.forceMsgOpen ? '' : 'display: none;'}">
+        <div class="flex items-start gap-3 p-3 rounded-xl border border-border bg-background shadow-sm min-w-0">
+          <span class="text-lg mt-0.5 shrink-0">💪</span>
+          <textarea 
+            rows="3"
+            class="flex-1 min-w-0 bg-transparent text-sm placeholder:text-muted-foreground outline-none resize-none"
+            placeholder="Mensagem com placeholder — ex: Oi %nome%, joia? Precisando de Pão?"
+            id="retomar-force-msg-input"
+          >${this.escapeHtml(this.forceMsgText)}</textarea>
+        </div>
+        <div class="mt-2">
+          <button 
+            class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            id="retomar-force-msg-send"
+            type="button"
+            ${this.selectedClients.size === 0 && !this.testModeEnabled ? 'disabled' : ''}
+          >
+            Enviar forçado${this.selectedClients.size > 0 ? ` (${this.selectedClients.size})` : ''}
+          </button>
+        </div>
+      </div>
+
       <!-- CAMPOS DE TESTE (quando modo teste ativo) -->
       ${this.testModeEnabled ? `
         <div class="mt-2 p-2 rounded-lg border border-border/50 bg-accent/30">
@@ -4061,6 +4127,70 @@ export class RetomarPanel {
 
     this.isSending = true;
     this.addLog('info', `Iniciando envio para ${this.sendingQueue.length} cliente(s)...`);
+    this.updateUnifiedFlow();
+
+    await this.processQueue();
+  }
+
+  /**
+   * Envia mensagens forçadas com placeholder %nome% para clientes selecionados.
+   * Ignora a régua de cadência e usa o texto personalizado com substituição de nome.
+   */
+  private async sendForcedMessage(): Promise<void> {
+    if (!this.forceMsgText.trim()) {
+      this.addLog('warning', 'Digite uma mensagem para forçar envio');
+      return;
+    }
+
+    if (this.testModeEnabled && this.testContact?.phone) {
+      const chatId = this.phoneToChatId(this.testContact.phone);
+      if (!chatId) {
+        this.addLog('warning', 'Número de teste inválido');
+        return;
+      }
+      try {
+        const firstName = this.testContact.name || '';
+        const message = this.forceMsgText.replace(/%nome%/g, firstName);
+        await this.sendRawToChatId(chatId, message);
+        const label = this.testContact.name || this.testContact.phone;
+        this.addLog('success', `Forçado: teste enviado para ${label}`);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.addLog('error', `Forçado: ${msg}`);
+      }
+      return;
+    }
+
+    if (this.selectedClients.size === 0) {
+      this.addLog('warning', 'Nenhum cliente selecionado');
+      return;
+    }
+
+    this.sendingQueue = Array.from(this.selectedClients);
+    this.pendingChamadaIndex = null;
+    this.selectedClients.clear();
+
+    this.sendingPayloadByChatId.clear();
+    for (const chatId of this.sendingQueue) {
+      const client = this.eligibleClients.find(c => c.chatId === chatId);
+      const firstName = client?.firstName || '';
+      const personalized = this.forceMsgText.replace(/%nome%/g, firstName);
+      this.sendingPayloadByChatId.set(chatId, { text: personalized, variant: 'A' });
+    }
+
+    await this.saveQueueState();
+
+    this.sendingProgress = {
+      total: this.sendingQueue.length,
+      sent: 0,
+      skipped: 0,
+      errors: 0,
+      current: null,
+      startTime: Date.now(),
+    };
+
+    this.isSending = true;
+    this.addLog('info', `Forçado: iniciando envio para ${this.sendingQueue.length} cliente(s)...`);
     this.updateUnifiedFlow();
 
     await this.processQueue();

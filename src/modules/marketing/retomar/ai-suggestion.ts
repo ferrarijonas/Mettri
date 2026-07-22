@@ -209,5 +209,23 @@ export async function suggestRedacaoRetomar(
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content)     throw new Error('DeepSeek respondeu sem conteúdo');
 
+  // Debug trace → servidor local (scripts/dev/debug-server.mjs)
+  try {
+    await fetch('http://localhost:9223', {
+      method: 'POST',
+      body: JSON.stringify({
+        ts: new Date().toISOString(),
+        nome: params.firstName,
+        ciclo: params.cycleIndex,
+        relationType: params.relationType || '',
+        daysInactive: params.daysInactive ?? 0,
+        fraseBase: fraseBase ?? '',
+        systemPrompt: system,
+        userMessage: user,
+        resultado: content,
+      }),
+    });
+  } catch { /* servidor offline, debug inativo */ }
+
   return content;
 }
