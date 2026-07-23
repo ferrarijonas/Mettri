@@ -1200,6 +1200,14 @@ export class RetomarPanel {
     const input = this.container?.querySelector('#retomar-force-msg-input') as HTMLTextAreaElement | null;
     input?.addEventListener('input', () => {
       this.forceMsgText = input.value;
+      // Atualizar botão sem re-renderizar tudo (evita perder foco)
+      const sendBtn = this.container?.querySelector('#retomar-force-msg-send') as HTMLButtonElement | null;
+      if (sendBtn && !this.testModeEnabled) {
+        const hasText = this.forceMsgText.trim().length > 0;
+        const hasSelection = this.selectedClients.size > 0;
+        sendBtn.disabled = !hasText || !hasSelection;
+        sendBtn.textContent = `Enviar forçado${hasText && hasSelection ? ` (${this.selectedClients.size})` : ''}`;
+      }
     });
 
     const sendBtn = this.container?.querySelector('#retomar-force-msg-send');
