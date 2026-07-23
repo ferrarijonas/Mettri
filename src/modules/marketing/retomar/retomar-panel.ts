@@ -2997,7 +2997,6 @@ export class RetomarPanel {
           >
             Enviar forçado${forcedCount > 0 ? ` (${forcedCount})` : ''}
           </button>
-          <p class="text-[10px] text-muted-foreground mt-1">Debug: alvos=${forcedCount} | forceMsgText="${this.escapeHtml(this.forceMsgText.trim().substring(0, 30))}" | testMode=${this.testModeEnabled}</p>
         </div>
       </div>
         `;
