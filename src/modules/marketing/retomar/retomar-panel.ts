@@ -2989,6 +2989,7 @@ export class RetomarPanel {
           >
             Enviar forçado${!this.forceMsgText.trim() ? '' : this.selectedClients.size > 0 ? ` (${this.selectedClients.size})` : ''}
           </button>
+          <p class="text-[10px] text-muted-foreground mt-1">Debug: selectedClients=${this.selectedClients.size} | forceMsgText="${this.forceMsgText.trim().substring(0, 30)}" | testMode=${this.testModeEnabled}</p>
         </div>
       </div>
 
