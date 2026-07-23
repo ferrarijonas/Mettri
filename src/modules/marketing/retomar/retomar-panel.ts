@@ -1202,11 +1202,13 @@ export class RetomarPanel {
       this.forceMsgText = input.value;
       // Atualizar botão sem re-renderizar tudo (evita perder foco)
       const sendBtn = this.container?.querySelector('#retomar-force-msg-send') as HTMLButtonElement | null;
-      if (sendBtn && !this.testModeEnabled) {
-        const hasText = this.forceMsgText.trim().length > 0;
-        const hasSelection = this.selectedClients.size > 0;
-        sendBtn.disabled = !hasText || !hasSelection;
-        sendBtn.textContent = `Enviar forçado${hasText && hasSelection ? ` (${this.selectedClients.size})` : ''}`;
+      if (sendBtn) {
+        const forcedTargetIds = this.getForcedTargetChatIds();
+        const forcedCount = forcedTargetIds.length;
+        const forcedHasText = this.forceMsgText.trim().length > 0;
+        const forcedCanSend = (forcedCount > 0 && forcedHasText) || this.testModeEnabled;
+        sendBtn.disabled = !forcedCanSend;
+        sendBtn.textContent = `Enviar forçado${forcedCount > 0 ? ` (${forcedCount})` : ''}`;
       }
     });
 
@@ -2961,6 +2963,12 @@ export class RetomarPanel {
       </div>
 
       <!-- FORÇAR MSG -->
+      ${(() => {
+        const forcedTargetIds = this.getForcedTargetChatIds();
+        const forcedCount = forcedTargetIds.length;
+        const forcedHasText = this.forceMsgText.trim().length > 0;
+        const forcedCanSend = (forcedCount > 0 && forcedHasText) || this.testModeEnabled;
+        return `
       <div class="mt-3">
         <button 
           id="retomar-force-msg-toggle"
@@ -2985,13 +2993,15 @@ export class RetomarPanel {
             class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             id="retomar-force-msg-send"
             type="button"
-            ${(this.selectedClients.size === 0 || !this.forceMsgText.trim()) && !this.testModeEnabled ? 'disabled' : ''}
+            ${!forcedCanSend ? 'disabled' : ''}
           >
-            Enviar forçado${!this.forceMsgText.trim() ? '' : this.selectedClients.size > 0 ? ` (${this.selectedClients.size})` : ''}
+            Enviar forçado${forcedCount > 0 ? ` (${forcedCount})` : ''}
           </button>
-          <p class="text-[10px] text-muted-foreground mt-1">Debug: selectedClients=${this.selectedClients.size} | forceMsgText="${this.forceMsgText.trim().substring(0, 30)}" | testMode=${this.testModeEnabled}</p>
+          <p class="text-[10px] text-muted-foreground mt-1">Debug: alvos=${forcedCount} | forceMsgText="${this.escapeHtml(this.forceMsgText.trim().substring(0, 30))}" | testMode=${this.testModeEnabled}</p>
         </div>
       </div>
+        `;
+      })()}
 
       <!-- CAMPOS DE TESTE (quando modo teste ativo) -->
       ${this.testModeEnabled ? `
@@ -4142,6 +4152,35 @@ export class RetomarPanel {
   }
 
   /**
+   * Obtém lista de chatIds para o envio forçado, respeitando qualquer fonte de seleção ativa:
+   * 1. selectedClients (fluxo principal)
+   * 2. agenticChecked (Respostas Agênticas)
+   * 3. Ciclo agêntico aberto
+   * 4. Ciclo padrão aberto
+   */
+  private getForcedTargetChatIds(): string[] {
+    if (this.selectedClients.size > 0) {
+      return Array.from(this.selectedClients);
+    }
+    if (this.agenticChecked.size > 0) {
+      return Array.from(this.agenticChecked);
+    }
+    if (this.selectedAgenticRangeIndex != null) {
+      return this.getAgenticCycleClients().map(c => c.chatId);
+    }
+    if (this.selectedRangeIndex != null) {
+      const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
+      const range = ranges[this.selectedRangeIndex];
+      if (range) {
+        return this.eligibleClients
+          .filter(c => isInRange(c.daysInactive, range) && c.status === 'pending' && !c.isSpecialList)
+          .map(c => c.chatId);
+      }
+    }
+    return [];
+  }
+
+  /**
    * Envia mensagens forçadas com placeholder %nome% para clientes selecionados.
    * Ignora a régua de cadência e usa o texto personalizado com substituição de nome.
    */
@@ -4170,14 +4209,17 @@ export class RetomarPanel {
       return;
     }
 
-    if (this.selectedClients.size === 0) {
+    const targetChatIds = this.getForcedTargetChatIds();
+
+    if (targetChatIds.length === 0) {
       this.addLog('warning', 'Nenhum cliente selecionado');
       return;
     }
 
-    this.sendingQueue = Array.from(this.selectedClients);
-    this.pendingChamadaIndex = null;
+    this.sendingQueue = targetChatIds.slice();
+    this.pendingChamadaIndex = this.selectedAgenticRangeIndex ?? this.selectedRangeIndex ?? null;
     this.selectedClients.clear();
+    this.agenticChecked.clear();
 
     this.sendingPayloadByChatId.clear();
     for (const chatId of this.sendingQueue) {
