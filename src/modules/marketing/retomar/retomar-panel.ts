@@ -2372,6 +2372,53 @@ export class RetomarPanel {
     });
 
     /**
+     * Bloqueio direto (modo dia) — 1 clique na linha adiciona o cliente à etiqueta padrão
+     * "Bloqueados" (never-send). Reutiliza o mesmo fluxo pós-bloqueio do add-to-list:
+     * remove da seleção, recarrega elegíveis e o cliente some da lista de Pessoas.
+     */
+    this.container?.querySelectorAll('[data-action="block-client"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const chatId = (e.currentTarget as HTMLElement).dataset.chatId;
+        if (chatId && this.listsManager) {
+          await this.listsManager.addMember('never-send', chatId);
+          this.selectedClients.delete(chatId);
+          this.openMenuId = null;
+          // Recarregar clientes elegíveis para remover da lista de Pessoas (modo dia)
+          await this.loadInactiveClients();
+          this.calculatePeriodFilters();
+          this.lists = this.listsManager.getLists();
+          this.updateUnifiedFlow();
+          this.addLog('info', 'Bloqueado (nunca enviar)');
+        }
+      });
+    });
+
+    /**
+     * Bloqueio em lote — adiciona todos os selecionados à etiqueta padrão "Bloqueados"
+     * (never-send). Após bloquear, limpa a seleção e recarrega os elegíveis.
+     */
+    this.container?.querySelectorAll('[data-action="block-selected"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!this.listsManager) return;
+        const chatIds = Array.from(this.selectedClients);
+        if (chatIds.length === 0) return;
+        for (const chatId of chatIds) {
+          await this.listsManager.addMember('never-send', chatId);
+        }
+        this.selectedClients.clear();
+        this.openMenuId = null;
+        // Recarregar clientes elegíveis para remover da lista de Pessoas (modo dia)
+        await this.loadInactiveClients();
+        this.calculatePeriodFilters();
+        this.lists = this.listsManager.getLists();
+        this.updateUnifiedFlow();
+        this.addLog('info', `Bloqueados ${chatIds.length} cliente(s) (nunca enviar)`);
+      });
+    });
+
+    /**
      * Ações do kebab menu (modo etiqueta) — remover cliente da etiqueta atual.
      * Após remover, recarrega clientes elegíveis para que o cliente apareça em Pessoas (modo dia).
      */
@@ -2757,6 +2804,9 @@ export class RetomarPanel {
           <button class="mettri-btn-primary mettri-btn-send" id="retomar-send-selected" ${selectedCount === 0 ? 'disabled' : ''}>
             Enviar ${selectedCount > 0 ? `(${selectedCount})` : ''}
           </button>
+          <button class="mettri-btn-link mettri-btn-small" data-action="block-selected" type="button" ${selectedCount === 0 ? 'disabled' : ''}>
+            Bloquear selecionados
+          </button>
         </div>
       </div>
     `;
@@ -2952,12 +3002,21 @@ export class RetomarPanel {
           </div>
         ` : `
           <button 
-            class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             id="retomar-send-selected"
             type="button"
             ${this.selectedClients.size === 0 && !this.testModeEnabled ? 'disabled' : ''}
           >
             ${this.testModeEnabled ? 'Enviar Teste' : this.selectedClients.size > 0 ? `Enviar (${this.selectedClients.size})` : 'Enviar'}
+          </button>
+          <button 
+            class="h-11 px-3 rounded-xl border border-border bg-background text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            data-action="block-selected"
+            type="button"
+            title="Adicionar todos os selecionados à lista Bloqueados (nunca enviar)"
+            ${this.selectedClients.size === 0 ? 'disabled' : ''}
+          >
+            Bloquear selecionados
           </button>
         `}
       </div>
@@ -3398,6 +3457,21 @@ export class RetomarPanel {
           </label>
           <span class="text-xs font-medium text-foreground flex-1">${this.escapeHtml(displayLabel)}</span>
           <span class="text-[11px] text-muted-foreground">${this.escapeHtml(rightLabel)}</span>
+          ${this.selectedListId === null ? `
+          <button
+            class="w-6 h-6 rounded flex items-center justify-center hover:bg-accent/50 transition-colors text-muted-foreground hover:text-destructive"
+            data-action="block-client"
+            data-chat-id="${client.chatId}"
+            type="button"
+            title="Bloquear (nunca enviar)"
+            aria-label="Bloquear (nunca enviar)"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </button>
+          ` : ''}
           <div class="relative" style="overflow: visible; z-index: 1;">
             <button 
               class="w-6 h-6 rounded flex items-center justify-center hover:bg-accent/50 transition-colors" 
