@@ -2804,9 +2804,11 @@ export class RetomarPanel {
           <button class="mettri-btn-primary mettri-btn-send" id="retomar-send-selected" ${selectedCount === 0 ? 'disabled' : ''}>
             Enviar ${selectedCount > 0 ? `(${selectedCount})` : ''}
           </button>
+          ${this.selectedListId === null ? `
           <button class="mettri-btn-link mettri-btn-small" data-action="block-selected" type="button" ${selectedCount === 0 ? 'disabled' : ''}>
             Bloquear selecionados
           </button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -3009,6 +3011,7 @@ export class RetomarPanel {
           >
             ${this.testModeEnabled ? 'Enviar Teste' : this.selectedClients.size > 0 ? `Enviar (${this.selectedClients.size})` : 'Enviar'}
           </button>
+          ${this.selectedListId === null ? `
           <button 
             class="h-11 px-3 rounded-xl border border-border bg-background text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             data-action="block-selected"
@@ -3018,6 +3021,7 @@ export class RetomarPanel {
           >
             Bloquear selecionados
           </button>
+          ` : ''}
         `}
       </div>
 
