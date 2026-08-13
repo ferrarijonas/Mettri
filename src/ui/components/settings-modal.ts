@@ -15,7 +15,7 @@ export class SettingsModal {
   private isOpen = false;
   private moduleUpdater: ModuleUpdater;
   private bridge = new MettriBridgeClient(5000);
-  private autoUpdateEnabled = true;
+  private autoUpdateEnabled = false;
   private devModeEnabled = false;
   private openaiApiKey = '';
   private deepseekApiKey = '';
@@ -69,7 +69,7 @@ export class SettingsModal {
         'mettri:openai:apiKey',
         'mettri:deepseek:apiKey',
       ]);
-      this.autoUpdateEnabled = result.autoUpdateEnabled !== false;
+      this.autoUpdateEnabled = result.autoUpdateEnabled === true;
       this.devModeEnabled = result['mettri:devMode'] === true;
       this.openaiApiKey = typeof result['mettri:openai:apiKey'] === 'string' ? result['mettri:openai:apiKey'] : '';
       this.deepseekApiKey = typeof result['mettri:deepseek:apiKey'] === 'string' ? result['mettri:deepseek:apiKey'] : '';

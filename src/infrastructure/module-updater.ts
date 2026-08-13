@@ -67,10 +67,10 @@ export class ModuleUpdater {
   async isAutoUpdateEnabled(): Promise<boolean> {
     try {
       const result = await chrome.storage.local.get(['autoUpdateEnabled']);
-      // Por padrão, habilitado
-      return result.autoUpdateEnabled !== false;
+      // Desligado por padrão; só ativo se explicitamente true nas configurações
+      return result.autoUpdateEnabled === true;
     } catch {
-      return true;
+      return false;
     }
   }
 
