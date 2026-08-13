@@ -22,7 +22,7 @@ import { classifyNameCandidate } from '../../clientes/name-likelihood';
 import { MettriBridgeClient } from '../../../content/bridge-client';
 import {
   sendMessageService,
-  getLastOutgoingFromWhatsAppForChatIds,
+  getLastMessageDatesFromWhatsAppStore,
   ensureChatLoaded,
 } from '../../../infrastructure/services';
 import { RateLimiter } from './rate-limiter';
@@ -502,15 +502,21 @@ export class RetomarPanel {
       const semOutgoing = eligibleFromEngine.filter(e => !lastOutgoingForEngine.has(e.chatId));
       if (semOutgoing.length > 0) {
         try {
-          const waMap = await getLastOutgoingFromWhatsAppForChatIds(
+          const waMap = await getLastMessageDatesFromWhatsAppStore(
             semOutgoing.map(e => e.chatId)
           );
-          // Pós-filtro: remover quem WA mostra com daysSinceOutgoing < minDistance
+          // Pós-filtro: remover quem teve QUALQUER msg trocada há menos de minDistance
+          // e, fail-closed, remover quem já recebeu retomar (contador > 0) mas o WA não confirmou quando.
           const toRemove = new Set<string>();
-          for (const [chatId, waDate] of waMap) {
-            const daysSince = daysBetweenByCalendar(now, waDate);
-            if (daysSince < minDistance) {
-              toRemove.add(chatId);
+          for (const e of semOutgoing) {
+            const waDate = waMap.get(e.chatId);
+            if (waDate) {
+              const daysSince = daysBetweenByCalendar(now, waDate);
+              if (daysSince < minDistance) {
+                toRemove.add(e.chatId);
+              }
+            } else if ((contadorByChat[e.chatId] ?? 0) > 0) {
+              toRemove.add(e.chatId);
             }
           }
           eligibleFromEngine = eligibleFromEngine.filter(e => !toRemove.has(e.chatId));

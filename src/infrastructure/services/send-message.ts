@@ -455,6 +455,82 @@ export async function getLastOutgoingFromWhatsAppForChatIds(
   return out;
 }
 
+/**
+ * Extrai a data da última mensagem TROCADA no chat (nossa OU do cliente) a partir do model do WA.
+ * Opção A do anti-loop: qualquer mensagem recente impede novo retomar — não exige fromMe.
+ * Puro/testável: recebe o model e devolve Date ou null (null = chat sem lastMessage).
+ */
+export function extractLastMessageDateFromChatModel(chat: unknown): Date | null {
+  if (!chat || typeof chat !== 'object') return null;
+  const c = chat as {
+    lastMessage?: unknown;
+    __x_lastMessage?: unknown;
+    _lastMessage?: unknown;
+  };
+
+  const unixOf = (m: unknown): number | null => {
+    if (!m || typeof m !== 'object') return null;
+    const msg = m as { t?: number; __x_t?: number };
+    const t = msg.t ?? msg.__x_t;
+    return typeof t === 'number' && t > 0 ? t : null;
+  };
+
+  let best: number | null = null;
+  for (const m of [c.lastMessage, c.__x_lastMessage, c._lastMessage]) {
+    const u = unixOf(m);
+    if (u != null && (best === null || u > best)) best = u;
+  }
+  return best != null ? new Date(best * 1000) : null;
+}
+
+/**
+ * Para os chatIds fornecidos, devolve a data da última mensagem TROCADA lendo o Store do WA.
+ * Uma única passada em Chat.getModelsArray()/_models — sem materializar chat, sem Chat.find.
+ * Chat fora do Store NÃO entra no mapa: o chamador decide a política (fail-closed) para "não verificado".
+ */
+export async function getLastMessageDatesFromWhatsAppStore(
+  chatIds: string[]
+): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>();
+  if (chatIds.length === 0) return out;
+  const wanted = new Set(chatIds);
+
+  await whatsappInterceptors.initialize();
+  const i = whatsappInterceptors;
+  const Chat = i.Chat;
+  if (!Chat) return out;
+
+  const lists: unknown[][] = [];
+  try {
+    if (typeof Chat.getModelsArray === 'function') {
+      const raw = Chat.getModelsArray();
+      const arr = await Promise.resolve(raw);
+      if (Array.isArray(arr)) lists.push(arr);
+    }
+  } catch {
+    /* ignore */
+  }
+  if (Array.isArray(Chat._models)) lists.push(Chat._models);
+
+  for (const chats of lists) {
+    for (const c of chats) {
+      const m = c as { id?: { _serialized?: string } | string };
+      const sid: string =
+        (m.id && typeof m.id === 'object' && '_serialized' in m.id
+          ? m.id._serialized
+          : typeof m.id === 'string'
+            ? m.id
+            : '') || '';
+      if (!sid.endsWith('@c.us')) continue;
+      if (!wanted.has(sid)) continue;
+      if (out.has(sid)) continue;
+      const d = extractLastMessageDateFromChatModel(c);
+      if (d && !Number.isNaN(d.getTime())) out.set(sid, d);
+    }
+  }
+  return out;
+}
+
 export class SendMessageService {
   async sendText(chatIdOrPhone: string, text: string): Promise<void> {
     try {
