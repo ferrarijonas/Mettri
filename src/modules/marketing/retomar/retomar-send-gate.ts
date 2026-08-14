@@ -3,7 +3,11 @@
  * lida no Store do WhatsApp (anti-loop, fail-closed: "não verificado" nunca vira "nunca enviei").
  */
 
-import { getLastMessageDatesFromWhatsAppStore } from '../../../infrastructure/services';
+import {
+  getLastMessageDatesFromWhatsAppStore,
+  extractLastMessageDateFromChatModelAsync,
+  ensureChatLoaded,
+} from '../../../infrastructure/services';
 import * as retomarContador from './retomar-contador';
 import { daysBetweenByCalendar, getMinDistanceForType, type RelationType } from './inactive-days';
 
@@ -104,6 +108,21 @@ export async function verifyRetomarPreSend(
         reason:
           'Não foi possível ler no WhatsApp a última mensagem deste chat. Abra a conversa e tente de novo.',
       };
+    }
+
+    // Mitigação (fail-closed com chance de recuperar): chat fora do Store + contador > 0
+    // tentaria bloquear o ciclo sem necessidade. Antes de bloquear, materializa o chat no WA
+    // (ensureChatLoaded) e relê a última msg — só permanece null se a materialização falhar.
+    if (!lastOutgoingFromWhatsApp && contador > 0) {
+      try {
+        const ensured = await ensureChatLoaded(params.chatId);
+        if (ensured.ok) {
+          const d = await extractLastMessageDateFromChatModelAsync(ensured.chat);
+          if (d) lastOutgoingFromWhatsApp = d;
+        }
+      } catch {
+        /* mantém null → fail-closed decide */
+      }
     }
   }
 

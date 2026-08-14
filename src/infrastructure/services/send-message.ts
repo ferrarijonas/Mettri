@@ -486,41 +486,44 @@ export function extractLastMessageDateFromChatModel(chat: unknown): Date | null 
 /**
  * Igual a `extractLastMessageDateFromChatModel`, mas com fallback para a coleção `msgs`/`ms`
  * (chats @lid do WA Business não expõem `lastMessage` como propriedade; a coleção tem as msgs).
+ * Usa o MAIOR timestamp entre lastMessage e a coleção — nunca subestima a última msg trocada.
  */
 export async function extractLastMessageDateFromChatModelAsync(
   chat: unknown
 ): Promise<Date | null> {
-  const direct = extractLastMessageDateFromChatModel(chat);
-  if (direct) return direct;
   if (!chat || typeof chat !== 'object') return null;
+  const direct = extractLastMessageDateFromChatModel(chat);
+  // mantém tudo em segundos unix (t das msgs é em segundos)
+  let best: number | null = direct ? Math.floor(direct.getTime() / 1000) : null;
+
   const c = chat as {
     ms?: { getModelsArray?: () => unknown; _models?: unknown[] };
     msgs?: { getModelsArray?: () => unknown; _models?: unknown[] };
   };
   const coll = c.ms || c.msgs;
-  if (!coll || typeof coll !== 'object') return null;
-  try {
-    let models: unknown[] = [];
-    const cc = coll as { getModelsArray?: () => unknown; _models?: unknown[] };
-    if (typeof cc.getModelsArray === 'function') {
-      const raw = cc.getModelsArray();
-      const arr = await Promise.resolve(raw);
-      if (Array.isArray(arr)) models = arr;
-    } else if (Array.isArray(cc._models)) {
-      models = cc._models;
+  if (coll && typeof coll === 'object') {
+    try {
+      let models: unknown[] = [];
+      const cc = coll as { getModelsArray?: () => unknown; _models?: unknown[] };
+      if (typeof cc.getModelsArray === 'function') {
+        const raw = cc.getModelsArray();
+        const arr = await Promise.resolve(raw);
+        if (Array.isArray(arr)) models = arr;
+      } else if (Array.isArray(cc._models)) {
+        models = cc._models;
+      }
+      let n = 0;
+      for (const m of models) {
+        if (n++ > 200) break;
+        const msg = m as { t?: number; __x_t?: number };
+        const t = msg.t ?? msg.__x_t;
+        if (typeof t === 'number' && t > 0 && (best === null || t > best)) best = t;
+      }
+    } catch {
+      /* best fica com o direct */
     }
-    let best: number | null = null;
-    let n = 0;
-    for (const m of models) {
-      if (n++ > 200) break;
-      const msg = m as { t?: number; __x_t?: number };
-      const t = msg.t ?? msg.__x_t;
-      if (typeof t === 'number' && t > 0 && (best === null || t > best)) best = t;
-    }
-    return best != null ? new Date(best * 1000) : null;
-  } catch {
-    return null;
   }
+  return best != null ? new Date(best * 1000) : null;
 }
 
 /**

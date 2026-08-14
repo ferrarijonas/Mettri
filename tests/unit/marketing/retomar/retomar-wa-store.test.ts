@@ -62,6 +62,24 @@ describe('extractLastMessageDateFromChatModelAsync (fallback msgs — chat @lid)
     expect(d?.getTime()).toBe(1712500000 * 1000);
   });
 
+  it('usa o MAIOR entre lastMessage e msgs (não subestima a última msg trocada)', async () => {
+    const d = await extractLastMessageDateFromChatModelAsync({
+      lastMessage: { t: 1712500000 }, // mais antigo
+      msgs: {
+        _models: [{ t: 1712600000 }, { t: 1712550000 }], // msgs mais novas
+      },
+    });
+    expect(d?.getTime()).toBe(1712600000 * 1000);
+  });
+
+  it('usa lastMessage quando ele é mais novo que as msgs', async () => {
+    const d = await extractLastMessageDateFromChatModelAsync({
+      lastMessage: { t: 1712700000 },
+      msgs: { _models: [{ t: 1712500000 }] },
+    });
+    expect(d?.getTime()).toBe(1712700000 * 1000);
+  });
+
   it('fallback: varre a coleção msgs e usa o timestamp mais recente', async () => {
     const d = await extractLastMessageDateFromChatModelAsync({
       id: { _serialized: '69037354705100@lid' },
