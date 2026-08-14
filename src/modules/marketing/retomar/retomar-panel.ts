@@ -1896,7 +1896,6 @@ export class RetomarPanel {
                 <span class="text-xs font-medium text-foreground">${this.escapeHtml(displayLabel)}</span>
                 <div class="flex items-center gap-1 shrink-0">
                   <button type="button" class="text-[10px] px-2 py-0.5 rounded-md border border-border bg-background hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-agentic-regenerate data-chat-id="${client.chatId}" ${this.isSending || this.agenticRegeneratingId === client.chatId ? 'disabled' : ''}>Regenerar</button>
-                  <button type="button" class="text-[10px] px-2 py-0.5 rounded-md text-muted-foreground hover:text-red-600/80 hover:bg-accent/30 transition-colors" data-action="block-client" data-chat-id="${client.chatId}" title="Bloquear (nunca enviar)">🔒 Bloquear</button>
                   <button type="button" class="text-[10px] px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors" data-agentic-hide data-chat-id="${client.chatId}">Ocultar</button>
                 </div>
               </div>
@@ -1912,6 +1911,14 @@ export class RetomarPanel {
         <p class="mettri-agentic-instruction text-[11px] leading-snug text-neutral-700">
           IA usa o histórico (última mensagem do cliente e sua última retomar, se houver). Revise o texto antes de enviar.
         </p>
+        ${n > 0 ? `
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] text-muted-foreground">${checkedForGen} de ${n} selecionados</span>
+          <div class="flex items-center gap-2">
+            <button type="button" data-agentic-select-all class="text-[11px] text-primary hover:underline" title="Marcar todos os contatos deste ciclo">Selecionar todos</button>
+            <button type="button" data-agentic-clear-selection class="text-[11px] text-muted-foreground hover:text-foreground hover:underline" title="Desmarcar todos">Limpar</button>
+          </div>
+        </div>` : ''}
         ${rowsHtml}
         <textarea rows="2" class="mettri-agentic-frasebase-textarea w-full rounded-md border text-xs px-2 py-1.5 outline-none resize-none text-neutral-900 bg-white placeholder:text-neutral-600" data-agentic-frasebase placeholder="Frase base (opcional) — ex: Oi %NOME%, joia? Precisando de Pão?">${this.escapeHtml(this.agenticFraseBase)}</textarea>
         <div class="flex flex-wrap gap-2 pt-1">
@@ -1922,7 +1929,7 @@ export class RetomarPanel {
             Enviar${qualifying > 0 ? ` (${qualifying})` : ''}
           </button>
           <button type="button" data-action="block-agentic-selected" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${checkedForGen === 0 ? 'disabled' : ''} title="Adicionar todos os selecionados à lista Bloqueados (nunca enviar)">
-            🔒 Bloquear selecionados
+            Bloquear selecionados${checkedForGen > 0 ? ` (${checkedForGen})` : ''}
           </button>
         </div>
         ${this.testModeEnabled ? `<p class="text-[10px] text-amber-600/90">Desative &quot;Simular envio&quot; para enviar em massa aqui.</p>` : ''}
@@ -2141,6 +2148,23 @@ export class RetomarPanel {
         if (!chatId) return;
         if (cb.checked) this.agenticChecked.add(chatId);
         else this.agenticChecked.delete(chatId);
+        this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-select-all]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this.agenticChecked.clear();
+        this.getAgenticCycleClients().forEach(c => this.agenticChecked.add(c.chatId));
+        this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-clear-selection]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this.agenticChecked.clear();
         this.updateUnifiedFlow();
       });
     });
@@ -2377,30 +2401,6 @@ export class RetomarPanel {
           const list = this.lists.find(l => l.id === listId);
           const displayName = list ? (ETIQUETA_DISPLAY_NAMES[list.id] ?? list.name) : 'etiqueta';
           this.addLog('info', `Adicionado à ${displayName}`);
-        }
-      });
-    });
-
-    /**
-     * Bloqueio direto (modo dia) — 1 clique na linha adiciona o cliente à etiqueta padrão
-     * "Bloqueados" (never-send). Reutiliza o mesmo fluxo pós-bloqueio do add-to-list:
-     * remove da seleção, recarrega elegíveis e o cliente some da lista de Pessoas.
-     */
-    this.container?.querySelectorAll('[data-action="block-client"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const chatId = (e.currentTarget as HTMLElement).dataset.chatId;
-        if (chatId && this.listsManager) {
-          await this.listsManager.addMember('never-send', chatId);
-          this.selectedClients.delete(chatId);
-          this.agenticChecked.delete(chatId);
-          this.openMenuId = null;
-          // Recarregar clientes elegíveis para remover da lista de Pessoas (modo dia)
-          await this.loadInactiveClients();
-          this.calculatePeriodFilters();
-          this.lists = this.listsManager.getLists();
-          this.updateUnifiedFlow();
-          this.addLog('info', 'Bloqueado (nunca enviar)');
         }
       });
     });
@@ -3495,21 +3495,6 @@ export class RetomarPanel {
           </label>
           <span class="text-xs font-medium text-foreground flex-1">${this.escapeHtml(displayLabel)}</span>
           <span class="text-[11px] text-muted-foreground">${this.escapeHtml(rightLabel)}</span>
-          ${this.selectedListId === null ? `
-          <button
-            class="w-6 h-6 rounded flex items-center justify-center hover:bg-accent/50 transition-colors text-muted-foreground hover:text-destructive"
-            data-action="block-client"
-            data-chat-id="${client.chatId}"
-            type="button"
-            title="Bloquear (nunca enviar)"
-            aria-label="Bloquear (nunca enviar)"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-          </button>
-          ` : ''}
           <div class="relative" style="overflow: visible; z-index: 1;">
             <button 
               class="w-6 h-6 rounded flex items-center justify-center hover:bg-accent/50 transition-colors" 
