@@ -63,6 +63,31 @@ describe('evaluateRetomarSendGate', () => {
     if (!r.ok) expect(r.reason).toContain('Respiro mínimo');
   });
 
+  it('fail-closed: bloqueia se contador > 0 e WhatsApp não devolveu data (não verificado ≠ nunca enviei)', () => {
+    for (const contador of [1, 2, 3]) {
+      const r = evaluateRetomarSendGate({
+        now: noon,
+        contador,
+        pendingRangeIndex: contador,
+        minDistance: 21,
+        lastOutgoingFromWhatsApp: null,
+      });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.reason).toContain('confirmar no WhatsApp');
+    }
+  });
+
+  it('permite 1.ª tentativa mesmo sem dado do WhatsApp (contador 0)', () => {
+    const r = evaluateRetomarSendGate({
+      now: noon,
+      contador: 0,
+      pendingRangeIndex: 0,
+      minDistance: 21,
+      lastOutgoingFromWhatsApp: null,
+    });
+    expect(r.ok).toBe(true);
+  });
+
   it('rejeita índice fora de 0–3', () => {
     const r = evaluateRetomarSendGate({
       now: noon,

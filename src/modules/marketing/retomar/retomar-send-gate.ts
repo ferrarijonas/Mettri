@@ -1,15 +1,17 @@
 /**
- * Poka-yoke antes de enviar Retomar na fila: contador + última mensagem SUA lida só no WhatsApp (anti-loop).
+ * Poka-yoke antes de enviar Retomar na fila: contador + última mensagem TROCADA (nossa ou do cliente)
+ * lida no Store do WhatsApp (anti-loop, fail-closed: "não verificado" nunca vira "nunca enviei").
  */
 
-import { getLastOutgoingFromWhatsAppForChatIds } from '../../../infrastructure/services';
+import { getLastMessageDatesFromWhatsAppStore } from '../../../infrastructure/services';
 import * as retomarContador from './retomar-contador';
 import { daysBetweenByCalendar, getMinDistanceForType, type RelationType } from './inactive-days';
 
 export type RetomarSendGateResult = { ok: true } | { ok: false; reason: string };
 
 /**
- * Regras puras (testável). `lastOutgoingFromWhatsApp` = só o que o WA devolveu (ou null = sem envio nosso no modelo).
+ * Regras puras (testável). `lastOutgoingFromWhatsApp` = data da última msg trocada lida do WA
+ * (ou null = sem dado verificável — com contador > 0 isso vira bloqueio fail-closed).
  */
 export function evaluateRetomarSendGate(params: {
   now: Date;
@@ -35,6 +37,16 @@ export function evaluateRetomarSendGate(params: {
     };
   }
 
+  // Fail-closed: já enviamos antes (contador > 0), mas não conseguimos confirmar quando no WhatsApp.
+  // Nunca interpretar "não verificado" como "nunca enviei" — senão reenviamos quem já recebeu msg recente.
+  if (!lastOutgoingFromWhatsApp && contador > 0) {
+    return {
+      ok: false,
+      reason:
+        'Não foi possível confirmar no WhatsApp a última mensagem deste chat (contador aponta envio anterior). Abra a conversa no WhatsApp e tente de novo.',
+    };
+  }
+
   if (lastOutgoingFromWhatsApp) {
     const daysSince = daysBetweenByCalendar(now, lastOutgoingFromWhatsApp);
     if (daysSince < minDistance) {
@@ -54,12 +66,12 @@ export interface VerifyRetomarPreSendParams {
   pendingRangeIndex: number;
   relationType: RelationType;
   customRelationIntervalDays?: number | null;
-  /** Testes: não chama o WA; trata última enviada como ausente. */
+  /** Testes: não chama o WA; trata última mensagem trocada como ausente. */
   skipWhatsAppRead?: boolean;
 }
 
 /**
- * Última mensagem nossa: **apenas** consulta ao Store/modelo do WhatsApp para este chat (`@c.us`).
+ * Última mensagem TROCADA: **apenas** consulta ao Store/modelo do WhatsApp para este chat (`@c.us`).
  */
 export async function verifyRetomarPreSend(
   params: VerifyRetomarPreSendParams
@@ -84,13 +96,13 @@ export async function verifyRetomarPreSend(
     lastOutgoingFromWhatsApp = null;
   } else {
     try {
-      const waMap = await getLastOutgoingFromWhatsAppForChatIds([params.chatId]);
+      const waMap = await getLastMessageDatesFromWhatsAppStore([params.chatId]);
       lastOutgoingFromWhatsApp = waMap.get(params.chatId) ?? null;
     } catch {
       return {
         ok: false,
         reason:
-          'Não foi possível ler no WhatsApp a última mensagem enviada neste chat. Abra a conversa e tente de novo.',
+          'Não foi possível ler no WhatsApp a última mensagem deste chat. Abra a conversa e tente de novo.',
       };
     }
   }

@@ -455,6 +455,174 @@ export async function getLastOutgoingFromWhatsAppForChatIds(
   return out;
 }
 
+/**
+ * Extrai a data da última mensagem TROCADA no chat (nossa OU do cliente) a partir do model do WA.
+ * Opção A do anti-loop: qualquer mensagem recente impede novo retomar — não exige fromMe.
+ * Puro/testável: recebe o model e devolve Date ou null (null = chat sem lastMessage acessível).
+ */
+export function extractLastMessageDateFromChatModel(chat: unknown): Date | null {
+  if (!chat || typeof chat !== 'object') return null;
+  const c = chat as {
+    lastMessage?: unknown;
+    __x_lastMessage?: unknown;
+    _lastMessage?: unknown;
+  };
+
+  const unixOf = (m: unknown): number | null => {
+    if (!m || typeof m !== 'object') return null;
+    const msg = m as { t?: number; __x_t?: number };
+    const t = msg.t ?? msg.__x_t;
+    return typeof t === 'number' && t > 0 ? t : null;
+  };
+
+  let best: number | null = null;
+  for (const m of [c.lastMessage, c.__x_lastMessage, c._lastMessage]) {
+    const u = unixOf(m);
+    if (u != null && (best === null || u > best)) best = u;
+  }
+  return best != null ? new Date(best * 1000) : null;
+}
+
+/**
+ * Igual a `extractLastMessageDateFromChatModel`, mas com fallback para a coleção `msgs`/`ms`
+ * (chats @lid do WA Business não expõem `lastMessage` como propriedade; a coleção tem as msgs).
+ */
+export async function extractLastMessageDateFromChatModelAsync(
+  chat: unknown
+): Promise<Date | null> {
+  const direct = extractLastMessageDateFromChatModel(chat);
+  if (direct) return direct;
+  if (!chat || typeof chat !== 'object') return null;
+  const c = chat as {
+    ms?: { getModelsArray?: () => unknown; _models?: unknown[] };
+    msgs?: { getModelsArray?: () => unknown; _models?: unknown[] };
+  };
+  const coll = c.ms || c.msgs;
+  if (!coll || typeof coll !== 'object') return null;
+  try {
+    let models: unknown[] = [];
+    const cc = coll as { getModelsArray?: () => unknown; _models?: unknown[] };
+    if (typeof cc.getModelsArray === 'function') {
+      const raw = cc.getModelsArray();
+      const arr = await Promise.resolve(raw);
+      if (Array.isArray(arr)) models = arr;
+    } else if (Array.isArray(cc._models)) {
+      models = cc._models;
+    }
+    let best: number | null = null;
+    let n = 0;
+    for (const m of models) {
+      if (n++ > 200) break;
+      const msg = m as { t?: number; __x_t?: number };
+      const t = msg.t ?? msg.__x_t;
+      if (typeof t === 'number' && t > 0 && (best === null || t > best)) best = t;
+    }
+    return best != null ? new Date(best * 1000) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Dígitos do número de telefone real de um chat model do WA.
+ * - @c.us: o próprio sid contém o número.
+ * - @lid: o número real fica em __x_contact.__x_phoneNumber (fallback: contact.id.user).
+ * Puro/testável.
+ */
+export function extractPhoneDigitsFromChatModel(chat: unknown): string {
+  if (!chat || typeof chat !== 'object') return '';
+  const c = chat as {
+    id?: { _serialized?: string };
+    __x_contact?: {
+      __x_phoneNumber?: string;
+      id?: { user?: string };
+    };
+  };
+  const sid = c.id?._serialized ?? '';
+  if (sid.endsWith('@c.us')) return digitsOnly(sid);
+  if (sid.endsWith('@lid')) {
+    const contact = c.__x_contact;
+    const raw = contact?.__x_phoneNumber || contact?.id?.user || '';
+    return digitsOnly(raw);
+  }
+  return '';
+}
+
+/**
+ * Para os chatIds fornecidos, devolve a data da última mensagem TROCADA lendo o Store do WA.
+ * Uma única passada em Chat.getModelsArray()/_models — sem materializar chat, sem Chat.find.
+ * Casa o chatId @c.us procurado com o model do Store por:
+ * - @c.us → sid direto
+ * - @lid (WA Business) → número real via __x_contact.__x_phoneNumber + aliases BR
+ * Chat fora do Store NÃO entra no mapa: o chamador decide a política (fail-closed) para "não verificado".
+ */
+export async function getLastMessageDatesFromWhatsAppStore(
+  chatIds: string[]
+): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>();
+  if (chatIds.length === 0) return out;
+
+  // Pré-computa aliases digit dos chatIds procurados (para casar @lid ↔ @c.us)
+  const wantedAliases = new Map<string, Set<string>>();
+  for (const id of chatIds) {
+    const d = digitsOnly(id);
+    if (d) wantedAliases.set(id, aliasDigitSet(d));
+  }
+
+  await whatsappInterceptors.initialize();
+  const i = whatsappInterceptors;
+  const Chat = i.Chat;
+  if (!Chat) return out;
+
+  const lists: unknown[][] = [];
+  try {
+    if (typeof Chat.getModelsArray === 'function') {
+      const raw = Chat.getModelsArray();
+      const arr = await Promise.resolve(raw);
+      if (Array.isArray(arr)) lists.push(arr);
+    }
+  } catch {
+    /* ignore */
+  }
+  if (Array.isArray(Chat._models)) lists.push(Chat._models);
+
+  const matchWanted = (phoneDigits: string): string | null => {
+    if (!phoneDigits) return null;
+    const phoneAliases = aliasDigitSet(phoneDigits);
+    for (const [wantedId, aliases] of wantedAliases) {
+      for (const a of aliases) {
+        if (phoneAliases.has(a)) return wantedId;
+      }
+    }
+    return null;
+  };
+
+  for (const chats of lists) {
+    for (const c of chats) {
+      const m = c as { id?: { _serialized?: string } | string };
+      const sid: string =
+        (m.id && typeof m.id === 'object' && '_serialized' in m.id
+          ? m.id._serialized
+          : typeof m.id === 'string'
+            ? m.id
+            : '') || '';
+
+      let wantedId: string | null = null;
+      if (sid.endsWith('@c.us')) {
+        if (wantedAliases.has(sid)) wantedId = sid;
+      } else if (sid.endsWith('@lid')) {
+        wantedId = matchWanted(extractPhoneDigitsFromChatModel(c));
+      }
+      if (!wantedId) continue;
+      if (out.has(wantedId)) continue;
+
+      const d = await extractLastMessageDateFromChatModelAsync(c);
+      if (d && !Number.isNaN(d.getTime())) out.set(wantedId, d);
+    }
+  }
+  return out;
+}
+
 export class SendMessageService {
   async sendText(chatIdOrPhone: string, text: string): Promise<void> {
     try {

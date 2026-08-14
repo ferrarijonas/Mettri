@@ -16,7 +16,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         historyEnabled: false,
       },
       version: '2.0.0',
-      autoUpdateEnabled: true, // Habilitado por padrão
+      autoUpdateEnabled: false, // Desligado por padrão (build local tem prioridade; usuário liga nas configurações)
     });
   }
   

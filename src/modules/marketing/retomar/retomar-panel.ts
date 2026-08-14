@@ -22,7 +22,7 @@ import { classifyNameCandidate } from '../../clientes/name-likelihood';
 import { MettriBridgeClient } from '../../../content/bridge-client';
 import {
   sendMessageService,
-  getLastOutgoingFromWhatsAppForChatIds,
+  getLastMessageDatesFromWhatsAppStore,
   ensureChatLoaded,
 } from '../../../infrastructure/services';
 import { RateLimiter } from './rate-limiter';
@@ -502,15 +502,21 @@ export class RetomarPanel {
       const semOutgoing = eligibleFromEngine.filter(e => !lastOutgoingForEngine.has(e.chatId));
       if (semOutgoing.length > 0) {
         try {
-          const waMap = await getLastOutgoingFromWhatsAppForChatIds(
+          const waMap = await getLastMessageDatesFromWhatsAppStore(
             semOutgoing.map(e => e.chatId)
           );
-          // Pós-filtro: remover quem WA mostra com daysSinceOutgoing < minDistance
+          // Pós-filtro: remover quem teve QUALQUER msg trocada há menos de minDistance
+          // e, fail-closed, remover quem já recebeu retomar (contador > 0) mas o WA não confirmou quando.
           const toRemove = new Set<string>();
-          for (const [chatId, waDate] of waMap) {
-            const daysSince = daysBetweenByCalendar(now, waDate);
-            if (daysSince < minDistance) {
-              toRemove.add(chatId);
+          for (const e of semOutgoing) {
+            const waDate = waMap.get(e.chatId);
+            if (waDate) {
+              const daysSince = daysBetweenByCalendar(now, waDate);
+              if (daysSince < minDistance) {
+                toRemove.add(e.chatId);
+              }
+            } else if ((contadorByChat[e.chatId] ?? 0) > 0) {
+              toRemove.add(e.chatId);
             }
           }
           eligibleFromEngine = eligibleFromEngine.filter(e => !toRemove.has(e.chatId));
@@ -1905,6 +1911,14 @@ export class RetomarPanel {
         <p class="mettri-agentic-instruction text-[11px] leading-snug text-neutral-700">
           IA usa o histórico (última mensagem do cliente e sua última retomar, se houver). Revise o texto antes de enviar.
         </p>
+        ${n > 0 ? `
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] text-muted-foreground">${checkedForGen} de ${n} selecionados</span>
+          <div class="flex items-center gap-2">
+            <button type="button" data-agentic-select-all class="text-[11px] text-primary hover:underline" title="Marcar todos os contatos deste ciclo">Selecionar todos</button>
+            <button type="button" data-agentic-clear-selection class="text-[11px] text-muted-foreground hover:text-foreground hover:underline" title="Desmarcar todos">Limpar</button>
+          </div>
+        </div>` : ''}
         ${rowsHtml}
         <textarea rows="2" class="mettri-agentic-frasebase-textarea w-full rounded-md border text-xs px-2 py-1.5 outline-none resize-none text-neutral-900 bg-white placeholder:text-neutral-600" data-agentic-frasebase placeholder="Frase base (opcional) — ex: Oi %NOME%, joia? Precisando de Pão?">${this.escapeHtml(this.agenticFraseBase)}</textarea>
         <div class="flex flex-wrap gap-2 pt-1">
@@ -1913,6 +1927,9 @@ export class RetomarPanel {
           </button>
           <button type="button" id="retomar-agentic-send" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${sendDisabled ? 'disabled' : ''}>
             Enviar${qualifying > 0 ? ` (${qualifying})` : ''}
+          </button>
+          <button type="button" data-action="block-agentic-selected" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${checkedForGen === 0 ? 'disabled' : ''} title="Adicionar todos os selecionados à lista Bloqueados (nunca enviar)">
+            Bloquear selecionados${checkedForGen > 0 ? ` (${checkedForGen})` : ''}
           </button>
         </div>
         ${this.testModeEnabled ? `<p class="text-[10px] text-amber-600/90">Desative &quot;Simular envio&quot; para enviar em massa aqui.</p>` : ''}
@@ -2131,6 +2148,23 @@ export class RetomarPanel {
         if (!chatId) return;
         if (cb.checked) this.agenticChecked.add(chatId);
         else this.agenticChecked.delete(chatId);
+        this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-select-all]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this.agenticChecked.clear();
+        this.getAgenticCycleClients().forEach(c => this.agenticChecked.add(c.chatId));
+        this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-clear-selection]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this.agenticChecked.clear();
         this.updateUnifiedFlow();
       });
     });
@@ -2368,6 +2402,53 @@ export class RetomarPanel {
           const displayName = list ? (ETIQUETA_DISPLAY_NAMES[list.id] ?? list.name) : 'etiqueta';
           this.addLog('info', `Adicionado à ${displayName}`);
         }
+      });
+    });
+
+    /**
+     * Bloqueio em lote — adiciona todos os selecionados à etiqueta padrão "Bloqueados"
+     * (never-send). Após bloquear, limpa a seleção e recarrega os elegíveis.
+     */
+    this.container?.querySelectorAll('[data-action="block-selected"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!this.listsManager) return;
+        const chatIds = Array.from(this.selectedClients);
+        if (chatIds.length === 0) return;
+        for (const chatId of chatIds) {
+          await this.listsManager.addMember('never-send', chatId);
+        }
+        this.selectedClients.clear();
+        this.openMenuId = null;
+        // Recarregar clientes elegíveis para remover da lista de Pessoas (modo dia)
+        await this.loadInactiveClients();
+        this.calculatePeriodFilters();
+        this.lists = this.listsManager.getLists();
+        this.updateUnifiedFlow();
+        this.addLog('info', `Bloqueados ${chatIds.length} cliente(s) (nunca enviar)`);
+      });
+    });
+
+    /**
+     * Bloqueio em lote (Respostas Agênticas) — adiciona todos os contatos marcados
+     * no painel agêntico à etiqueta padrão "Bloqueados" (never-send).
+     */
+    this.container?.querySelectorAll('[data-action="block-agentic-selected"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!this.listsManager) return;
+        const chatIds = Array.from(this.agenticChecked);
+        if (chatIds.length === 0) return;
+        for (const chatId of chatIds) {
+          await this.listsManager.addMember('never-send', chatId);
+        }
+        this.agenticChecked.clear();
+        // Recarregar clientes elegíveis para remover da lista agêntica
+        await this.loadInactiveClients();
+        this.calculatePeriodFilters();
+        this.lists = this.listsManager.getLists();
+        this.updateUnifiedFlow();
+        this.addLog('info', `Bloqueados ${chatIds.length} contato(s) (nunca enviar)`);
       });
     });
 
@@ -2757,6 +2838,11 @@ export class RetomarPanel {
           <button class="mettri-btn-primary mettri-btn-send" id="retomar-send-selected" ${selectedCount === 0 ? 'disabled' : ''}>
             Enviar ${selectedCount > 0 ? `(${selectedCount})` : ''}
           </button>
+          ${this.selectedListId === null ? `
+          <button class="mettri-btn-link mettri-btn-small" data-action="block-selected" type="button" ${selectedCount === 0 ? 'disabled' : ''}>
+            Bloquear selecionados
+          </button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -2952,13 +3038,24 @@ export class RetomarPanel {
           </div>
         ` : `
           <button 
-            class="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             id="retomar-send-selected"
             type="button"
             ${this.selectedClients.size === 0 && !this.testModeEnabled ? 'disabled' : ''}
           >
             ${this.testModeEnabled ? 'Enviar Teste' : this.selectedClients.size > 0 ? `Enviar (${this.selectedClients.size})` : 'Enviar'}
           </button>
+          ${this.selectedListId === null ? `
+          <button 
+            class="h-11 px-3 rounded-xl border border-border bg-background text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            data-action="block-selected"
+            type="button"
+            title="Adicionar todos os selecionados à lista Bloqueados (nunca enviar)"
+            ${this.selectedClients.size === 0 ? 'disabled' : ''}
+          >
+            Bloquear selecionados
+          </button>
+          ` : ''}
         `}
       </div>
 

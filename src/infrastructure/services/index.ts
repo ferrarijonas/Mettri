@@ -5,6 +5,7 @@
 export {
   sendMessageService,
   getLastOutgoingFromWhatsAppForChatIds,
+  getLastMessageDatesFromWhatsAppStore,
   ensureChatLoaded,
   type EnsureChatLoadedResult,
 } from './send-message';
