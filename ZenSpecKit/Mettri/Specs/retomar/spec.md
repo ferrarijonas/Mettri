@@ -685,10 +685,10 @@ Cada linha pode ter uma linha secundária extra (ex.: campanhas ativas).
 - Cada ciclo = uma linha clicável; ao clicar, a linha fica em destaque e o detalhe (Texto A/B, IA, Enviar) é inserido logo abaixo dessa linha, empurrando as demais para baixo.
 - Engrenagem só para esta seção (ciclos), separada do restante do painel.
 
-### Ações de bloqueio (lista de Pessoas / modo dia)
+### Ações de bloqueio (lista de Pessoas / modo dia e Respostas Agênticas)
 
-- **Bloqueio direto por linha:** no modo dia (`selectedListId === null`), cada linha da lista de Pessoas (contatos elegíveis) tem uma ação direta **"Bloquear"** (ícone de cadeado, `data-action="block-client"`) ao lado do rótulo de dias, antes do menu ⋮. Um clique adiciona o contato à etiqueta padrão **"Bloqueados"** (`never-send`), remove-o da seleção e recarrega os elegíveis — o contato some da lista (clientes em etiquetas não aparecem no modo dia). Não aparece no modo etiqueta.
-- **Ação em lote "Bloquear selecionados":** botão adjacente ao envio (e na seção "Clientes Selecionados"), `data-action="block-selected"`, desabilitado quando não há seleção. Adiciona **todos** os selecionados à etiqueta "Bloqueados" (`never-send`), limpa a seleção e recarrega os elegíveis.
+- **Bloqueio direto por linha:** nas listas de contatos elegíveis — seção Pessoas (modo dia, `selectedListId === null`) e linhas de contato do detalhe das **Respostas Agênticas** — cada linha tem uma ação direta **"Bloquear"** (ícone de cadeado, `data-action="block-client"`). Um clique adiciona o contato à etiqueta padrão **"Bloqueados"** (`never-send`), remove-o da seleção (e do `agenticChecked`, quando aplicável) e recarrega os elegíveis — o contato some da lista (clientes em etiquetas não aparecem no modo dia). Não aparece no modo etiqueta.
+- **Ação em lote "Bloquear selecionados":** botão adjacente ao envio (`data-action="block-selected"`, opera sobre os selecionados da seção Pessoas) e no painel do detalhe agêntico (`data-action="block-agentic-selected"`, opera sobre os contatos marcados `agenticChecked`), desabilitado quando não há seleção. Adiciona **todos** os selecionados à etiqueta "Bloqueados" (`never-send`), limpa a seleção e recarrega os elegíveis.
 - **Reversão:** a operação existente continua valendo — modo etiqueta → Bloqueados → menu ⋮ → "Remover desta etiqueta" traz o contato de volta ao modo dia.
 - **Escopo:** apenas nova affordance de UI sobre a operação existente `RetomarListsManager.addMember('never-send', …)`; não altera o motor de elegibilidade nem o modelo de etiquetas.
 

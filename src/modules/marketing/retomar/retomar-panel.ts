@@ -1896,6 +1896,7 @@ export class RetomarPanel {
                 <span class="text-xs font-medium text-foreground">${this.escapeHtml(displayLabel)}</span>
                 <div class="flex items-center gap-1 shrink-0">
                   <button type="button" class="text-[10px] px-2 py-0.5 rounded-md border border-border bg-background hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-agentic-regenerate data-chat-id="${client.chatId}" ${this.isSending || this.agenticRegeneratingId === client.chatId ? 'disabled' : ''}>Regenerar</button>
+                  <button type="button" class="text-[10px] px-2 py-0.5 rounded-md text-muted-foreground hover:text-red-600/80 hover:bg-accent/30 transition-colors" data-action="block-client" data-chat-id="${client.chatId}" title="Bloquear (nunca enviar)">🔒 Bloquear</button>
                   <button type="button" class="text-[10px] px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors" data-agentic-hide data-chat-id="${client.chatId}">Ocultar</button>
                 </div>
               </div>
@@ -1919,6 +1920,9 @@ export class RetomarPanel {
           </button>
           <button type="button" id="retomar-agentic-send" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${sendDisabled ? 'disabled' : ''}>
             Enviar${qualifying > 0 ? ` (${qualifying})` : ''}
+          </button>
+          <button type="button" data-action="block-agentic-selected" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${checkedForGen === 0 ? 'disabled' : ''} title="Adicionar todos os selecionados à lista Bloqueados (nunca enviar)">
+            🔒 Bloquear selecionados
           </button>
         </div>
         ${this.testModeEnabled ? `<p class="text-[10px] text-amber-600/90">Desative &quot;Simular envio&quot; para enviar em massa aqui.</p>` : ''}
@@ -2389,6 +2393,7 @@ export class RetomarPanel {
         if (chatId && this.listsManager) {
           await this.listsManager.addMember('never-send', chatId);
           this.selectedClients.delete(chatId);
+          this.agenticChecked.delete(chatId);
           this.openMenuId = null;
           // Recarregar clientes elegíveis para remover da lista de Pessoas (modo dia)
           await this.loadInactiveClients();
@@ -2421,6 +2426,29 @@ export class RetomarPanel {
         this.lists = this.listsManager.getLists();
         this.updateUnifiedFlow();
         this.addLog('info', `Bloqueados ${chatIds.length} cliente(s) (nunca enviar)`);
+      });
+    });
+
+    /**
+     * Bloqueio em lote (Respostas Agênticas) — adiciona todos os contatos marcados
+     * no painel agêntico à etiqueta padrão "Bloqueados" (never-send).
+     */
+    this.container?.querySelectorAll('[data-action="block-agentic-selected"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!this.listsManager) return;
+        const chatIds = Array.from(this.agenticChecked);
+        if (chatIds.length === 0) return;
+        for (const chatId of chatIds) {
+          await this.listsManager.addMember('never-send', chatId);
+        }
+        this.agenticChecked.clear();
+        // Recarregar clientes elegíveis para remover da lista agêntica
+        await this.loadInactiveClients();
+        this.calculatePeriodFilters();
+        this.lists = this.listsManager.getLists();
+        this.updateUnifiedFlow();
+        this.addLog('info', `Bloqueados ${chatIds.length} contato(s) (nunca enviar)`);
       });
     });
 
