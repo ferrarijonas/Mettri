@@ -243,6 +243,10 @@ export class AtendimentoPanel {
 
     const retomarPanel = this.renderRetomarEtiquetasPanel();
 
+    const contatoBloqueado =
+      this.vm.kind === 'ready' &&
+      this.vm.retomar.etiquetas.find((e) => e.id === 'never-send')?.isMember === true;
+
     // Coluna cresce com o conteúdo; a rolagem fica no #mettri-content (shell).
     // Evitar h-full + flex-1 no Pedido: isso comía a altura e cortava RAG / Comercial / registro.
     this.container.innerHTML = `
@@ -327,6 +331,13 @@ export class AtendimentoPanel {
                   ${this.escapeHtml(this.vm.customer.phoneLabel)} 📋
                 </button>
               </div>
+              ${
+                this.vm.kind === 'ready'
+                  ? `<div class="mt-1">
+                <button type="button" class="${ATD_BTN_TOP}" data-action="retomar-tag:toggle" data-list-id="never-send">${contatoBloqueado ? 'Desbloquear' : 'Bloquear'}</button>
+              </div>`
+                  : ''
+              }
               <div class="mt-1 flex flex-wrap gap-1">
                 ${badges}${moreBadges}
               </div>
