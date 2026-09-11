@@ -627,3 +627,10 @@ Interface do bloco de pedidos dentro do atendimento: [bloco-pedidos-no-painel.ze
 ### Escopo fora
 
 Código, API financeira, schema fino, redefinir RAG (só [consumo rag/spec.md](../rag/spec.md)).
+
+---
+
+# Bloquear/desbloquear contato no header
+
+O header do cliente no painel de Atendimento expõe um botão "Bloquear"/"Desbloquear", visível apenas quando o ViewModel está `ready`. O rótulo reflete a etiqueta padrão "Bloqueados" (`never-send`): "Desbloquear" quando o contato já é membro, "Bloquear" caso contrário.
+A ação reusa o toggle de etiquetas existente (`retomar-tag:toggle` + `data-list-id="never-send"`), sem handler novo — mesmo fluxo canónico descrito em [retomar/spec.md](../retomar/spec.md).
