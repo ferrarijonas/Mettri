@@ -86,6 +86,11 @@ whatsapp-*.md
 whatsapp-design-tokens.md
 whatsapp-snapshot.md
 
+# Local config / segredos (consumer-bridge)
+scripts/consumer-bridge/config.local.json
+__pycache__/
+*.pyc
+
 # Dev config
 /.opencode/
 .playwright-mcp/

@@ -25,7 +25,8 @@
     "package": "powershell -ExecutionPolicy Bypass -File scripts/build/package-extension.ps1",
     "build:modules": "node esbuild.config.js --modules-only",
     "publish-modules": "powershell -ExecutionPolicy Bypass -File scripts/build/publish-modules.ps1",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "bridge:consumer": "python scripts/consumer-bridge/server.py"
   },
   "keywords": [
     "whatsapp",

@@ -544,6 +544,17 @@ E o ciclo reinicia
 
 A identificação de compra será feita por IA analisando as mensagens.
 
+### Fonte de Atividade: Banco Consumer (banco local do Consumer)
+
+- **O que é:** terceira fonte de atividade do painel Retomar (`last-purchase-consumer`, rótulo **"Banco Consumer"**), ao lado de "Última mensagem" e "Última compra". A lista de clientes vem do **banco do caixa (Consumer)**, sem arquivo XLSX.
+- **Como acessa:** a extensão **nunca** fala com o Firebird. Usa um gateway local **somente-leitura** (`scripts/consumer-bridge`, `127.0.0.1:8765`) via `bridge.netFetch`; o gateway executa apenas SELECT (isql) e recusa requisições com origem de página web.
+- **Snapshot:** a resposta é convertida no mesmo formato do import (`PurchaseImportSnapshot`, telefone → `phoneDigits` com aliases BR) e cacheada em `chrome.storage` por conta. O painel **não** busca na rede ao abrir — só no clique de atualização.
+- **Match:** telefone → `chatId` reaproveita `resolveLastActivityFromSnapshot`; clientes sem chat contam como "sem match" na UI.
+- **Affordance:** botão "Atualizar do Consumer" na seção da fonte. Durante a busca o botão fica **desabilitado** com rótulo "Buscando…", e cliques repetidos são **ignorados** (uma busca por vez) — o estado sobrevive ao re-render do fluxo.
+- **Persistência:** ao concluir com sucesso, a fonte escolhida é **persistida** (`retomarActivitySource`); reabrir o painel mantém "Banco Consumer".
+- **Falhas:** erro do gateway aparece no log com **status + trecho da resposta**; falha de transporte aparece com a **URL da consulta**. Falha nunca é silenciosa.
+- **Pré-requisito operacional:** o gateway local precisa estar no ar (`npm run bridge:consumer`).
+
 ## Registro de envios, máquina A/B e sugestão IA
 
 ### Registro de envios (messageDB)
@@ -687,12 +698,21 @@ Cada linha pode ter uma linha secundária extra (ex.: campanhas ativas).
 
 ### Ações de bloqueio (lista de Pessoas / modo dia e Respostas Agênticas)
 
-Padrão tipo Gmail: **sem** ícone de bloqueio por linha; o bloqueio é sempre **em lote** sobre contatos marcados.
+Padrão tipo Gmail: bloqueio **em lote** sobre contatos marcados **e** bloqueio **por item** na lista de Respostas Agênticas (ícone por linha).
 
-- **Seleção:** no detalhe das **Respostas Agênticas** (lista de contatos do ciclo), toolbar com contador "X de N selecionados" + **"Selecionar todos"** (`data-agentic-select-all`, marca todos os contatos do ciclo) e **"Limpar"** (`data-agentic-clear-selection`, desmarca todos). Cada linha tem checkbox; abrir um ciclo já marca todos por padrão.
+- **Seleção:** no detalhe das **Respostas Agênticas** (lista de contatos do ciclo), toolbar com contador "X de N selecionados" + **"Selecionar todos"** (`data-agentic-select-all`, marca todos os contatos **pendentes** do ciclo) e **"Limpar"** (`data-agentic-clear-selection`, desmarca todos). Cada linha **pendente** tem checkbox; abrir um ciclo já marca todos por padrão.
 - **Ação em lote "Bloquear selecionados":** botão no rodapé do detalhe agêntico (`data-action="block-agentic-selected"`, opera sobre os contatos marcados `agenticChecked`) e botão adjacente ao envio na seção Pessoas / modo dia (`data-action="block-selected"`, opera sobre `selectedClients`), desabilitado quando não há seleção e exibindo a contagem. Adiciona **todos** os selecionados à etiqueta padrão **"Bloqueados"** (`never-send`), limpa a seleção e recarrega os elegíveis — os contatos somem da lista (clientes em etiquetas não aparecem no modo dia).
+- **Bloqueio por item (Respostas Agênticas):** cada linha de contato **já enviado** (selo "Enviado") exibe o botão `data-agentic-block` (`data-chat-id`), que adiciona **apenas aquele** contato à etiqueta `never-send` e troca o botão por "Bloqueado" (feedback imediato). Reusa `RetomarListsManager.addMember('never-send', …)`; não altera o motor de elegibilidade.
+- **Contato já enviado permanece visível:** na lista de **Respostas Agênticas**, contato contatado exatamente na faixa atual (contador = faixa + 1) **não desaparece** após o envio — é exibido com selo **"Enviado"** (data do último envio no título) e **sem** checkbox/textarea. Vem de uma **passada de exibição** que não relaxa a exclusão do motor, e sobrevive ao reload. A contagem "N pessoas" do ciclo continua contando apenas os **pendentes**.
 - **Reversão:** a operação existente continua valendo — modo etiqueta → Bloqueados → menu ⋮ → "Remover desta etiqueta" traz o contato de volta ao modo dia.
 - **Escopo:** apenas nova affordance de UI sobre a operação existente `RetomarListsManager.addMember('never-send', …)`; não altera o motor de elegibilidade nem o modelo de etiquetas.
+
+### Bloqueio no painel de Atendimento (rótulo Bloquear/Desbloquear)
+
+- O botão `data-action="retomar-tag:toggle"` (`data-list-id="never-send"`) do header do cliente reflete o **estado persistido** da etiqueta: "Bloquear" quando fora, "Desbloquear" quando dentro.
+- O clique faz **update otimista** do rótulo; se a escrita no storage falhar, o rótulo **reverte** e o usuário é **alertado** — falha de persistência nunca é silenciosa.
+- Os stores do Retomar (etiquetas, contador, último envio) usam o **mesmo timeout de bridge** do painel (30 s). Falha de escrita em `saveLists`/`saveMembers` **propaga** o erro (não é engolida em `console.error`).
+
 
 ### Container Respostas Agênticas
 
