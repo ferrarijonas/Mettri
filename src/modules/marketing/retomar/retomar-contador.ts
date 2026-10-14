@@ -12,7 +12,7 @@ function storageKey(accountId: string): string {
   return `retomarContador_${accountId}`;
 }
 
-const bridge = new MettriBridgeClient(2500);
+const bridge = new MettriBridgeClient(30_000);
 
 /**
  * Retorna o mapa completo chatId → ciclo (1–4) para a conta.

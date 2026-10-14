@@ -1,0 +1,8 @@
+{
+  "db_path": "C:\\Users\\<usuario>\\AppData\\Local\\RAL Tecnologia\\CreateInstall\\CONSUMER.FDB",
+  "isql": "C:\\Program Files\\Firebird\\Firebird_4_0\\isql.exe",
+  "host": "localhost/3050",
+  "user": "SYSDBA",
+  "password": "<senha>",
+  "port": 8765
+}

@@ -32,7 +32,7 @@ export class RetomarListsManager {
   private storageKeyMembers: string;
 
   constructor(accountId: string) {
-    this.bridge = new MettriBridgeClient(2500);
+    this.bridge = new MettriBridgeClient(30_000);
     this.accountId = accountId;
     this.storageKeyLists = `retomarLists_${accountId}`;
     this.storageKeyMembers = `retomarListMembers_${accountId}`;
@@ -121,6 +121,7 @@ export class RetomarListsManager {
       await this.bridge.storageSet({ [this.storageKeyLists]: this.lists });
     } catch (error) {
       console.error('[RETOMAR LISTS] Erro ao salvar listas:', error);
+      throw error;
     }
   }
 
@@ -132,6 +133,7 @@ export class RetomarListsManager {
       await this.bridge.storageSet({ [this.storageKeyMembers]: this.members });
     } catch (error) {
       console.error('[RETOMAR LISTS] Erro ao salvar membros:', error);
+      throw error;
     }
   }
 

@@ -6,6 +6,8 @@ class FakeListsManager {
   private lists: RetomarList[];
   private members: Record<string, string[]>;
   private seq: number;
+  /** Simula falha de escrita do storage (para cobrir propagação de erro no toggle). */
+  public failWrites = false;
 
   constructor() {
     this.seq = 1;
@@ -42,6 +44,7 @@ class FakeListsManager {
   }
 
   public async addMember(listId: string, chatId: string): Promise<void> {
+    if (this.failWrites) throw new Error('storage.set falhou');
     const ids = this.members[listId] || [];
     if (!ids.includes(chatId)) ids.push(chatId);
     this.members[listId] = ids;
@@ -140,6 +143,13 @@ describe('retomar-support service', () => {
     expect(manager.isInList('chat-7', 'inativos')).toBe(true);
     await service.toggleMembership('chat-7', 'inativos');
     expect(manager.isInList('chat-7', 'inativos')).toBe(false);
+  });
+
+  it('propaga falha de escrita do storage no toggle (não engole o erro)', async () => {
+    const { manager, service } = createService();
+    manager.failWrites = true;
+
+    await expect(service.toggleMembership('chat-7', 'inativos')).rejects.toThrow('storage.set falhou');
   });
 
   it('deve bloquear rename e delete para etiquetas padrao', async () => {

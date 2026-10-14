@@ -16,14 +16,15 @@
     "https://api.openai.com/*",
     "https://api.deepseek.com/*",
     "https://www.beedelivery.com.br/*",
-    "https://secservices.beedelivery.com.br/*"
+    "https://secservices.beedelivery.com.br/*",
+    "http://127.0.0.1:8765/*"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev https://*.github.io https://api.openai.com https://api.deepseek.com https://www.beedelivery.com.br https://secservices.beedelivery.com.br"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.workers.dev https://workers.dev https://*.github.io https://api.openai.com https://api.deepseek.com https://www.beedelivery.com.br https://secservices.beedelivery.com.br http://127.0.0.1:8765"
   },
   "content_scripts": [
     {

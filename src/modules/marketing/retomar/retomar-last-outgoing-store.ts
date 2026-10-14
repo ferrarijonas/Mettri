@@ -9,7 +9,7 @@ function storageKey(accountId: string): string {
   return `retomarLastOutgoingAt_${accountId}`;
 }
 
-const bridge = new MettriBridgeClient(2500);
+const bridge = new MettriBridgeClient(30_000);
 
 export async function getLastRetomarOutgoingMap(accountId: string): Promise<Record<string, string>> {
   try {

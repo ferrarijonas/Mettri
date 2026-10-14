@@ -2,7 +2,7 @@ import type { AtendimentoViewModel, ComercialPanelVm, CampoConfianca } from './v
 import type { RagConsultaDebugInfo, RagExperimentStats } from '../../../modules/rag';
 import { isSendEnabled, setSendEnabled, loadSendEnabled } from '../../../modules/harness/agent-state';
 
-type ActionHandler = (actionId: string, payload?: unknown) => void;
+type ActionHandler = (actionId: string, payload?: unknown) => void | Promise<void>;
 type RetomarEtiquetaVm = Extract<AtendimentoViewModel, { kind: 'ready' }>['retomar']['etiquetas'][number];
 
 /** Rótulos placeholder quando não há `slotsResumo`. */
@@ -155,6 +155,8 @@ export class AtendimentoPanel {
   private notesOpen = false;
   private retomarExpanded = false;
   private retomarMenuOpenListId: string | null = null;
+  /** Update otimista do toggle de etiqueta: estado local até a escrita persistir (revertido no finally). */
+  private optimisticTagState = new Map<string, boolean>();
   private purchaseBlockExpanded = true;
   private purchaseFormOpen = false;
   private ragBlockExpanded = false;
@@ -243,9 +245,10 @@ export class AtendimentoPanel {
 
     const retomarPanel = this.renderRetomarEtiquetasPanel();
 
-    const contatoBloqueado =
+    const contatoBloqueadoPersistido =
       this.vm.kind === 'ready' &&
       this.vm.retomar.etiquetas.find((e) => e.id === 'never-send')?.isMember === true;
+    const contatoBloqueado = this.optimisticTagState.get('never-send') ?? contatoBloqueadoPersistido;
 
     // Coluna cresce com o conteúdo; a rolagem fica no #mettri-content (shell).
     // Evitar h-full + flex-1 no Pedido: isso comía a altura e cortava RAG / Comercial / registro.
@@ -392,7 +395,7 @@ export class AtendimentoPanel {
   private bindListeners(): void {
     if (!this.container) return;
 
-    this.container.addEventListener('click', (e) => {
+    this.container.addEventListener('click', async (e) => {
       const target = e.target as HTMLElement | null;
       const btn = target?.closest?.('[data-action]') as HTMLElement | null;
       if (!btn) return;
@@ -619,7 +622,19 @@ export class AtendimentoPanel {
         const listId = String(btn.getAttribute('data-list-id') || '').trim();
         if (!listId) return;
         this.retomarMenuOpenListId = null;
-        this.onAction?.('retomar-tag:toggle', { listId });
+        const persistido =
+          this.vm?.kind === 'ready' &&
+          this.vm.retomar.etiquetas.find((item) => item.id === listId)?.isMember === true;
+        this.optimisticTagState.set(listId, !persistido);
+        this.renderContent();
+        try {
+          await this.onAction?.('retomar-tag:toggle', { listId });
+        } catch {
+          // falha já alertada pelo módulo; o finally restaura o rótulo persistido
+        } finally {
+          this.optimisticTagState.delete(listId);
+          this.renderContent();
+        }
         return;
       }
 

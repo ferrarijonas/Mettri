@@ -18,6 +18,8 @@ import { enviarMensagem } from './harness/tools/enviar-mensagem';
 import { cotarFrete } from './harness/tools/cotar-frete';
 import { solicitarEntregaBee } from './harness/tools/solicitar-entrega-bee';
 import { consultarSaldoBee } from './harness/tools/consultar-saldo-bee';
+import { consultarClientesInativos } from './harness/tools/consultar-clientes-inativos';
+import { consultarProdutosDisponiveis } from './harness/tools/consultar-produtos-disponiveis';
 import { carregarSkillTool } from './harness/tools/carregar-skill';
 import { registrarSkill } from './harness/skills/skill-registry';
 
@@ -126,6 +128,8 @@ export const harnessModule: MettriModule = {
     registry.registrar(cotarFrete);
     registry.registrar(solicitarEntregaBee);
     registry.registrar(consultarSaldoBee);
+    registry.registrar(consultarClientesInativos);
+    registry.registrar(consultarProdutosDisponiveis);
 
     // SkillTool — carrega skills sob demanda (deve vir depois das skills registradas)
     registry.registrar(carregarSkillTool);

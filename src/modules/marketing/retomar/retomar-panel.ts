@@ -17,6 +17,7 @@ import {
   isInRange,
   daysBetweenByCalendar,
   type RelationType,
+  type ReguaRange,
 } from './inactive-days';
 import { classifyNameCandidate } from '../../clientes/name-likelihood';
 import { MettriBridgeClient } from '../../../content/bridge-client';
@@ -55,6 +56,11 @@ import {
   resolveLastActivityFromSnapshot,
   type PurchaseImportSnapshot,
 } from './retomar-purchase-import';
+import {
+  fetchConsumerSnapshot,
+  loadConsumerSnapshot,
+  saveConsumerSnapshot,
+} from './retomar-consumer-source';
 
 interface InactiveClient {
   chatId: string;
@@ -69,6 +75,7 @@ interface InactiveClient {
   isSpecialList?: boolean; // CNPJ ou lista especial
   listIds?: string[]; // IDs das listas que contêm este cliente
   isTestContact?: boolean; // Contato de Simular envio
+  lastSentAt?: Date; // Data do último envio Retomar (selo "Enviado")
 }
 
 interface LogEntry {
@@ -92,12 +99,13 @@ const RELATION_TYPES = [
   { id: 'personalizado', label: 'Personalizado', shortRange: 'Você define' },
 ] as const;
 
-type ActivitySource = 'last-message' | 'last-purchase' | 'last-purchase-import';
+type ActivitySource = 'last-message' | 'last-purchase' | 'last-purchase-import' | 'last-purchase-consumer';
 
 const ACTIVITY_SOURCE_OPTIONS = [
   { id: 'last-message', label: 'Última mensagem' },
   { id: 'last-purchase', label: 'Última compra' },
   { id: 'last-purchase-import', label: 'Lista importada (XLSX)' },
+  { id: 'last-purchase-consumer', label: 'Banco Consumer' },
 ] as const;
 
 /** localStorage=1 → console com contagem por motivo de exclusão na elegibilidade Retomar. */
@@ -117,6 +125,14 @@ export class RetomarPanel {
   private container: HTMLElement | null = null;
   private cadenceDays: number[] = [21, 42, 73, 116];
   private eligibleClients: InactiveClient[] = [];
+  /**
+   * Passada de exibição: contatos já enviados neste ciclo, que o motor de elegibilidade exclui,
+   * mas que devem continuar visíveis com selo "Enviado" (para bloquear sem trocar de tela).
+   * Não afeta o envio — o motor continua sendo a única fonte do que é enviável.
+   */
+  private sentClients: InactiveClient[] = [];
+  /** Chats bloqueados nesta sessão (feedback imediato "Bloqueado" na lista agêntica). */
+  private agenticBlockedChatIds = new Set<string>();
   /** Cache de clientes por chatId para preservar nomes entre modos (evita alteração ao alternar). */
   private clientsCache = new Map<string, InactiveClient>();
   private selectedClients = new Set<string>();
@@ -188,6 +204,10 @@ export class RetomarPanel {
 
   /** Snapshot da lista XLSX importada (fonte last-purchase-import). */
   private purchaseImportSnapshot: PurchaseImportSnapshot | null = null;
+  /** Snapshot da lista vinda do Consumer (fonte last-purchase-consumer). */
+  private consumerSnapshot: PurchaseImportSnapshot | null = null;
+  /** Busca do Consumer em curso (guarda de concorrência + estado do botão; sobrevive ao re-render). */
+  private isConsumerRefreshing = false;
   /** Resumo do último import para exibir na UI. */
   private purchaseImportSummary: { totalRows: number; matchedCount: number; unmatchedCount: number; importedAt: string; filename?: string } | null = null;
 
@@ -378,7 +398,8 @@ export class RetomarPanel {
       if (
         result.retomarActivitySource === 'last-message' ||
         result.retomarActivitySource === 'last-purchase' ||
-        result.retomarActivitySource === 'last-purchase-import'
+        result.retomarActivitySource === 'last-purchase-import' ||
+        result.retomarActivitySource === 'last-purchase-consumer'
       ) {
         this.selectedActivitySource = result.retomarActivitySource;
       }
@@ -391,6 +412,9 @@ export class RetomarPanel {
 
       // Carregar snapshot de import XLSX (se existir)
       this.purchaseImportSnapshot = await loadSnapshot(this.accountId);
+
+      // Carregar snapshot do Consumer em cache (fonte last-purchase-consumer; não busca na rede)
+      this.consumerSnapshot = await loadConsumerSnapshot(this.accountId);
 
       // Carregar estado de envio em background
       const queueResult = await this.bridge.storageGet([
@@ -593,6 +617,16 @@ export class RetomarPanel {
 
     this.eligibleClients = clients;
 
+    // Enviados saem do motor, mas seguem visíveis na lista agêntica (selo "Enviado" + bloquear).
+    this.sentClients = this.buildSentClientsForDisplay({
+      now,
+      lastActivityByChat,
+      lastOutgoingForEngine,
+      contadorByChat,
+      chatIdsInLists,
+      ranges,
+    });
+
     // Ciclos de contato: nenhum ciclo "aberto" por padrão; o container expandido só aparece ao clicar numa linha.
     // (selectedRangeIndex permanece null até o usuário clicar em um ciclo.)
 
@@ -661,6 +695,25 @@ export class RetomarPanel {
       return lastActivityByChat;
     }
 
+    if (source === 'last-purchase-consumer') {
+      if (!this.consumerSnapshot || this.consumerSnapshot.rows.length === 0) {
+        return new Map();
+      }
+      const lastIncomingByContact = await messageDB.getLastIncomingByContact();
+      const { lastActivityByChat, unmatchedCount } = resolveLastActivityFromSnapshot(
+        this.consumerSnapshot.rows,
+        lastIncomingByContact
+      );
+      this.purchaseImportSummary = {
+        totalRows: this.consumerSnapshot.rows.length,
+        matchedCount: lastActivityByChat.size,
+        unmatchedCount,
+        importedAt: this.consumerSnapshot.importedAt,
+        filename: this.consumerSnapshot.filename,
+      };
+      return lastActivityByChat;
+    }
+
     const lastIncomingByContact = await messageDB.getLastIncomingByContact();
     const map = new Map<string, LastActivityEntry>();
     for (const value of lastIncomingByContact.values()) {
@@ -681,6 +734,48 @@ export class RetomarPanel {
       members.forEach(chatId => clientsInLists.add(chatId));
     }
     return clientsInLists;
+  }
+
+  /**
+   * Passada de exibição (não-elegibilidade): contato já contatado exatamente na faixa em que
+   * ainda está (contador = faixa + 1) permanece listado com selo "Enviado", sobrevivendo ao
+   * reload. O motor de elegibilidade não é chamado com regra relaxada.
+   */
+  private buildSentClientsForDisplay(params: {
+    now: Date;
+    lastActivityByChat: Map<string, LastActivityEntry>;
+    lastOutgoingForEngine: Map<string, LastOutgoingEntry>;
+    contadorByChat: Record<string, number>;
+    chatIdsInLists: Set<string>;
+    ranges: ReguaRange[];
+  }): InactiveClient[] {
+    const { now, lastActivityByChat, lastOutgoingForEngine, contadorByChat, chatIdsInLists, ranges } = params;
+    const sent: InactiveClient[] = [];
+    for (const activity of lastActivityByChat.values()) {
+      const chatId = activity.chatId;
+      if (chatIdsInLists.has(chatId)) continue;
+      const outgoing = lastOutgoingForEngine.get(chatId);
+      if (!outgoing) continue;
+      const daysInactive = daysBetweenByCalendar(now, activity.date);
+      if (daysInactive < 0) continue;
+      const rangeIndex = ranges.findIndex(range => isInRange(daysInactive, range));
+      if (rangeIndex === -1) continue;
+      if ((contadorByChat[chatId] ?? 0) !== rangeIndex + 1) continue;
+      const phone = (chatId.split('@')[0] || '').replace(/\D+/g, '');
+      const cached = this.clientsCache.get(chatId);
+      sent.push({
+        chatId,
+        chatName: activity.chatName,
+        phone,
+        lastMessageTime: activity.date,
+        daysInactive,
+        cadenceDay: rangeIndex,
+        status: 'sent',
+        firstName: cached?.firstName,
+        lastSentAt: outgoing.lastOutgoingAt,
+      });
+    }
+    return sent;
   }
 
   private async resolveFirstName(phone: string, fallbackChatName: string): Promise<string> {
@@ -1041,7 +1136,7 @@ export class RetomarPanel {
       el.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = (e.currentTarget as HTMLElement).dataset.activitySourceId;
-        if (id !== 'last-message' && id !== 'last-purchase' && id !== 'last-purchase-import') return;
+        if (id !== 'last-message' && id !== 'last-purchase' && id !== 'last-purchase-import' && id !== 'last-purchase-consumer') return;
 
         this.selectedActivitySource = id;
         this.activitySourceDropdownOpen = false;
@@ -1130,6 +1225,57 @@ export class RetomarPanel {
       // Limpar para permitir reimport do mesmo ficheiro
       input.value = '';
     });
+
+    const refreshBtn = this.container?.querySelector<HTMLButtonElement>('#retomar-consumer-refresh-btn');
+    refreshBtn?.addEventListener('click', () => {
+      void this.handleConsumerRefresh();
+    });
+  }
+
+  /** Busca a lista direto do Consumer (fonte last-purchase-consumer) e recarrega. */
+  private async handleConsumerRefresh(): Promise<void> {
+    // Uma busca por vez: o re-render do fluxo recria o botão, então a guarda é de estado (não do DOM).
+    if (this.isConsumerRefreshing) return;
+
+    this.isConsumerRefreshing = true;
+    this.addLog('info', 'Buscando lista do Consumer…');
+    this.updateUnifiedFlow();
+    try {
+      const snapshot = await fetchConsumerSnapshot();
+      this.consumerSnapshot = snapshot;
+      await saveConsumerSnapshot(this.accountId, snapshot);
+
+      const lastIncoming = await messageDB.getLastIncomingByContact();
+      const { lastActivityByChat, unmatchedCount } = resolveLastActivityFromSnapshot(
+        snapshot.rows,
+        lastIncoming,
+      );
+      this.purchaseImportSummary = {
+        totalRows: snapshot.rows.length,
+        matchedCount: lastActivityByChat.size,
+        unmatchedCount,
+        importedAt: snapshot.importedAt,
+        filename: snapshot.filename,
+      };
+
+      this.addLog(
+        'success',
+        `Consumer: ${snapshot.rows.length} cliente(s), ${lastActivityByChat.size} com chat, ${unmatchedCount} sem match.`,
+      );
+
+      this.selectedActivitySource = 'last-purchase-consumer';
+      // Persistir a fonte: sem isto o painel volta à fonte anterior ao reabrir e o botão desaparece.
+      await this.saveConfig();
+      await this.loadInactiveClients();
+    } catch (err) {
+      this.addLog(
+        'error',
+        `Erro ao buscar do Consumer: ${err instanceof Error ? err.message : 'Erro desconhecido'}. O bridge está rodando?`,
+      );
+    } finally {
+      this.isConsumerRefreshing = false;
+      this.updateUnifiedFlow();
+    }
   }
 
   private async handlePurchaseImportFile(file: File): Promise<void> {
@@ -1779,12 +1925,16 @@ export class RetomarPanel {
     const ranges = getRangesForType(this.selectedRelationType, this.customRelationIntervalDays);
     const range = ranges[this.selectedAgenticRangeIndex];
     if (!range) return [];
-    return this.eligibleClients.filter(c =>
+    const matches = (c: InactiveClient) =>
       isInRange(c.daysInactive, range) &&
-      c.status === 'pending' &&
       !c.isSpecialList &&
-      !this.agenticHiddenChatIds.has(c.chatId)
-    );
+      !this.agenticHiddenChatIds.has(c.chatId);
+
+    const pending = this.eligibleClients.filter(c => c.status === 'pending' && matches(c));
+    const sentInMemory = this.eligibleClients.filter(c => c.status === 'sent' && matches(c));
+    const known = new Set([...pending, ...sentInMemory].map(c => c.chatId));
+    const sentFromStorage = this.sentClients.filter(c => matches(c) && !known.has(c.chatId));
+    return [...pending, ...sentInMemory, ...sentFromStorage];
   }
 
   private toggleAgenticRange(rangeIndex: number): void {
@@ -1880,6 +2030,24 @@ export class RetomarPanel {
         : cycleClients
             .map(client => {
               const displayLabel = client.firstName || client.phone || 'Sem nome';
+
+              if (client.status === 'sent') {
+                const bloqueado = this.agenticBlockedChatIds.has(client.chatId);
+                const enviadoEm = client.lastSentAt ? client.lastSentAt.toLocaleDateString('pt-BR') : '';
+                return `
+        <div class="rounded-lg border border-border/50 bg-background/40 p-2" data-agentic-contact-row="${client.chatId}">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs font-medium text-foreground truncate">${this.escapeHtml(displayLabel)}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-primary/90 shrink-0"${enviadoEm ? ` title="Enviado em ${enviadoEm}"` : ''}>Enviado</span>
+            </div>
+            ${bloqueado
+              ? `<span class="text-[10px] px-2 py-0.5 rounded-md border border-border/40 bg-secondary/20 text-muted-foreground shrink-0">Bloqueado</span>`
+              : `<button type="button" class="text-[10px] px-2 py-0.5 rounded-md border border-border bg-background hover:bg-accent/50 transition-colors shrink-0" data-agentic-block data-chat-id="${client.chatId}">Bloquear</button>`}
+          </div>
+        </div>`;
+              }
+
               const isSelected = this.agenticChecked.has(client.chatId);
               const draft = this.agenticDraftByChatId.get(client.chatId) ?? '';
               return `
@@ -2156,7 +2324,7 @@ export class RetomarPanel {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         this.agenticChecked.clear();
-        this.getAgenticCycleClients().forEach(c => this.agenticChecked.add(c.chatId));
+        this.getAgenticCycleClients().filter(c => c.status === 'pending').forEach(c => this.agenticChecked.add(c.chatId));
         this.updateUnifiedFlow();
       });
     });
@@ -2224,6 +2392,26 @@ export class RetomarPanel {
         this.agenticChecked.delete(chatId);
         this.agenticDraftByChatId.delete(chatId);
         this.updateUnifiedFlow();
+      });
+    });
+
+    agenticDetail?.querySelectorAll<HTMLButtonElement>('[data-agentic-block]').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const chatId = btn.dataset.chatId;
+        if (!chatId || !this.listsManager) return;
+        btn.disabled = true;
+        try {
+          await this.listsManager.addMember('never-send', chatId);
+          this.agenticBlockedChatIds.add(chatId);
+          this.agenticChecked.delete(chatId);
+          this.agenticDraftByChatId.delete(chatId);
+          this.updateUnifiedFlow();
+          this.addLog('info', 'Contato bloqueado (nunca enviar)');
+        } catch (error) {
+          btn.disabled = false;
+          this.addLog('error', `Erro ao bloquear: ${error instanceof Error ? error.message : 'desconhecido'}`);
+        }
       });
     });
 
@@ -3690,9 +3878,12 @@ export class RetomarPanel {
   }
 
   /**
-   * Seção de import de lista XLSX — visível apenas quando fonte = last-purchase-import.
+   * Seção de import de lista — XLSX (last-purchase-import) ou botão do Consumer.
    */
   private renderPurchaseImportSection(): string {
+    if (this.selectedActivitySource === 'last-purchase-consumer') {
+      return this.renderConsumerSection();
+    }
     if (this.selectedActivitySource !== 'last-purchase-import') return '';
 
     const s = this.purchaseImportSummary;
@@ -3726,6 +3917,42 @@ export class RetomarPanel {
             class="text-xs text-muted-foreground file:mr-2 file:text-xs file:rounded file:border-0 file:bg-primary/10 file:text-primary file:cursor-pointer hover:file:bg-primary/20 cursor-pointer"
           />
         </label>
+        ${infoHtml}
+      </div>`;
+  }
+
+  /**
+   * Seção da fonte "Banco Consumer": botão para buscar a lista direto do Consumer.
+   */
+  private renderConsumerSection(): string {
+    const s = this.consumerSnapshot ? this.purchaseImportSummary : null;
+    let infoHtml = '';
+    if (s) {
+      const importedDate = new Date(s.importedAt);
+      const dateStr = importedDate.toLocaleDateString('pt-BR');
+      const ageDays = Math.floor((Date.now() - importedDate.getTime()) / 86_400_000);
+      const ageHtml = ageDays > 0
+        ? ` <span class="text-yellow-600 text-xs">(atualizado há ${ageDays} dia(s))</span>`
+        : '';
+      infoHtml = `
+        <div class="mt-1 text-xs text-muted-foreground">
+          ${s.totalRows} cliente(s) · ${s.matchedCount} com chat · ${s.unmatchedCount} sem match · em ${dateStr}${ageHtml}
+        </div>`;
+    } else {
+      infoHtml = `<div class="mt-1 text-xs text-muted-foreground">Nenhuma lista carregada ainda. Clique em "Atualizar do Consumer".</div>`;
+    }
+
+    const label = this.isConsumerRefreshing ? 'Buscando…' : 'Atualizar do Consumer';
+    return `
+      <div class="mt-3 flex flex-col gap-1">
+        <button
+          type="button"
+          id="retomar-consumer-refresh-btn"
+          ${this.isConsumerRefreshing ? 'disabled' : ''}
+          class="self-start text-xs font-medium rounded border border-primary/30 bg-primary/10 text-primary px-3 py-1 hover:bg-primary/20 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          ${label}
+        </button>
         ${infoHtml}
       </div>`;
   }
@@ -4559,6 +4786,7 @@ export class RetomarPanel {
       await setLastRetomarOutgoingAt(this.accountId, chatId, new Date());
 
       client.status = 'sent';
+      client.lastSentAt = new Date();
       client.generatedMessage = message;
 
       if (!this.testModeEnabled && this.pendingChamadaIndex != null) {
