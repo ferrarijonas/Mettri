@@ -47,7 +47,7 @@ export interface RetomarSupportSnapshot {
 }
 
 async function resolveAccountIdFromStorage(): Promise<string> {
-  const bridge = new MettriBridgeClient(2500);
+  const bridge = new MettriBridgeClient(30_000);
   try {
     const result = await bridge.storageGet(['mettri_current_user_wid']);
     const wid = result.mettri_current_user_wid as string | undefined;
