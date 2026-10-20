@@ -103,6 +103,8 @@ export class MettriBridgeClient {
     method?: string;
     headers?: Record<string, string>;
     body?: string;
+    /** Limite (ms) da perna service worker; ao vencer, cai no fetch direto. Omitido = sem limite. */
+    swTimeoutMs?: number;
   }): Promise<{ ok: boolean; status: number; text: string; location?: string }> {
     return await this.request('net.fetch', args);
   }
