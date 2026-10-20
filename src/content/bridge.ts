@@ -114,17 +114,27 @@ async function downloadViaServiceWorker(
 }
 
 async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number; text: string }> {
-  const p = payload as { url?: unknown; method?: unknown; headers?: unknown; body?: unknown };
+  const p = payload as {
+    url?: unknown;
+    method?: unknown;
+    headers?: unknown;
+    body?: unknown;
+    swTimeoutMs?: unknown;
+  };
   const url = typeof p?.url === 'string' ? p.url : null;
   if (!url) throw new Error('Missing url');
 
   const method = typeof p?.method === 'string' ? p.method : 'GET';
   const headers = p?.headers && typeof p.headers === 'object' ? (p.headers as Record<string, string>) : undefined;
   const body = typeof p?.body === 'string' ? p.body : undefined;
+  // Opt-in: sem swTimeoutMs mantém o comportamento antigo (espera o SW o quanto for), para não
+  // disparar chamadas duplicadas e caras (LLM/RAG) só porque o SW está lento.
+  const swTimeoutMs = typeof p?.swTimeoutMs === 'number' && p.swTimeoutMs > 0 ? p.swTimeoutMs : null;
 
   // Tenta via service worker primeiro (mais robusto que fetch do content script).
+  let swError: unknown = null;
   try {
-    const result = await new Promise<{ ok: boolean; status: number; text: string }>((resolve, reject) => {
+    const swRequest = new Promise<{ ok: boolean; status: number; text: string }>((resolve, reject) => {
       chrome.runtime.sendMessage(
         {
           type: 'NET_FETCH',
@@ -137,11 +147,26 @@ async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number
         }
       );
     });
-    return result;
-  } catch {
-    // Fallback: fetch direto do isolated world.
-    // O content script MV3 tem host_permissions, então consegue acessar
-    // URLs externas (ex: api.deepseek.com) sem CORS da página.
+    // Resposta tardia do SW (depois do limite) não pode virar rejeição não tratada.
+    swRequest.catch(() => undefined);
+
+    if (swTimeoutMs === null) return await swRequest;
+
+    return await Promise.race([
+      swRequest,
+      new Promise<never>((_resolve, reject) => {
+        window.setTimeout(() => reject(new Error(`service worker sem resposta em ${swTimeoutMs}ms`)), swTimeoutMs);
+      }),
+    ]);
+  } catch (err) {
+    // SW morto/travado (ex.: fetch para loopback que nunca settles) — tenta o contexto de documento.
+    swError = err;
+  }
+
+  // Fallback: fetch direto do isolated world.
+  // O content script MV3 tem host_permissions, então consegue acessar
+  // URLs externas (ex: api.deepseek.com) sem CORS da página.
+  try {
     const res = await fetch(url, {
       method,
       headers,
@@ -151,6 +176,10 @@ async function netFetch(payload: unknown): Promise<{ ok: boolean; status: number
     });
     const text = await res.text();
     return { ok: res.ok, status: res.status, text };
+  } catch (fallbackErr) {
+    const sw = swError instanceof Error ? swError.message : String(swError ?? 'erro desconhecido');
+    const direto = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+    throw new Error(`SW: ${sw}; direto: ${direto}`);
   }
 }
 

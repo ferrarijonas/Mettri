@@ -85,6 +85,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        # O content script roda em contexto cross-origin: sem ACAO o browser entrega o 200
+        # mas esconde o corpo. So ecoa origem de extensao (pagina web continua 403 abaixo).
+        origin = self.headers.get("Origin")
+        if origin and origin.startswith("chrome-extension://"):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.end_headers()
         self.wfile.write(body)
 

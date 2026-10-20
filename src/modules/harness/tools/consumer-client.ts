@@ -23,7 +23,9 @@ export async function consultarConsumer<T = unknown>(
 
   let res: { ok: boolean; status: number; text: string; location?: string };
   try {
-    res = await bridge.netFetch({ url: full, method: 'GET' });
+    // Gateway local responde em ~1s; 8s de folga. Se o SW pendurar (loopback travado),
+    // o bridge cai no fetch direto em vez de segurar o painel por 30s.
+    res = await bridge.netFetch({ url: full, method: 'GET', swTimeoutMs: 8000 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'erro desconhecido';
     throw new Error(`consumer-bridge inacessível (${full}): ${msg}`);
